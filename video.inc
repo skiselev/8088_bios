@@ -131,24 +131,26 @@ int_10:
 
 ;=========================================================================
 ; int_1D - Video parameters tables
+; Contains values loaded to MC6845 CRTC registers 00h to 0Fh during
+; video mode initialization
 ;-------------------------------------------------------------------------
 	setloc	0F0A4h			; int 1D (MDA and CGA Video Parm Table)
 int_1D:
 	; CGA test 40x25 modes
-	db	38h, 28h, 2Dh, 0Ah, 1Fh, 06h, 19h, 1Ch, 02h, 07h, 06h, 07h
-	db	00h, 00h, 00h, 00h
+	db	38h, 28h, 2Dh, 0Ah, 1Fh, 06h, 19h, 1Ch
+	db	02h, 07h, 06h, 07h, 00h, 00h, 00h, 00h
 
 	; CGA text 80x25 modes
-	db	71h, 50h, 5Ah, 0Ah, 1Fh, 06h, 19h, 1Ch, 02h, 07h, 06h, 07h
-	db	00h, 00h, 00h, 00h
+	db	71h, 50h, 5Ah, 0Ah, 1Fh, 06h, 19h, 1Ch
+	db	02h, 07h, 06h, 07h, 00h, 00h, 00h, 00h
 
 	; CGA graphics modes
-	db	38h, 28h, 2Dh, 0Ah, 7Fh, 06h, 64h, 70h, 02h, 01h, 06h, 07h
-	db	00h, 00h, 00h, 00h
+	db	38h, 28h, 2Dh, 0Ah, 7Fh, 06h, 64h, 70h
+	db	02h, 01h, 06h, 07h, 00h, 00h, 00h, 00h
 
 	; MDA text 80x25 mode
-	db	61h, 50h, 52h, 0Fh, 19h, 06h, 19h, 19h, 02h, 0Dh, 0Bh, 0Ch
-	db	00h, 00h, 00h, 00h
+	db	61h, 50h, 52h, 0Fh, 19h, 06h, 19h, 19h
+	db	02h, 0Dh, 0Bh, 0Ch, 00h, 00h, 00h, 00h
 
 page_size:
 	dw	0800h			; text 40x25 mode
@@ -206,7 +208,7 @@ int_10_fn00:
     cs	mov	bl,byte [bx+TABMUL]	; Get bl for index into int_1D
 	add	si,bx
 
-    es	mov	cx,word [si+0Ah]	; cursor shape from INT 1Dh
+    es	mov	cx,word [si+crtc_cur_start] ; cursor shape from INT 1Dh table
 	xchg	cl,ch			; convert to LSB format
 	mov	word [video_cur_shape],cx ; store cursor shape
 
