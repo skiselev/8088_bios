@@ -290,7 +290,7 @@ ipl:
 	mov	cx,0001h		; track 0, sector 1
 	int	13h
 	jc	.failed
-    es	cmp	word [71FEh],0AA55h
+    es	cmp	word [7DFEh],0AA55h
 	jnz	.failed
 	jmp	0000h:7C00h
 .failed:
