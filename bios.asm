@@ -1262,8 +1262,8 @@ int_ignore:
 	out	pic1_reg0,al		; signal end of interrupt
 .2:
 	mov	byte [last_irq],ah
-	pop	ax
 	pop	ds
+	pop	ax
 	iret
 
 ;=========================================================================
