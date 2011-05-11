@@ -119,6 +119,8 @@ equip_floppy2	equ	0000000001000000b	; 2nd floppy drive installed
 ;			||`------ internal modem?!
 ;			`------- number of parallel ports
 
+post_flags	equ	12h	; byte - post flags
+post_setup	equ	01h	; run NVRAM setup
 memory_size	equ	13h	; word - memory size in KiB
 kbd_flags_1	equ	17h	; byte - keyboard shift flags 1
 kbd_flags_2	equ	18h	; byte - keyboard shift flags 2
@@ -145,6 +147,7 @@ last_irq	equ	6Bh	; byte - Last spurious IRQ number
 ticks_lo	equ	6Ch	; word - timer ticks - low word
 ticks_hi	equ	6Eh	; word - timer ticks - high word
 new_day		equ	70h	; byte - 1 = new day flag
+break_flag	equ	71h	; byte - bit 7 = 1 if Ctrl-Break was pressed
 warm_boot	equ	72h	; word - Warm boot if equals 1234h
 kbd_buffer_start equ	80h	; word - keyboard buffer start offset
 kbd_buffer_end	equ	82h	; word - keyboard buffer end offset
@@ -170,6 +173,7 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 ; Includes
 ;-------------------------------------------------------------------------
 %include	"messages.inc"		; POST messages
+%include	"fnt80-FF.inc"		; font for graphics modes
 ;%include	"inttrace.inc"		; XXX
 %include	"rtc.inc"		; RTC and CMOS read / write functions
 %include	"time1.inc"		; time services
@@ -455,15 +459,116 @@ reserve_ebda:
 	ret
 
 ;=========================================================================
-; ram_test - Test a 16 KiB (RAM_TEST_BLOCK) of RAM
+; detect_ram - Determine the size of installed RAM and test it
 ; Input:
-;	ax = address of the memory to test (in KiB)
+;	none
 ; Output:
-;	CF - status
+;	AX = RAM size
+;	CX, SI - trashed
+;-------------------------------------------------------------------------
+detect_ram:
+	push	ds
+	mov	cl,6			; for SHL - converting KiB to segment
+	mov	ax,MIN_RAM_SIZE
+
+.fill_loop:
+	push	ax
+	shl	ax,cl			; convert KiB to segment (mult. by 64)
+	mov	ds,ax
+	mov	word [RAM_TEST_BLOCK-2],ax
+	pop	ax
+	add	ax,RAM_TEST_BLOCK/1024
+	cmp	ax,MAX_RAM_SIZE
+	jne	.fill_loop
+	mov	ax,MIN_RAM_SIZE
+
+.size_loop:
+	push	ax
+	shl	ax,cl			; convert KiB to segment (mult. by 64)
+	mov	ds,ax
+	cmp	word [RAM_TEST_BLOCK-2],ax
+	jne	.size_done
+	pop	ax
+	add	ax,RAM_TEST_BLOCK/1024
+	cmp	ax,MAX_RAM_SIZE
+	jnb	.size_exit
+	jmp	.size_loop
+
+.size_done:
+	pop	ax
+
+.size_exit:
+	pop	ds
+	mov	word [memory_size],ax	; store it for now... might change later
+
+; AX = detected memory size, now test the RAM
+
+	cmp	word [warm_boot],1234h	; warm boot - don't test RAM
+	je	.test_done
+
+	mov	si,msg_ram_testing
+	call	print
+	mov	ax,MIN_RAM_SIZE		; start from 32 KiB
+
+.test_loop:
+	push	ax
+	mov	ah,03h			; INT 10h, AH=03h - get cursor position
+	mov	bh,00h			; page 0
+	int	10h			; position returned in DX
+	pop	ax
+	call	print_dec
+	push	ax
+	mov	ah,02h			; INT 10h, AH=02h - set cursor position
+	mov	bh,00h			; page 0
+	int	10h
+	mov	ah,01h
+	int	16h
+	jz	.test_no_key
+	mov	ah,00h
+	int	16h			; read the keystroke
+	cmp	al,1Bh			; ESC?
+	je	.test_esc
+	cmp	ax,3B00h		; F1?
+	jne	.test_no_key
+	or	byte [post_flags],post_setup
+
+.test_no_key:
+	pop	ax
+	call	ram_test_block
+	jc	.test_error		; error in last test
+	add	ax,RAM_TEST_BLOCK/1024	; test the next block
+	cmp	ax,word [memory_size]
+	jb	.test_loop
+	jmp	.test_done
+
+.test_esc:
+	pop	ax
+	mov	ax,word [memory_size]
+	jmp	.test_done
+
+.test_error:
+	mov	word [memory_size],ax	; store size of good memory
+	mov	si,msg_ram_error
+	call	print
+	call	print_dec
+	mov	si,msg_kib
+	call	print
+	mov	si,msg_crlf
+	call	print
+
+.test_done:
+	ret
+
+;=========================================================================
+; ram_test_block - Test a 16 KiB (RAM_TEST_BLOCK) of RAM
+; Input:
+;	AX = address of the memory to test (in KiB)
+; Output:
+;	CF = status
 ;		0 = passed
 ;		1 = failed
 ;-------------------------------------------------------------------------
-ram_test:
+ram_test_block:
 	push	ax
 	push	bx
 	push	cx
@@ -664,7 +769,7 @@ cpu_ok:
 	out	post_reg,al
 
 ;-------------------------------------------------------------------------
-; Test first 32 KiB of RAM
+; Test first 32 KiB (MIN_RAM_SIZE) of RAM
 
 low_ram_test:
 	xor	si,si
@@ -684,9 +789,9 @@ low_ram_test:
 	xor	si,si
 	xor	di,di
 	mov	ax,0AA55h		; second test pattern
-	mov	cx,4000h		; 32 KiB = 16384 words
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
     rep stosw				; store test pattern
-	mov	cx,4000h		; 32 KiB = 16384 words
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
 .2:
 	lodsw
 	cmp	ax,0AA55h		; compare to the test pattern
@@ -694,7 +799,7 @@ low_ram_test:
 	loop	.2
 	xor	di,di
 	xor	ax,ax			; zero
-	mov	cx,4000h		; 32 KiB = 16384 words
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
     rep stosw				; zero the memory
 	jmp	low_ram_ok		; test passed
 
@@ -908,36 +1013,10 @@ low_ram_ok:
 	call	rtc_read		; floppies type to AL
 	call	print_floppy		; print floppy drive types
 
-;-------------------------------------------------------------------------
-; test RAM
+	call	detect_ram		; test RAM, get RAM size in AX
 
-ram_test_start:
-	mov	si,msg_ram_test
+	mov	si,msg_ram_total
 	call	print
-	mov	ax,32		; start from 32 KiB
-	mov	cx,MAX_RAM_SIZE-32 ; kilobytes to test
-.1:
-	push	ax
-	push	cx
-	mov	ah,03h		; Int 10 function 03h - get cursor position
-	mov	bh,00h		; page 0
-	int	10h		; position returned in DX
-	pop	cx
-	pop	ax
-	call	print_dec
-	push	ax
-	mov	ah,02h		; Int 10 function 02h - set cursor position
-	mov	bh,00h		; page 0
-	int	10h
-	pop	ax
-	call	ram_test
-	jc	ram_test_done	; error in last test, assume end of RAM
-	add	ax,RAM_TEST_BLOCK/1024	; test the next block
-	loop	.1
-	jmp	ram_test_done
-
-ram_test_done:
-	mov	word [memory_size],ax
 	call	print_dec
 	mov	si,msg_kib
 	call	print
@@ -954,10 +1033,10 @@ ram_test_done:
 
 	mov	dx,0C800h
 	mov	bx,0F000h
-.1:
+.ext_scan_loop:
 	call	extension_scan
 	cmp	word [67h],0
-	jz	.2
+	jz	.ext_scan_next
 	mov	si,msg_rom_found
 	call	print
 	push	bx
@@ -965,20 +1044,25 @@ ram_test_done:
 	call	far [67h]
 	pop	dx
 	pop	bx
-.2:
+.ext_scan_next:
 	cmp	dx,bx
-	jb	.1
+	jb	.ext_scan_loop
 
 ;-------------------------------------------------------------------------
 ; check if F1 key was pressed
 
 	mov	ah,01h
 	int	16h
-	jz	.no_setup
+	jz	.no_key
 	mov	ah,00h
 	int	16h			; read the keystroke
 	cmp	ax,3B00h		; F1?
-	jne	.no_setup
+	jne	.no_key
+	or	byte [post_flags],post_setup
+.no_key:
+
+	test	byte [post_flags],post_setup
+	jz	.no_setup
 	call	rtc_setup
 
 .no_setup:
@@ -1149,7 +1233,7 @@ int_11:
 ;-------------------------------------------------------------------------
 
 %include	"misc.inc"
-%include	"gfxfont.inc"
+%include	"fnt00-7F.inc"
 %include	"time2.inc"
 
 ;=========================================================================
@@ -1232,7 +1316,7 @@ interrupt_table:
 	dw	int_dummy		; INT 1C - User Timer Tick
 	dw	int_1D			; INT 1D - Video Parameters Table
 	dw	int_1E			; INT 1E - Floppy Paameters Table
-	dw	graphics_font		; INT 1F - Font For Graphics Mode
+	dw	int_1F			; INT 1F - Font For Graphics Mode
 
 interrupt_table2:
 	dw	int_70			; INT 70 - IRQ8 - RTC
@@ -1247,8 +1331,6 @@ interrupt_table2:
 	dw	int_75			; INT 75 - IRQ13 - FPU
 	dw	int_ignore2		; INT 76 - IRQ14
 	dw	int_ignore2		; INT 77 - IRQ15
-
-graphics_font:				; XXX - should we have it?
 
 ;=========================================================================
 ; start - at power up or reset execution starts here (F000:FFF0)
