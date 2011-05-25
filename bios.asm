@@ -763,8 +763,26 @@ cpu_ok:
 
 ;-------------------------------------------------------------------------
 ; Initialize DMAC (8237)
-; XXX - implement DMA initializaion
-
+ 
+ 	out	0Dh,al			; DMA Master Clear register - reset DMA
+ 	mov	al,40h			; single mode, verify, channel 0
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,41h			; single mode, verify, channel 1
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,42h			; single mode, verify, channel 2
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,43h			; single mode, verify, channel 3
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,0			; DMA Command register bits:
+ 					; DACK active low, DREQ active high,
+ 					; late write, fixed priority,
+ 					; normal timing, controller enable
+ 					; channel 0 addr hold disable
+ 					; memory to memory disable
+ 	out	08h,al			; DMA Command register
+ 	out	81h,al			; DMA Page, channel 2
+ 	out	82h,al			; DMA Page, channel 3
+ 	out	83h,al			; DMA Page, channels 0,1
 	mov	al,e_dmac_ok
 	out	post_reg,al
 
@@ -841,7 +859,7 @@ low_ram_ok:
 	out	post_reg,al
 
 ;-------------------------------------------------------------------------
-; Set up stack
+; Set up stack - using upper 256 bytes of interrupt table
 
 	mov	ax,0030h
 	mov	ss,ax
