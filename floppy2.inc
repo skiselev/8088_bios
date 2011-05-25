@@ -45,7 +45,9 @@ int_13_bh	equ	int_13_bx+1
 int_13_ax	equ	int_13_bx+2
 int_13_al	equ	int_13_ax
 int_13_ah	equ	int_13_ax+1
-int_13_flags	equ	int_13_ax+6
+int_13_ip	equ	int_13_ax+2
+int_13_cs	equ	int_13_ip+2
+int_13_flags	equ	int_13_cs+2
 int_13_flags_l	equ	int_13_flags
 
 ;=========================================================================
@@ -73,7 +75,6 @@ int_13_flags_l	equ	int_13_flags
 ;-------------------------------------------------------------------------
 	setloc	0EC59h			; INT 13 (Floppy) Entry Point
 int_13:
-;	call	int_trace		; XXX
 	sti
 	push	ax
 	push	bx
@@ -170,7 +171,6 @@ int_13_exit:
 	pop	cx
 	pop	bx
 	pop	ax
-;	call	int_trace		; XXX
 	iret
 
 ;=========================================================================
@@ -243,7 +243,6 @@ int_13_fn04:
 .fdc_send_specify_cmd:
 	mov	si,2			; specify byte 1
 	mov	cl,3			; 3 bytes command
-;	or	byte [fdc_calib_state],fdc_irq_flag ; don't wait for IRQ6
 	call	fdc_send_cmd
 	jc	.error_end_io		; jump if failed to send command
 	push	ds
@@ -260,7 +259,7 @@ int_13_fn04:
 	mov	byte [si+4],cl		; update it in disk parameter table
 
 .calc_dma_count:
-	mov	cl,[si+3]		; bytes per sector (02h = 512 bytes...)
+	mov	cl,byte [si+3]		; bytes per sector (02h = 512 bytes...)
 	add	cl,7			; CL = log2 (bytes per sector)
 	shl	ax,cl			; AX = AL * 2 ^ CL = AX * bytes/sector
 	pop	ds
@@ -504,7 +503,6 @@ int_13_fn05:
 	setloc	0EF57h
 
 int_0E:
-	sti
 	push	ax
 	push	ds
 	mov	ax,biosdseg
@@ -559,7 +557,8 @@ media_2880:
 
 ;=========================================================================
 ; Disk parameter table for IBM compatibility
+; Using 2.88M disk as it has maximal number of cylinders and sectors
 ;-------------------------------------------------------------------------
 	setloc	0EFC7h
 int_1E:
-	db	0CFh, 02h, 25h, 02h, 08h, 2Ah, 0FFh, 50h, 0F6h, 19h, 04h
+	db	0AFh, 02h, 25h, 02h, 24h, 1Bh, 0FFh, 50h, 0F6h, 0Fh, 08h
