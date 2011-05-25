@@ -1573,48 +1573,6 @@ fdc_wait_irq:
 	ret
 
 ;=========================================================================
-; fdc_wait_input - Wait until FDC is ready to receive commands from CPU
-;		   but no more than one second
-; Input:
-;	DX = 3F4h (FDC main status register)
-; Ouput:
-;	CF clear if FDC is ready
-;	CF set on timeout
-;-------------------------------------------------------------------------
-fdc_wait_input:
-	push	ax
-	mov	ah,40h
-	xor	cx,cx
-
-.zero:
-	in	al,dx			; read I/O port
-	test	al,ah
-	jz	.exit			; exit loop if bit(s) set to 0
-
-.zero_loop:
-	in	al,port_b_reg
-	test	al,refresh_flag
-	jz	.zero_loop		; wait 15.09 us
-	dec	cx
-	jz	.timeout
-	in	al,dx			; read I/O port again
-	test	al,ah
-	jz	.exit			; exit loop if bit(s) set to 0
-
-.one_loop:
-	in	al,port_b_reg
-	test	al,refresh_flag
-	jnz	.one_loop		; wait 15.09 us
-	loop	.zero
-
-.timeout:
-	stc
-
-.exit:
-	pop	ax
-	ret
-
-;=========================================================================
 ; fdc_wait_ready - Wait until FDC is ready to receive or send commands
 ;		   but no more than one second
 ; Input:
