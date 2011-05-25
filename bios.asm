@@ -276,28 +276,56 @@ ipl:
 	mov	ds,ax
 	mov	word [78h],int_1E
 	mov	word [7Ah],cs
+
 .retry:
-	mov	al,4
-.retry_loop:
+	mov	al,4			; try booting from floppy 4 times
+
+.fd_loop:
 	push	ax
 	mov	ah,0
 	int	13h
-	jb	.failed
+	jb	.fd_failed
+	mov	ah,15h			; get disk type
+	mov	dl,00h			; drive 0
+	int	13h
+	jc	.no_disk_change
+	cmp	ah,02h
+	jne	.no_disk_change
+	mov	ah,16h			; detect disk change
+	int	13h			; also clear disk change status
+
+.no_disk_change:
 	mov	ax,0201h		; read one sector
 	xor	dx,dx			; head 0, drive 0
 	mov	es,dx			; to 0000:7C00
 	mov	bx,7C00h
 	mov	cx,0001h		; track 0, sector 1
 	int	13h
-	jc	.failed
+	jc	.fd_failed
     es	cmp	word [7DFEh],0AA55h
-	jnz	.failed
+	jnz	.fd_failed
 	jmp	0000h:7C00h
-.failed:
+
+.fd_failed:
 	pop	ax
 	dec	al
-	jnz	.retry_loop
+	jnz	.fd_loop
 
+; try booting from HDD
+
+	mov	ax,0201h		; read one sector
+	mov	dx,0080h		; head 0, drive 80h
+	xor	bx,bx
+	mov	es,bx			; to 0000:7C00
+	mov	bx,7C00h
+	mov	cx,0001h		; track 0, sector 1
+	int	13h
+	jc	.hd_failed
+    es	cmp	word [7DFEh],0AA55h
+	jnz	.hd_failed
+	jmp	0000h:7C00h
+
+.hd_failed:
 	mov	si,msg_boot_failed
 	call	print
 	mov	ah,00h
