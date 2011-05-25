@@ -23,7 +23,7 @@
 ;=========================================================================
 
 msg_copyright	db	0Dh, 0Ah
-		db	"Sergey's XT BIOS, Version 0.7b. "
+		db	"Sergey's XT BIOS, Version 0.7c. "
 		db	"Copyright (C) 2010, 2011 Sergey Kiselev", 0Dh, 0Ah
 		db	"Distributed under the terms of "
 		db	"the GNU General Public License", 0Dh, 0Ah
@@ -53,7 +53,9 @@ msg_floppy_2880	db	'2.88 MB, 3.5"', 00h
 msg_mouse	db      'PS/2 Aux Device (Mouse):    ', 00h
 msg_present	db      'Present', 0Dh, 0Ah, 00h
 msg_absent	db      'Absent', 0Dh, 0Ah, 00h
-msg_ram_test	db      'Total Conventional RAM:     ', 00h
+msg_ram_testing	db	'Testing RAM (ESC to skip):  ', 00h
+msg_ram_error	db	0Dh, 0Ah, 'ERROR: Faulty memory detected at ', 00h
+msg_ram_total	db      0Dh, 'Total Conventional RAM:     ', 00h
 msg_ebda	db      'Reserved for EBDA:          ', 00h
 msg_ram_avail	db      'Available Conventional RAM: ', 00h
 msg_kib		db      ' KiB', 0Dh, 0Ah, 00h
