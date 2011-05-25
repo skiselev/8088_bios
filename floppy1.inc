@@ -36,6 +36,10 @@
 
 fdc_dor_reg	equ	3F2h		; FDC digital output register (W)
 fdc_status_reg	equ	3F4h		; FDC main status register (R)
+fdc_stat_ready	equ	80h		; 1 = FDC is ready to send / receive
+fdc_stat_dir	equ	40h		; 0 = CPU -> FDC; 1 = FDC -> CPU
+fdc_stat_dma	equ	20h		; 1 = DMA and IRQ enabled
+fdc_stat_busy	equ	10h		; 1 = FDC is busy
 fdc_data_reg	equ	3F5h		; FDC data register (R/W)
 fdc_dir_reg	equ	3F7h		; FDC digital input register (W)
 fdc_ccr_reg	equ	3F7h		; FDC control configuration register (R)
@@ -993,13 +997,6 @@ fdc_configure_dma:
 	add	bx,cx			;   add DMA buffer address to byte count
 	jc	.dma_boundary		; jump if crossing DMA boundary (64 KiB)
 
-;	push	ax			; XXX
-;	in	al,port_b_reg
-;	mov	bl,al
-;	and	al,0FBh			; clear bit 2 (turbo enable bit)
-;	out	port_b_reg,al
-;	pop	ax
-
 	cli
 	out	dmac_ff_reg,al		; clear first/last flip-flop
 	jmp	$+2
@@ -1031,8 +1028,6 @@ fdc_configure_dma:
 	out	dmac_mask_reg,al	; enable DMA channel 2
 	sti
 
-;	mov	al,bl			; XXX
-;	out	port_b_reg,al		; restore turbo bit
 .exit:
 	pop	dx
 	ret
@@ -1108,24 +1103,23 @@ fdc_send_cmd:
 ;		AH = 80h - timeout / device not ready
 ;-------------------------------------------------------------------------
 fdc_write:
-	push	cx
 	push	dx
-	mov	cx,2
-	call	delay_15us		; 15-30 us delay
-	mov	dx,fdc_status_reg
-	call	fdc_wait_input
-	jc	.timeout
+	push	ax
 	call	fdc_wait_ready
 	jc	.timeout
+	and	al,fdc_stat_ready|fdc_stat_dir|fdc_stat_dma
+	cmp	al,fdc_stat_ready
+	jne	.timeout
+	pop	ax
 	mov	dx,fdc_data_reg
 	out	dx,al			; write byte
 
 .exit:
 	pop	dx
-	pop	cx
 	ret
 
 .timeout:
+	pop	ax
 	mov	ah,fdc_e_timeout	; Note: CF is already set
 	jmp	.exit
 
@@ -1143,37 +1137,42 @@ fdc_write:
 ;	AL,BX - trashed
 ;-------------------------------------------------------------------------
 fdc_get_result:
-	push	cx
 	push	dx
 	mov	bx,fdc_ctrl_status
-	mov	ch,0
 
 .next_byte:
-	push	cx
-	call	fdc_read
-	pop	cx
-	jc	.error			; jump if failed to read a result byte
+	call	fdc_wait_ready
+	jc	.timeout
+	and	al,fdc_stat_ready|fdc_stat_dir|fdc_stat_dma|fdc_stat_busy
+	mov	ah,al
+	and	ah,~fdc_stat_busy
+	cmp	ah,fdc_stat_ready	; controller finished sending result?
+	je	.done			; jump if finished
+	cmp	al,fdc_stat_ready|fdc_stat_dir|fdc_stat_busy
+	jne	.failure		; jump on invalid controller status
+	cmp	bx,fdc_ctrl_status+7	; already read 7 bytes?
+	jnb	.failure		; controller error if so
+	mov	dx,fdc_data_reg
+	in	al,dx
 	mov	byte [bx],al
 	inc	bx
-	loop	.next_byte
+	jmp	.next_byte
 
-	mov	cx,4
-	call	delay_15us		; 45-60 us delay
-	mov	dx,fdc_status_reg
-	in	al,dx
-	test	al,10h
-	jz	.exit			; jump if FDC is not busy
-	mov	ah,fdc_e_failure
-	stc
-	jmp	.error
-
-.exit:
+.done:
 	xor	ah,ah			; operation successful
 
-.error:
+.exit:
 	pop	dx
-	pop	cx
 	ret
+
+.timeout:
+	mov	ah,fdc_e_timeout	; Note: CF is already set
+	jmp	.exit
+
+.failure:
+	mov	ah,fdc_e_failure
+	stc
+	jmp	.exit
 
 ;=========================================================================
 ; fdc_read - Read byte from FDC
@@ -1190,8 +1189,6 @@ fdc_get_result:
 ;-------------------------------------------------------------------------
 fdc_read:
 	push	dx
-	mov	cx,3
-	call	delay_15us		; 30-45 us delay
 	mov	dx,fdc_status_reg
 	call	fdc_wait_ready
 	jc	.timeout
@@ -1532,14 +1529,14 @@ fdc_set_rate:
 ;	CF set if no interrupt
 ;		AH = 80h - timeout
 ;	BX = fdc_calib_state
-;	AH,CX - trashed
+;	AL,CX - trashed
 ;-------------------------------------------------------------------------
 fdc_wait_irq:
+	sti
 	clc
 	mov	ax,9001h
 	int	15h			; call OS hook
 	jc	.timeout
-	mov	ah,2			; wait approximately 2 seconds
 	mov	bx,fdc_calib_state	; contains IRQ flag
 	xor	cx,cx
 
@@ -1551,10 +1548,8 @@ fdc_wait_irq:
 	in	al,port_b_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
-	dec	cx
-	jnz	.one
-	dec	ah
-	jz	.timeout
+	loop	.one			; DEC CX; JNZ .one
+	jmp	.timeout
 
 .one:
 	test	byte [bx],fdc_irq_flag	; test IRQ flag
@@ -1564,20 +1559,17 @@ fdc_wait_irq:
 	in	al,port_b_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
-	dec	cx
-	jnz	.zero
-	dec	ah
-	jnz	.zero
+	loop	.zero			; DEC CX; JNZ .one
 
 .timeout:
-;	call	int_trace
-	stc
 	mov	ah,fdc_e_timeout
+	stc
 	ret
 
 .exit:
 	and	byte [bx],~fdc_irq_flag	; clear IRQ flag
 	mov	ah,fdc_e_success
+	clc				; DEBUG - remove after debug
 	ret
 
 ;=========================================================================
@@ -1626,20 +1618,22 @@ fdc_wait_input:
 ; fdc_wait_ready - Wait until FDC is ready to receive or send commands
 ;		   but no more than one second
 ; Input:
-;	DX = 3F4h (FDC main status register)
-; Ouput:
+; Output:
 ;	CF clear if FDC is ready
+;		AL = FDC main status register
 ;	CF set on timeout
+;		AL trashed
+;	DX - trashed
 ;-------------------------------------------------------------------------
 
 fdc_wait_ready:
-	push	ax
-	mov	ah,80h
+	push	cx
+	mov	dx,fdc_status_reg
 	xor	cx,cx
 
 .zero:
 	in	al,dx			; read I/O port
-	test	al,ah
+	test	al,fdc_stat_ready
 	jnz	.exit			; exit loop if bit(s) set to 1
 
 .zero_loop:
@@ -1649,7 +1643,7 @@ fdc_wait_ready:
 	dec	cx
 	jz	.timeout
 	in	al,dx			; read I/O port again
-	test	al,ah
+	test	al,fdc_stat_ready
 	jnz	.exit			; exit loop of bit(s) set to 1
 
 .one_loop:
@@ -1662,7 +1656,7 @@ fdc_wait_ready:
 	stc
 
 .exit:
-	pop	ax
+	pop	cx
 	ret
 
 ;=========================================================================
