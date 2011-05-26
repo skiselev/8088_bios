@@ -282,19 +282,16 @@ ipl:
 
 .fd_loop:
 	push	ax
-	mov	ah,0
-	int	13h
-	jb	.fd_failed
-	mov	ah,15h			; get disk type
+	mov	ah,00h			; reset disk system
 	mov	dl,00h			; drive 0
 	int	13h
-	jc	.no_disk_change
-	cmp	ah,02h
-	jne	.no_disk_change
-	mov	ah,16h			; detect disk change
-	int	13h			; also clear disk change status
-
-.no_disk_change:
+	jb	.fd_failed
+	mov	ah,08h			; get drive parameters
+	mov	dl,00h			; drive 0
+	int	13h
+	jc	.fd_failed
+	cmp	dl,00h
+	jz	.fd_failed		; jump if zero drives
 	mov	ax,0201h		; read one sector
 	xor	dx,dx			; head 0, drive 0
 	mov	es,dx			; to 0000:7C00
@@ -313,6 +310,10 @@ ipl:
 
 ; try booting from HDD
 
+	mov	ah,0Dh			; reset hard disks
+	mov	dl,80h			; drive 80h
+	int	13h
+	jc	.hd_failed
 	mov	ax,0201h		; read one sector
 	mov	dx,0080h		; head 0, drive 80h
 	xor	bx,bx
