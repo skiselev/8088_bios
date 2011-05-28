@@ -1079,7 +1079,7 @@ low_ram_ok:
 ; look for BIOS extensions, initialize if found
 
 	mov	dx,0C800h
-	mov	bx,0F000h
+	mov	bx,0F800h
 .ext_scan_loop:
 	call	extension_scan
 	cmp	word [67h],0
