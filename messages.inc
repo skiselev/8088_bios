@@ -23,7 +23,7 @@
 ;=========================================================================
 
 msg_copyright	db	0Dh, 0Ah
-		db	"Sergey's XT BIOS, Version 0.7c. "
+		db	"Sergey's XT BIOS, Version 0.7d. "
 		db	"Copyright (C) 2010, 2011 Sergey Kiselev", 0Dh, 0Ah
 		db	"Distributed under the terms of "
 		db	"the GNU General Public License", 0Dh, 0Ah
