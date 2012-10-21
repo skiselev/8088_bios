@@ -18,13 +18,25 @@
 
 SOURCES=bios.asm atkbd.inc config.inc errno.inc floppy1.inc floppy2.inc kbc.inc misc.inc printer.inc ps2aux.inc scancode.inc serial.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
-all: $(SOURCES) bios128k.bin
+all: $(SOURCES) bios128k-1.0.bin bios128k-xtide-1.0.bin bios128k-2.0.bin bios128k-xtide-2.0.bin
 
-bios128k.bin: bios.bin ff.bin
-	cat ff.bin bios.bin > bios128k.bin
+bios128k-1.0.bin: bios.bin ff.bin
+	cat ff.bin bios.bin > bios128k-1.0.bin
 
+bios128k-xtide-1.0.bin: bios.bin ff.bin
+	dd if=bios.bin of=bios-8.bin skip=8 bs=1k
+	cat ff.bin ide_xt.bin bios-8.bin > bios128k-xtide-1.0.bin
+
+bios128k-2.0.bin: bios.bin ff.bin
+	cat bios.bin ff.bin > bios128k-2.0.bin
+
+bios128k-xtide-2.0.bin: bios.bin ff.bin
+	dd if=bios.bin of=bios-8.bin skip=8 bs=1k
+	cat ide_xt.bin bios-8.bin ff.bin> bios128k-xtide-2.0.bin
+
+bios.bin: $(SOURCES)
 bios.bin: $(SOURCES)
 	nasm -O9 -f bin -o bios.bin -l bios.lst bios.asm
 
 clean:
-	rm -f bios.bin bios128k.bin bios.lst
+	rm -f bios.bin bios-8.bin bios128k-1.0.bin bios128k-xtide-1.0.bin bios128k-2.0.bin bios128k-xtide-2.0.bin bios.lst
