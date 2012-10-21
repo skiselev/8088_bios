@@ -776,14 +776,18 @@ cpu_ok:
 	out	post_reg,al
 
 ;-------------------------------------------------------------------------
-; disable NMI and video output on CGA and MDA
+; disable NMI, turbo mode, and video output on CGA and MDA
 
 	mov	al,0Dh & nmi_disable
 	out	rtc_addr_reg,al		; disable NMI
 	jmp	$+2
 	in	al,rtc_data_reg		; dummy read to keep RTC happy
 
-	mov	al,00h
+	mov	al,iochk_disable	; clear and disable ~IOCHK
+	out	port_b_reg,al
+	mov	al,00h			; clear turbo bit
+	out	port_b_reg,al		; and also turn off the speaker
+
 	mov	dx,cga_mode_reg
 	out	dx,al			; disable video output on CGA
 	inc	al
@@ -1011,6 +1015,8 @@ low_ram_ok:
 	mov	al,e_video_bios_ok
 	out	post_reg,al
 	call	far [67h]
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
 	mov	al,e_video_init_ok
 	out	post_reg,al
 ; set video bits to 00 - EGA or later (Video adapter with BIOS)		
@@ -1089,6 +1095,8 @@ low_ram_ok:
 	push	bx
 	push	dx
 	call	far [67h]
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
 	pop	dx
 	pop	bx
 .ext_scan_next:
@@ -1096,23 +1104,9 @@ low_ram_ok:
 	jb	.ext_scan_loop
 
 ;-------------------------------------------------------------------------
-; check if F1 key was pressed
+; enter the setup utiltiy if F1 key was pressed
 
-	mov	ah,01h
-	int	16h
-	jz	.no_key
-	mov	ah,00h
-	int	16h			; read the keystroke
-	cmp	ax,3B00h		; F1?
-	jne	.no_key
-	or	byte [post_flags],post_setup
-.no_key:
-
-	test	byte [post_flags],post_setup
-	jz	.no_setup
-	call	rtc_setup
-
-.no_setup:
+	call	check_f1_setup
 
 ;-------------------------------------------------------------------------
 ; boot the OS
@@ -1179,6 +1173,27 @@ int_18:
 .1:
 	hlt
 	jmp	.1
+
+;=========================================================================
+; check_f1_setup - Enters the setup utility F1 was pressed during post.
+;-------------------------------------------------------------------------
+check_f1_setup:
+	mov	ah,01h
+	int	16h
+	jz	.no_key
+	mov	ah,00h
+	int	16h			; read the keystroke
+	cmp	ax,3B00h		; F1?
+	jne	.no_key
+	or	byte [post_flags],post_setup
+.no_key:
+
+	test	byte [post_flags],post_setup
+	jz	.no_setup
+	call	rtc_setup
+
+.no_setup:
+	ret
 
 ;=========================================================================
 ; int_19 - load and execute the boot sector
