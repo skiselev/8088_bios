@@ -7,6 +7,19 @@
 ;
 ; This code is adopted from XT-clone BIOS by Anonymous
 ;
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;
 ;=========================================================================
 
 ;-------------------------------------------------------------------------
@@ -222,9 +235,9 @@ int_10_fn00:
 	loop	.setup_crt_loop		;  ...loop until done
 	pop	es
 	xor	di,di
-	call	vid_check_mode		; Set flags according to mode
 	mov	cx,2000h		; video memory size for CGA
 	xor	ax,ax			; fill word for graphics mode
+	call	vid_check_mode		; Set flags according to mode
 	jb	.clear_screen		; jump if graphics mode
 	jnz	.text_fill		; jump if CGA mode
 	mov	cx,0800h 		; video memory size for MDA
@@ -484,7 +497,8 @@ int_10_fn07:
 	jb	.no_snow
 	cmp	byte [video_mode],3
 	ja	.no_snow
-	mov	si,5555h		; CGA "snow" workaround required
+	mov	si,0101010101010101b	; CGA "snow" workaround required
+;	mov	si,0001000100010001b	; CGA "snow" workaround required
 .no_snow:
 	mov	ax,word [bp+int_10_dx]	; AX = window's lower right corner
 	push	ax
@@ -527,30 +541,36 @@ int_10_fn07:
 .2:
 	mov	cl,byte [bp+int_10_al]	; CL = number of rows to scroll
 	or	cl,cl
-	jz	.text_fill		; jump if clear window only requested
+	jz	.text_fill_only		; jump if clear window only requested
 	xchg	ax,si			; AX = snow workaround flag, SI = offset
 	add	si,di			; SI = scroll copy source address
-;XXX	sub	dh,byte [bp+int_10_al]	; DH = number of rows to copy
 	sub	dh,cl			; DH = number of rows to copy
+
+	or	bx,bx
+	jz	.text_full_row_scroll
 
 .text_scroll_loop:
 	mov	ch,0
 	mov	cl,dl			; CX = characters in row to copy
+
 	ror	ax,1			; rotate snow workaround flag
-	jnc	.text_scroll_no_retrace	; jump if LSB was zero - no wait
-	call	.retrace_wait		; wait for vertical retrace
+	jnc	.text_scroll_no_retrace
+	call	.retrace_wait
 
 .text_scroll_no_retrace:
-	repz	movsw			; copy one rows
+	repz	movsw			; copy one row
+
+;.text_scroll_next_row:
 	add	si,bx			; SI = next row to copy source address
 	add	di,bx			; DI = next row to copy destination
 	dec	dh			; decrement row counter
 	jnz	.text_scroll_loop	; jump if there is more rows to copy
 
+.text_fill:
 	mov	dh,byte [bp+int_10_al]	; DH = number of rows to fill
 	mov	si,ax			; SI = snow workaround flag
 
-.text_fill:
+.text_fill_only:
 	mov	ch,0
 	mov	ah,byte [bp+int_10_bh]	; AH = blank attribute
 	mov	al,' '			; AL = blank character
@@ -569,6 +589,41 @@ int_10_fn07:
 
 	pop	ds
 	ret
+
+.text_full_row_scroll:
+	or	ax,ax
+	jz	.text_full_row_no_snow
+	push	ax
+	mov	al,dl
+	mul	dh
+
+.text_full_row_loop:
+	mov	cx,240
+	cmp	ax,cx
+	ja	.copy_chunk
+	xchg	ax,cx
+	xor	ax,ax
+	jmp	.do_copy
+
+.copy_chunk:
+	sub	ax,cx
+
+.do_copy:
+	call	.retrace_wait
+	rep	movsw
+	or	ax,ax
+	jnz	.text_full_row_loop
+	pop	ax
+	jmp	.text_fill
+
+.text_full_row_no_snow:
+	push	ax
+	mov	al,dl
+	mul	dh
+	mov	cx,ax
+	rep	movsw
+	pop	ax
+	jmp	.text_fill
 
 ;-------------------------------------------------------------------------
 ; .retrace_wait - next till the next vertical retrace
