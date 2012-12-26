@@ -1,5 +1,5 @@
 ;=========================================================================
-; floppy2.inc - BIOS floppy disk services
+; floppy2.inc - BIOS floppy disk services (part 2 of 2)
 ;       INT 13h, function AH=02h
 ;       INT 13h, function AH=03h
 ;       INT 13h, function AH=04h
@@ -9,8 +9,8 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 Sergey Kiselev.
-; Provided for hobbyist use on the Sergey's XT board.
+; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
