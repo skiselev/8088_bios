@@ -12,8 +12,8 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 Sergey Kiselev.
-; Provided for hobbyist use on the Sergey's XT board.
+; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -446,6 +446,8 @@ int_09:
 .20:
 	cmp	al,kbd_num_code
 	jne	.21
+	test	byte [kbd_flags_1],kbd_ctrl_bit	; Ctrl+Num Lock (Pause)?
+	jnz	pause			; jump if pause
 	or	byte [kbd_flags_2],kbd_num_bit ; set Num Lock bit
 	xor	byte [kbd_flags_1],kbd_num_bit ; toggle Num Lock bit
 	jmp	.no_buffer
@@ -458,6 +460,11 @@ int_09:
 ; translate keyboard scan code to ASCII and BIOS scan code
 
 .translate:
+	test	byte [kbd_flags_2],08h	; check pause flag
+	jz	.check_release
+	and	byte [kbd_flags_2],~08h	; clear pause flag
+	jmp	.no_buffer		; don't put key in buffer
+.check_release:
 	test	al,80h			; ignore key release and KBC responses
 	jnz	.no_buffer
 
@@ -499,16 +506,30 @@ keyboard_int_exit1:
 	pop	ax
 	iret
 
+pause:
+	xor	byte [kbd_flags_2],08h	; toggle pause flag
+	jz	keyboard_int_exit	; jump if pause flag is unset now
+
+	mov	al,20h			; send EOI (end of interrupt)
+	out	pic1_reg0,al		; to the 8259A PIC
+
+.pause_loop:
+	test	byte [kbd_flags_2],08h
+	jnz	.pause_loop		; wait if pause flag is set
+	jmp	keyboard_int_exit1
+
 ;=========================================================================
 ; set_LEDs - Update the kbd_flags_4 LED bits from the kbd_flags_1
 ; 	     variable and update LEDs on the keyboard
 ;-------------------------------------------------------------------------
 set_LEDs:
+%ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_send_cmd_byte
+%endif
 
 	mov	al,20h			; send EOI (end of interrupt)
-	out	pic1_reg0,al		; to the 8259A PIC.
+	out	pic1_reg0,al		; to the 8259A PIC
 
 	mov	al,byte [kbd_flags_1]
 	shr	al,1
