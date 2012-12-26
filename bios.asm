@@ -9,8 +9,8 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 Sergey Kiselev.
-; Provided for hobbyist use on the Sergey's XT board.
+; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -65,13 +65,9 @@
 
 	cpu	8086
 
+%include "macro.inc"
 %include "config.inc"
 %include "errno.inc"
-
-%imacro setloc  1.nolist
- times   (%1-($-$$)) db 0FFh
-%endm
-
 
 bioscseg	equ	0F000h
 biosdseg	equ	0040h
@@ -87,9 +83,10 @@ iochk_disable	equ	08h	; clear and disable ~IOCHK NMI
 refresh_flag	equ	10h	; refresh flag, toggles every 15us
 iochk_enable	equ	0F7h	; enable ~IOCHK NMI
 iochk_status	equ	40h	; ~IOCHK status - 1 = ~IOCHK NMI signalled
-post_reg	equ	80h
+post_reg	equ	80h	; POST status output port
 pic2_reg0	equ	0A0h
 pic2_reg1	equ	0A1h
+unused_reg	equ	0C0h	; used for hardware detection and I/O delays
 cga_mode_reg	equ	3D8h
 mda_mode_reg	equ	3B8h
 
@@ -98,6 +95,10 @@ pic_freq	equ	1193182	; PIC input frequency - 14318180 MHz / 12
 ;========================================================================
 ; BIOS data area variables
 ;------------------------------------------------------------------------
+equip_serial	equ	00h	; word[4] - addresses of serial ports
+				; or 0 if port doesn't exist
+equip_parallel	equ	08h	; word[3] - addresses of parallel ports
+				; or 0 if port doesn't exist
 ebda_segment	equ	0Eh	; word - address of EBDA segment
 equipment_list	equ	10h	; word - equpment list
 equip_floppies	equ	0000000000000001b	; floppy drivers installed
@@ -149,14 +150,21 @@ ticks_hi	equ	6Eh	; word - timer ticks - high word
 new_day		equ	70h	; byte - 1 = new day flag
 break_flag	equ	71h	; byte - bit 7 = 1 if Ctrl-Break was pressed
 warm_boot	equ	72h	; word - Warm boot if equals 1234h
+printer_timeout	equ	78h	; byte[3] - parallel port timeout values
+serial_timeout	equ	7Ch	; byte[4] - serial port timeout values
 kbd_buffer_start equ	80h	; word - keyboard buffer start offset
 kbd_buffer_end	equ	82h	; word - keyboard buffer end offset
+video_rows	equ	84h	; byte - number of text rows (EGA+)
 fdc_last_rate	equ	8Bh	; byte - last data rate / step rate
 fdc_info	equ	8Fh	; byte - floppy dist drive information
 fdc_media_state	equ	90h	; byte[4] - drive media state (drives 0 - 3)
 fdc_cylinder	equ	94h	; byte[2] - current cylinder (drives 0 - 1)
 kbd_flags_3	equ	96h	; byte - keyboard status flags 3
 kbd_flags_4	equ	97h	; byte - keyboard status flags 4
+prt_scrn_flags	equ	100h	; byte - print screen flags
+prt_scrn_ready	equ	00h	;	print screen is not in progress
+prt_scrn_run	equ	01h	; 	print screen is in progress
+prt_scrn_fail	equ	0FFh	;	last print screen attempt has failed
 
 ;=========================================================================
 ; Extended BIOS data area variables
@@ -167,7 +175,7 @@ mouse_flags_1	equ	26h
 mouse_flags_2	equ	27h
 mouse_data	equ	28h	; 8 bytes - mouse data buffer
 
-	setloc	8000h		; Use only upper 32 KiB of ROM
+	org	START		; Use only upper 32 KiB of ROM
 
 ;=========================================================================
 ; Includes
@@ -180,6 +188,8 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %include	"floppy1.inc"		; floppy services
 %include	"kbc.inc"		; keyboard controller functions
 %include	"scancode.inc"		; keyboard scancodes translation func.
+%include	"serial1.inc"		; serial port services & detection
+%include	"printer1.inc"		; parallel printer services & detection
 %ifdef PS2_MOUSE
 %include	"ps2aux.inc"
 %endif
@@ -254,9 +264,8 @@ extension_scan:
     es	add	al,byte [si]
 	inc	si
 	loop	.checksum
-	out	post_reg,al		; XXX - debug
-	or	al,al
-	jnz	.next			; bad checksum
+	or	al,al			; AL == 0?
+	jnz	.next			; AL not zero - bad checksum
 	mov	word [67h],3		; extension initialization offset
 	mov	word [69h],es		; extension segment
 	jmp	.exit
@@ -496,6 +505,9 @@ reserve_ebda:
 ;	CX, SI - trashed
 ;-------------------------------------------------------------------------
 detect_ram:
+	mov	al,e_ram_start		; RAM scan start
+	out	post_reg,al
+
 	push	ds
 	mov	cl,6			; for SHL - converting KiB to segment
 	mov	ax,MIN_RAM_SIZE
@@ -568,11 +580,23 @@ detect_ram:
 	add	ax,RAM_TEST_BLOCK/1024	; test the next block
 	cmp	ax,word [memory_size]
 	jb	.test_loop
+
+	push	ax
+	mov	al,e_ram_complete	; RAM scan complete
+	out	post_reg,al
+	pop	ax
+
 	jmp	.test_done
 
 .test_esc:
 	pop	ax
 	mov	ax,word [memory_size]
+
+	push	ax
+	mov	al,e_ram_esc		; RAM scan canceled
+	out	post_reg,al
+	pop	ax
+
 	jmp	.test_done
 
 .test_error:
@@ -584,6 +608,11 @@ detect_ram:
 	call	print
 	mov	si,msg_crlf
 	call	print
+
+	push	ax
+	mov	al,e_ram_fail		; RAM scan failed
+	out	post_reg,al
+	pop	ax
 
 .test_done:
 	ret
@@ -685,6 +714,97 @@ print_mouse:
 .print_mouse:
 	call	print
 	ret
+
+;=========================================================================
+; detect_rom_ext - Look for BIOS extensions, initialize if found
+;-------------------------------------------------------------------------
+
+detect_rom_ext:
+	mov	al,e_ext_start		; ROM extension scan start
+	out	post_reg,al
+
+	mov	dx,0C800h
+	mov	bx,0F800h
+.ext_scan_loop:
+	call	extension_scan
+	cmp	word [67h],0
+	jz	.ext_scan_next
+	mov	al,e_ext_detect		; ROM extension found
+	out	post_reg,al
+	mov	si,msg_rom_found
+	call	print
+	mov	ax,word [67h]
+	call	print_hex
+	mov	si,msg_rom_init
+	call	print
+	push	bx
+	push	dx
+	call	far [67h]
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
+	mov	al,e_ext_init_ok	; ROM extension initialized
+	out	post_reg,al
+	pop	dx
+	pop	bx
+.ext_scan_next:
+	cmp	dx,bx
+	jb	.ext_scan_loop
+
+	mov	al,e_ext_complete	; ROM extension scan complete
+	out	post_reg,al
+
+	ret
+
+;=========================================================================	
+; interrupt_table - offsets only (BIOS segment is always 0F000h)
+;-------------------------------------------------------------------------
+interrupt_table:
+	dw	int_dummy		; INT 00 - Divide by zero
+	dw	int_dummy		; INT 01 - Single step
+	dw	int_02			; INT 02 - Non-maskable interrupt
+	dw	int_dummy		; INT 03 - Debugger breakpoint
+	dw	int_dummy		; INT 04 - Integer overlow (into)
+	dw	int_05			; INT 05 - BIOS Print Screen
+	dw	int_dummy		; INT 06
+	dw	int_dummy		; INT 07
+	dw	int_08			; INT 08 - IRQ0 - Timer Channel 0
+	dw	int_09			; INT 09 - IRQ1 - Keyboard
+	dw	int_ignore		; INT 0A - IRQ2
+	dw	int_ignore		; INT 0B - IRQ3
+	dw	int_ignore		; INT 0C - IRQ4
+	dw	int_ignore		; INT 0D - IRQ5
+	dw	int_0E			; INT 0E - IRQ6 - Floppy
+	dw	int_ignore		; INT 0F - IRQ7
+	dw	int_10			; INT 10 - BIOS Video Services
+	dw	int_11			; INT 11 - BIOS Get Equipment List
+	dw	int_12			; INT 12 - BIOS Get Memory Size
+	dw	int_13			; INT 13 - BIOS Floppy Disk Services
+	dw	int_14			; INT 14 - BIOS Serial Communications
+	dw	int_15			; INT 15 - BIOS Misc. System Services
+	dw	int_16			; INT 16 - BIOS Keyboard Services
+	dw	int_17			; INT 17 - BIOS Parallel Printer svc.
+	dw	int_18			; INT 18 - BIOS Start ROM BASIC
+	dw	int_19			; INT 19 - BIOS Boot the OS
+	dw	int_1A			; INT 1A - BIOS Time Services
+	dw	int_dummy		; INT 1B - DOS Keyboard Break
+	dw	int_dummy		; INT 1C - User Timer Tick
+	dw	int_1D			; INT 1D - Video Parameters Table
+	dw	int_1E			; INT 1E - Floppy Paameters Table
+	dw	int_1F			; INT 1F - Font For Graphics Mode
+
+interrupt_table2:
+	dw	int_70			; INT 70 - IRQ8 - RTC
+	dw	int_71			; INT 71 - IRQ9 - redirection
+	dw	int_ignore2		; INT 72 - IRQ10
+	dw	int_ignore2		; INT 73 - IRQ11
+%ifndef PS2_MOUSE
+	dw	int_ignore2		; INT 74 - IRQ12 - PS/2 mouse
+%else
+	dw	int_74			; INT 74 - IRQ12 - PS/2 mouse
+%endif
+	dw	int_75			; INT 75 - IRQ13 - FPU
+	dw	int_ignore2		; INT 76 - IRQ14
+	dw	int_ignore2		; INT 77 - IRQ15
 
 ;=========================================================================
 ; cold_start, warm_start - BIOS POST (Power on Self Test) starts here
@@ -1062,6 +1182,10 @@ low_ram_ok:
 	call	print_display		; print display type
 	call	print_mouse		; print mouse presence
 
+	call	detect_serial		; detect serial ports and print findings
+	call	detect_parallel		; detect parallel ports and print
+					; findings
+
 	mov	al,cmos_floppy
 	call	rtc_read		; floppies type to AL
 	call	print_floppy		; print floppy drive types
@@ -1070,54 +1194,53 @@ low_ram_ok:
 
 	mov	si,msg_ram_total
 	call	print
-	call	print_dec
+	call	print_dec		; print RAM size
 	mov	si,msg_kib
 	call	print
-	call	reserve_ebda
+
+	call	reserve_ebda		; reserve EBDA if needed
+
 	mov	si,msg_ram_avail
 	call	print
 	mov	ax,word [memory_size]
-	call	print_dec
+	call	print_dec		; print remaining RAM size
 	mov	si,msg_kib
 	call	print
 
-;-------------------------------------------------------------------------
-; look for BIOS extensions, initialize if found
-
-	mov	dx,0C800h
-	mov	bx,0F800h
-.ext_scan_loop:
-	call	extension_scan
-	cmp	word [67h],0
-	jz	.ext_scan_next
-	mov	si,msg_rom_found
-	call	print
-	push	bx
-	push	dx
-	call	far [67h]
-	mov	ax,biosdseg		; DS = BIOS data area
-	mov	ds,ax
-	pop	dx
-	pop	bx
-.ext_scan_next:
-	cmp	dx,bx
-	jb	.ext_scan_loop
+	call	detect_rom_ext		; detect and initialize extension ROMs
 
 ;-------------------------------------------------------------------------
-; enter the setup utiltiy if F1 key was pressed
+; Check for F1 (setup key), run setup utility if pressed
 
-	call	check_f1_setup
+	mov	ah,01h
+	int	16h
+	jz	.no_key
+	mov	ah,00h
+	int	16h			; read the keystroke
+	cmp	ax,3B00h		; F1?
+	jne	.no_key
+	or	byte [post_flags],post_setup
+.no_key:
+
+	test	byte [post_flags],post_setup
+	jz	.no_setup
+	call	rtc_setup
+
+.no_setup:
 
 ;-------------------------------------------------------------------------
 ; boot the OS
 
+	mov	al,e_boot		; boot the OS POST code
+	out	post_reg,al
+
 	mov	si,msg_boot
 	call	print
-	int	19h			; Boot the OS
+	int	19h			; boot the OS
 
 ;=========================================================================
 ; int_02 - NMI
-; Note: Sergey's XT only implements IOCHK NMI, system board parity is not
+; Note: Xi 8088 only implements IOCHK NMI, system board parity is not
 ;	implemented
 ;-------------------------------------------------------------------------
 	setloc	0E2C3h			; NMI Entry Point
@@ -1175,27 +1298,6 @@ int_18:
 	jmp	.1
 
 ;=========================================================================
-; check_f1_setup - Enters the setup utility F1 was pressed during post.
-;-------------------------------------------------------------------------
-check_f1_setup:
-	mov	ah,01h
-	int	16h
-	jz	.no_key
-	mov	ah,00h
-	int	16h			; read the keystroke
-	cmp	ax,3B00h		; F1?
-	jne	.no_key
-	or	byte [post_flags],post_setup
-.no_key:
-
-	test	byte [post_flags],post_setup
-	jz	.no_setup
-	call	rtc_setup
-
-.no_setup:
-	ret
-
-;=========================================================================
 ; int_19 - load and execute the boot sector
 ;-------------------------------------------------------------------------
 	setloc	0E6F2h			; INT 19 Entry Point
@@ -1250,10 +1352,10 @@ config_table:
 ; Includes with fixed entry points (for IBM compatibility)
 ;-------------------------------------------------------------------------
 
-%include	"serial.inc"		; INT 14 - BIOS Serial Communications
+%include	"serial2.inc"		; INT 14 - BIOS Serial Communications
 %include	"atkbd.inc"		; INT 16, INT 09
 %include	"floppy2.inc"		; INT 13
-%include	"printer.inc"		; INT 17
+%include	"printer2.inc"		; INT 17
 %include	"video.inc"		; INT 10
 
 ;=========================================================================
@@ -1337,62 +1439,115 @@ int_dummy:
 
 ;=========================================================================
 ; int_05 - BIOS Print Screen
-; XXX: implement
 ;-------------------------------------------------------------------------
 	setloc	0FF54h			; INT 05 (Print Screen) Entry Point
 int_05:
+	sti
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	ds
+	mov	ax,biosdseg
+	mov	ds,ax			; DS = BIOS data segment
+	cmp	byte [prt_scrn_flags],prt_scrn_run
+	je	.exit			; print screen is already in progress
+	mov	byte [prt_scrn_flags],prt_scrn_run
+					; signal that print screen is running
+
+	mov	ah,0Fh			; get video mode parameters
+	int	10h			; returns number of columns in AH
+					; and active display page in BH
+	mov	cl,ah			; store number columns
+
+	mov	ch,byte [video_rows]	; try getting number of rows
+	or	ch,ch
+	jz	.wrong_num_rows		; CH == 0, apparently not initialized
+
+	inc	ch			; CH = number of rows (on EGA/VGA)
+	cmp	ch,60			; 60 rows maximum (as far as I know)
+	jbe	.get_cursor_pos
+
+.wrong_num_rows:
+	mov	ch,25			; assume 25 rows
+
+.get_cursor_pos:
+	mov	ah,03h			; get cursor position and size
+	int	10h			; returns cursor position in DX
+	push	dx			; save original position / DX in stack
+
+	
+	mov	ah,0Dh			; move to the next line
+	call	.print_char
+	jnz	.error
+	mov	ah,0Ah
+	call	.print_char
+	jnz	.error
+
+	mov 	dh,0			; start from the first row (0)
+
+.row_loop:
+	mov 	dl,0			; start from the first column (0)
+
+.column_loop:
+	mov	ah,02h
+	int	10h			; set cursor position (position in DX)
+
+	mov	ah,08h
+	int	10h			; read character at cursor position
+
+	cmp	al,20h			; control character?
+	jae	.continue		; no, print it
+	mov	al,20h			; print space instead
+
+.continue:
+	call	.print_char
+	jnz	.error
+	inc	dl
+	cmp	dl,cl			; on the last column?
+	jb	.column_loop		; print next column
+
+	mov	ah,0Dh			; move to the next line
+	call	.print_char
+	jnz	.error
+	mov	ah,0Ah
+	call	.print_char
+	jnz	.error
+
+	inc	dh
+	cmp	dh,ch			; on the last row?
+	jb	.row_loop		; print next row
+
+	mov	byte [prt_scrn_flags],prt_scrn_ready
+					; ready for the next call
+
+.restore_cursor:
+	pop	dx			; DX = original cursor position
+	mov	ah,02h
+	int	10h			; set cursor position (position in DX)
+
+.exit:
+	pop	ds
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
 	iret
 
-;=========================================================================	
-; interrupt_table - offsets only (BIOS segment is always 0F000h)
-;-------------------------------------------------------------------------
-interrupt_table:
-	dw	int_dummy		; INT 00 - Divide by zero
-	dw	int_dummy		; INT 01 - Single step
-	dw	int_02			; INT 02 - Non-maskable interrupt
-	dw	int_dummy		; INT 03 - Debugger breakpoint
-	dw	int_dummy		; INT 04 - Integer overlow (into)
-	dw	int_05			; INT 05 - BIOS Print Screen
-	dw	int_dummy		; INT 06
-	dw	int_dummy		; INT 07
-	dw	int_08			; INT 08 - IRQ0 - Timer Channel 0
-	dw	int_09			; INT 09 - IRQ1 - Keyboard
-	dw	int_ignore		; INT 0A - IRQ2
-	dw	int_ignore		; INT 0B - IRQ3
-	dw	int_ignore		; INT 0C - IRQ4
-	dw	int_ignore		; INT 0D - IRQ5
-	dw	int_0E			; INT 0E - IRQ6 - Floppy
-	dw	int_ignore		; INT 0F - IRQ7
-	dw	int_10			; INT 10 - BIOS Video Services
-	dw	int_11			; INT 11 - BIOS Get Equipment List
-	dw	int_12			; INT 12 - BIOS Get Memory Size
-	dw	int_13			; INT 13 - BIOS Floppy Disk Services
-	dw	int_14			; INT 14 - BIOS Serial Communications
-	dw	int_15			; INT 15 - BIOS Misc. System Services
-	dw	int_16			; INT 16 - BIOS Keyboard Services
-	dw	int_17			; INT 17 - BIOS Parallel Printer svc.
-	dw	int_18			; INT 18 - BIOS Start ROM BASIC
-	dw	int_19			; INT 19 - BIOS Boot the OS
-	dw	int_1A			; INT 1A - BIOS Time Services
-	dw	int_dummy		; INT 1B - DOS Keyboard Break
-	dw	int_dummy		; INT 1C - User Timer Tick
-	dw	int_1D			; INT 1D - Video Parameters Table
-	dw	int_1E			; INT 1E - Floppy Paameters Table
-	dw	int_1F			; INT 1F - Font For Graphics Mode
+.error:
+	mov	byte [prt_scrn_flags],prt_scrn_fail
+					; signal failure
+	jmp	.restore_cursor
+	
 
-interrupt_table2:
-	dw	int_70			; INT 70 - IRQ8 - RTC
-	dw	int_71			; INT 71 - IRQ9 - redirection
-	dw	int_ignore2		; INT 72 - IRQ10
-	dw	int_ignore2		; INT 73 - IRQ11
-%ifndef PS2_MOUSE
-	dw	int_ignore2		; INT 74 - IRQ12 - PS/2 mouse
-%else
-	dw	int_74			; INT 74 - IRQ12 - PS/2 mouse
-%endif
-	dw	int_75			; INT 75 - IRQ13 - FPU
-	dw	int_ignore2		; INT 76 - IRQ14
-	dw	int_ignore2		; INT 77 - IRQ15
+.print_char:
+	push	dx
+	xor	dx,dx			; DX = 0 - first printer port
+	mov	ah,00h			; INT 17h, AH=10h - print character
+	int	17h
+	pop	dx
+	test	ah,25h			; ZF = 0 - no error
+	ret
 
 ;=========================================================================
 ; start - at power up or reset execution starts here (F000:FFF0)
@@ -1402,7 +1557,7 @@ start:
         jmp     bioscseg:cold_start
 
 	setloc	0FFF5h			; ROM Date in ASCII
-	db	'11/30/10'		; BIOS release date MM/DD/YY
+	db	DATE			; BIOS release date MM/DD/YY
 	db	20h
 
 	setloc	0FFFEh			; System Model
