@@ -42,6 +42,7 @@ kbd_caps_code	equ	3ah
 kbd_ctrl_code	equ	1dh
 kbd_alt_code	equ	38h
 kbd_rshift_code	equ	36h
+kbd_prtsc_code	equ	37h
 kbd_lshift_code	equ	2ah
 kbd_ins_code	equ	52h
 kbd_del_code	equ	53h
@@ -412,9 +413,16 @@ int_09:
 	and	byte [kbd_flags_2],~kbd_caps_bit ; clear Caps Lock bit
 	jmp	set_LEDs
 
-; handle the Scroll Lock (046h) key and Ctrl-Break combination (0E0h, 046h)
+; check if print screen key was pressed
 
 .18:
+	cmp	al,kbd_prtsc_code
+	jne	.test_scroll_loc
+	jmp	print_screen
+
+; handle the Scroll Lock (046h) key and Ctrl-Break combination (0E0h, 046h)
+
+.test_scroll_loc:
 	cmp	al,kbd_scroll_code
 	jne	.19
 	test	byte [kbd_flags_3],10b	; test E0 flag
@@ -516,6 +524,12 @@ pause:
 .pause_loop:
 	test	byte [kbd_flags_2],08h
 	jnz	.pause_loop		; wait if pause flag is set
+	jmp	keyboard_int_exit1
+
+print_screen:
+	mov	al,20h			; send EOI (end of interrupt)
+	out	pic1_reg0,al		; to the 8259A PIC
+	int	5h			; INT 5 - print screen
 	jmp	keyboard_int_exit1
 
 ;=========================================================================
