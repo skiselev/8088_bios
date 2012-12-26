@@ -733,7 +733,7 @@ detect_rom_ext:
 	out	post_reg,al
 	mov	si,msg_rom_found
 	call	print
-	mov	ax,word [67h]
+	mov	ax,word [69h]		; ROM extension's segment
 	call	print_hex
 	mov	si,msg_rom_init
 	call	print
