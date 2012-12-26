@@ -1,7 +1,7 @@
 # Makefile - GNU Makefile
 # 
-# Copyright (C) 2011 Sergey Kiselev.
-# Provided for hobbyist use on the Sergey's XT board.
+# Copyright (C) 2011 - 2012 Sergey Kiselev.
+# Provided for hobbyist use on the Xi 8088 board.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,23 +16,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-SOURCES=bios.asm atkbd.inc config.inc errno.inc floppy1.inc floppy2.inc kbc.inc misc.inc printer.inc ps2aux.inc scancode.inc serial.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
+SOURCES=bios.asm macro.inc atkbd.inc config.inc errno.inc floppy1.inc floppy2.inc kbc.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
 all: $(SOURCES) bios128k-1.0.bin bios128k-xtide-1.0.bin bios128k-2.0.bin bios128k-xtide-2.0.bin
 
-bios128k-1.0.bin: bios.bin ff.bin
-	cat ff.bin bios.bin > bios128k-1.0.bin
+bios128k-1.0.bin: bios.bin ff-64k.bin ff-32k.bin
+	cat ff-64k.bin ff-32k.bin bios.bin > bios128k-1.0.bin
 
-bios128k-xtide-1.0.bin: bios.bin ff.bin
-	dd if=bios.bin of=bios-8.bin skip=8 bs=1k
-	cat ff.bin ide_xt.bin bios-8.bin > bios128k-xtide-1.0.bin
+bios128k-xtide-1.0.bin: bios.bin ff-64k.bin ff-24k.bin ide_xt.bin
+	cat ff-64k.bin ide_xt.bin ff-24k.bin bios.bin > bios128k-xtide-1.0.bin
 
-bios128k-2.0.bin: bios.bin ff.bin
-	cat bios.bin ff.bin > bios128k-2.0.bin
+bios128k-2.0.bin: bios.bin ff-64k.bin ff-32k.bin
+	cat ff-32k.bin bios.bin ff-64k.bin > bios128k-2.0.bin
 
-bios128k-xtide-2.0.bin: bios.bin ff.bin
-	dd if=bios.bin of=bios-8.bin skip=8 bs=1k
-	cat ide_xt.bin bios-8.bin ff.bin> bios128k-xtide-2.0.bin
+bios128k-xtide-2.0.bin: bios.bin ff-64k.bin ff-24k.bin ide_xt.bin
+	cat ide_xt.bin ff-24k.bin bios.bin ff-64k.bin > bios128k-xtide-2.0.bin
 
 bios.bin: $(SOURCES)
 bios.bin: $(SOURCES)
