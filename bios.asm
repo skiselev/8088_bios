@@ -255,6 +255,8 @@ extension_scan:
 	mov	cl,5
 	shl	ax,cl			; convert size to paragraphs
 	add	dx,ax
+	add	dx,007Fh		; round DX to the nearest 2 KiB
+	and	dx,0FF80h		; (2 KiB = 128 x 16 bytes)
 	mov	cl,4
 	shl	ax,cl			; convert size to bytes
 	mov	cx,ax
@@ -725,10 +727,11 @@ detect_rom_ext:
 
 	mov	dx,0C800h
 	mov	bx,0F800h
+
 .ext_scan_loop:
 	call	extension_scan
 	cmp	word [67h],0
-	jz	.ext_scan_next
+	jz	.ext_scan_done		; No ROM extension found
 	mov	al,e_ext_detect		; ROM extension found
 	out	post_reg,al
 	mov	si,msg_rom_found
@@ -746,10 +749,9 @@ detect_rom_ext:
 	out	post_reg,al
 	pop	dx
 	pop	bx
-.ext_scan_next:
-	cmp	dx,bx
-	jb	.ext_scan_loop
+	jmp	.ext_scan_loop
 
+.ext_scan_done:
 	mov	al,e_ext_complete	; ROM extension scan complete
 	out	post_reg,al
 
