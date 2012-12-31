@@ -1,13 +1,28 @@
-README file for Sergey's XT BIOS
-================================
+README file for Xi 8088 / Sergey's XT BIOS
+==========================================
 
 BIOS Images
 -----------
 
+bios.bin		- BIOS image for use with xiflash utility
 bios128k-2.0.bin	- BIOS image for Xi 8088 - Version 2.0
 bios128k-xtide-2.0.bin	- BIOS image for Xi 8088 - Version 2.0 with XT-IDE
 bios128k-1.0.bin	- BIOS image for Sergey's XT - Version 1.0
 bios128k-xtide-1.0.bin	- BIOS image for Sergey's XT - Version 1.0 with XT-IDE
+
+Changes - Version 0.8.1
+-----------------------
+- Fix BIOS extension ROM scan procedure. Previously in some cases it was
+  failing to initialize more than one BIOS extension ROM.
+
+Changes - Version 0.8
+---------------------
+- Add serial port (INT 14h) support
+- Add printer (INT 17h) support
+- Add print screen (INT 5) support
+- Print BIOS extension ROM addresses on ROM initialization
+- Add more POST checkpoints, update POST codes
+- Rename Sergey's XT references to Xi 8088
 
 Changes - Version 0.7e
 ----------------------
