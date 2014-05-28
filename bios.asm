@@ -9,7 +9,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -191,6 +191,9 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %include	"serial1.inc"		; serial port services & detection
 %include	"printer1.inc"		; parallel printer services & detection
 %ifdef PS2_MOUSE
+%ifndef AT_COMPAT
+%error "PS2_MOUSE depends on AT_COMPAT. Please fix config.inc."
+%endif ; AT_COMPAT
 %include	"ps2aux.inc"
 %endif
 %include	"sound.inc"		; sound test
@@ -345,6 +348,181 @@ ipl:
 	jmp	.retry
 
 ;=========================================================================
+; get_line - read an ASCIIZ string from the console
+; Input:
+;	ES:DI - pointer to the buffer
+;	AX - max string length
+; Output:
+;	AX - string length
+; Notes:
+;	Buffer must have size of max string length + 1 to accomodate 00h
+;-------------------------------------------------------------------------
+get_line:
+	push	bx
+	push	dx
+	push	si
+	push	di
+
+	cld
+	mov	si,di
+	add	si,ax			; SI = last character position
+	xor	dx,dx			; DX = 0 - string length
+
+.read_char_loop:
+	mov	ah,00h			; read character from keyboard
+	int	16h
+
+	cmp	al,08h			; <Backspace> key
+	jz	.backspace
+
+	cmp	al,0Dh			; <Enter> key
+	jz	.enter
+
+	cmp	al,20h			; below printable ASCII code?
+	jb	.error_input
+
+	cmp	al,7Eh			; above printable ASCII code?
+	ja	.error_input
+
+	cmp	di,si			; end of buffer reached?
+	jae	.error_input
+
+	stosb				; store character in the buffer
+	inc	dx			; increment strng length
+
+	mov	ah,0Eh			; teletype output (echo)
+	mov	bx,0007h
+	int	10h
+
+	jmp	.read_char_loop
+
+.backspace:
+	or	dx,dx			; empty string?
+	jz	.error_input
+
+	dec	di			; move pointer back
+	dec	dx			; decrement string size
+
+	mov	ax,0E08h		; move the cursor back
+	mov	bx,0007h
+	int	10h
+
+	mov	ax,0E20h		; erase the character under the cursor
+	mov	bx,0007h
+	int	10h
+
+	mov	ax,0E08h		; move the cursor back again
+	mov	bx,0007h
+	int	10h
+
+	jmp	.read_char_loop
+
+.error_input:
+	mov	ax,0E07h		; beep
+	mov	bx,0007h
+	int	10h
+
+	jmp	.read_char_loop
+
+.enter:
+	mov	al,00h			; store 00h at the end of the string
+	stosb
+
+	mov	ax,0E0Dh		; CR
+	mov	bx,0007h
+	int	10h
+
+	mov	ax,0E0Ah		; LF
+	mov	bx,0007h
+	int	10h
+
+	mov	ax,dx			; string length to AX
+
+	pop	di
+	pop	si
+	pop	dx
+	pop	bx
+	ret
+
+;=========================================================================
+; atoi - convert ASCIIZ string to an 16-bit integer number
+; Input:
+;	ES:DI - pointer to string
+; Output:
+;	AX - number
+; 	ES:DI - pointer moved to the position following the number
+;-------------------------------------------------------------------------
+atoi:
+	push	bx
+	push	cx
+	push	dx
+
+	xor	ax,ax			; zero the result
+	mov	bx,10			; multiplier
+
+.atoi_loop:
+    es	mov	cl,byte [di]
+
+	cmp	cl,'0'			; ASCII code below '0'
+	jb	.exit
+
+	cmp	cl,'9'			; ASCII code above '9'
+	ja	.exit
+
+	inc	di			; move to the next character
+
+	sub	cl,'0'			; convert to ASCII to binary
+
+	mul	bx			; DX:AX = AX * 10
+	mov	ch,0
+	add	ax,cx			; AX = AX + CX
+	
+	jmp	.atoi_loop
+
+.exit:
+	pop	dx
+	pop	cx
+	pop	bx
+	ret
+
+;=========================================================================
+; bin_to_bcd - convert binary number to a packed BCD
+; Input:
+;	AX - binary number
+; Output:
+;	AX - packed BCD number
+;-------------------------------------------------------------------------
+bin_to_bcd:
+	push	bx
+	push	cx
+	push	dx
+	push	si
+
+	mov	cl,0			; shift amount
+	xor	si,si			; zero result
+	mov	bx,10			; BX - divisor
+
+.bin_to_bcd_loop:
+	xor	dx,dx			; DX - zero for 32-bit div operand
+	div	bx
+
+	shl	dx,cl			; shift digit to the required position
+	add	cl,4			; calculate next position
+
+	add	si,dx			; add reminder to the result
+	or	ax,ax			; quotient is zero?
+	jnz	.bin_to_bcd_loop
+
+	mov	ax,si			; result to AX
+
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
+	ret
+
+
+;=========================================================================
 ; print - print ASCIIZ string to the console
 ; Input:
 ;	CS:SI - pointer to string to print
@@ -384,26 +562,30 @@ print:
 ;	none
 ;-------------------------------------------------------------------------
 print_hex:
-	push	cx
-	push	ax
-	mov	cl,12
-	shr	ax,cl
+	xchg	al,ah
+	call	print_byte		; print the upper byte
+	xchg	al,ah
+	call	print_byte		; print the lower byte
+	ret
+
+;=========================================================================
+; print_byte - print a byte in hexadecimal
+; Input:
+;	AL - byte to print
+; Output:
+;	none
+;-------------------------------------------------------------------------
+print_byte:
+	rol	al,1
+	rol	al,1
+	rol	al,1
+	rol	al,1
 	call	print_digit
-	pop	ax
-	push	ax
-	mov	cl,8
-	shr	ax,cl
+	rol	al,1
+	rol	al,1
+	rol	al,1
+	rol	al,1
 	call	print_digit
-	pop	ax
-	push	ax
-	mov	cl,4
-	shr	ax,cl
-	call	print_digit
-	pop	ax
-	push	ax
-	call	print_digit
-	pop	ax
-	pop	cx
 	ret
 
 ;=========================================================================
@@ -794,6 +976,7 @@ interrupt_table:
 	dw	int_1E			; INT 1E - Floppy Paameters Table
 	dw	int_1F			; INT 1F - Font For Graphics Mode
 
+%ifdef AT_COMPAT
 interrupt_table2:
 	dw	int_70			; INT 70 - IRQ8 - RTC
 	dw	int_71			; INT 71 - IRQ9 - redirection
@@ -807,6 +990,7 @@ interrupt_table2:
 	dw	int_75			; INT 75 - IRQ13 - FPU
 	dw	int_ignore2		; INT 76 - IRQ14
 	dw	int_ignore2		; INT 77 - IRQ15
+%endif ; AT_COMPAT
 
 ;=========================================================================
 ; cold_start, warm_start - BIOS POST (Power on Self Test) starts here
@@ -1180,6 +1364,8 @@ low_ram_ok:
 
 	call	detect_cpu		; detect and print CPU type
 	call	detect_fpu		; detect and print FPU presence
+
+	call	print_rtc		; print current RTC time
 
 	call	print_display		; print display type
 	call	print_mouse		; print mouse presence
