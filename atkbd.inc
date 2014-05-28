@@ -12,7 +12,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -285,13 +285,13 @@ int_09:
 
 ; check for 0E0h and 0E1h scancodes, set flags in kbd_flags_3
 
-	cmp	al,0e0h
+	cmp	al,0E0h
 	jne	.4
 	or	byte [kbd_flags_3],10b	; set E0 flag
 	and	byte [kbd_flags_3],0FEh	; clear E1 flag
 	jmp	keyboard_int_exit
 .4:
-	cmp	al,0e1h
+	cmp	al,0E1h
 	jne	.5
 	or	byte [kbd_flags_3],1	; set E1 flag
 	and	byte [kbd_flags_3],0FDh	; clear E0 Flag
@@ -418,6 +418,8 @@ int_09:
 .18:
 	cmp	al,kbd_prtsc_code
 	jne	.test_scroll_loc
+	test	byte [kbd_flags_3],10b	; test E0 flag
+	jz	.test_scroll_loc	; jump if no 0E0h flag (Keypad *)
 	jmp	print_screen
 
 ; handle the Scroll Lock (046h) key and Ctrl-Break combination (0E0h, 046h)
@@ -530,6 +532,7 @@ print_screen:
 	mov	al,20h			; send EOI (end of interrupt)
 	out	pic1_reg0,al		; to the 8259A PIC
 	int	5h			; INT 5 - print screen
+	and     byte [kbd_flags_3],0FDh	; clear E0 flag
 	jmp	keyboard_int_exit1
 
 ;=========================================================================
