@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 ;
 ;=========================================================================
 
+e_boot		equ	00h		; Boot the OS
 e_start		equ	01h		; BIOS POST started
 e_cpu_ok	equ	02h		; CPU test passed
 e_dmac_ok	equ	03h		; DMAC initialized
@@ -44,7 +45,6 @@ e_ext_start	equ	40h		; Start BIOS extension ROM scan
 e_ext_detect	equ	41h		; BIOS extension ROM found
 e_ext_init_ok	equ	42h		; BIOS extension ROM initialized
 e_ext_complete	equ	43h		; BIOS extension scan complete
-e_boot		equ	49h		; Boot the OS
 e_cpu_fail	equ	52h		; CPU test failed
 e_low_ram_fail	equ	54h		; low RAM test failed
 e_kbd_ctrl_fail	equ	60h		; KBD test - controller selftest failed
