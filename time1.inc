@@ -7,7 +7,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -144,6 +144,7 @@ int_1A_fn03:
 ; Input:
 ;	AH = 04h - function 04h - read RTC date
 ; Output:
+;	CF set if RTC update is in progress and operation was not performed
 ;	CH = BCD century
 ;	CL = BCD year
 ;	DH = BCD month
@@ -176,7 +177,7 @@ int_1A_fn04:
 	jmp	int_1A_exitf
 
 ;=========================================================================
-; int_1A_fn05 - Set date inreal time clock
+; int_1A_fn05 - Set date in real time clock
 ; Input:
 ;	AH = 05h - function 05h - set RTC date
 ;	CH = BCD century
