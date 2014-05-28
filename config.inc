@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -22,8 +22,8 @@
 ;
 ;=========================================================================
 
-%define DATE		'12/31/12'	; BIOS release date MM/DD/YY
-%define VERSION		'0.8.1'		; BIOS version
+%define DATE		'04/11/13'	; BIOS release date MM/DD/YY
+%define VERSION		'0.8.2'		; BIOS version
 %define	START		8000h		; BIOS starts at offset 8000h
 
 %define AT_COMPAT			; AT-compatible system, two PICs
