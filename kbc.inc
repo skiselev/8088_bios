@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -456,6 +456,8 @@ kbc_init:
 	call	kbc_wait_output_full	; wait for response
 	in	al,kbc_output_reg	; clear the output buffer
 
+
+%ifdef PS2_MOUSE
 ;-------------------------------------------------------------------------
 ; check for PS/2 mouse presence
 
@@ -477,6 +479,7 @@ kbc_init:
 ; mouse reset successful, update equipment word accordingly
 	or      word [equipment_list],equip_mouse
 .no_mouse:
+%endif ; PS2_MOUSE
 
 ;-------------------------------------------------------------------------
 ; setup keyboard buffer
