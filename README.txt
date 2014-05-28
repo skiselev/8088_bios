@@ -10,6 +10,22 @@ bios128k-xtide-2.0.bin	- BIOS image for Xi 8088 - Version 2.0 with XT-IDE
 bios128k-1.0.bin	- BIOS image for Sergey's XT - Version 1.0
 bios128k-xtide-1.0.bin	- BIOS image for Sergey's XT - Version 1.0 with XT-IDE
 
+Changes - Version 0.8.2
+-----------------------
+TODO:
+- Rename this version to 0.9?!
+- Investigate 'FF' displayed in the year
+- Debug mouse issue with Intel 8242
+- Debug issues with Microsoft and Logitech mouse drivers
+Changes:
+- Fix numeric '*' interpreted as print screen
+- Output '00' to Port 80h when booting OS
+- Use OKI-designed 80C88 and Harris-designed 80C88 instead older/newer 80C88
+- Add date and time setup to RTC setup utility
+- NVRAM setup utility - print help only if requested
+- Minor bug fixes and readability improvements in floppy code
+- Fix compilation errors with AT_COMPAT and PS2_MOUSE disabled
+
 Changes - Version 0.8.1
 -----------------------
 - Fix BIOS extension ROM scan procedure. Previously in some cases it was
