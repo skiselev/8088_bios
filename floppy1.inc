@@ -13,7 +13,7 @@
 ;
 ; Compiles with NASM 2.07, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
+; Copyright (C) 2011 - 2014 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 board.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -76,10 +76,24 @@ fdc_e_timeout	equ	80h		; timeout / device not ready
 ; Drive media state for fdc_media_state
 
 fdc_m_rate_bits		equ	0C0h	; bits 7-6: data transfer rate
-fdc_m_established	equ	10h	; bit 4:    media/drive established
+					; 00b = 500 Kbit/sec
+					; 01b = 300 Kbit/sec
+					; 10b = 250 Kbit/sec
+					; 11b = 1 Mbit/sec
+fdc_m_double_step	equ	20h	; bit 5:    1 = double stepping required
+fdc_m_established	equ	10h	; bit 4:    1 = media/drive established
 fdc_m_state_bits	equ	07h	; bits 2-0: media state bits
+					; 000b = trying 360K in 360K drive
+					; 001b = trying 360K in 1.2M drive
+					; 010b = trying 1.2M in 1.2M drive
+					; 011b = known 360K in 360K drive
+					; 100b = known 360K in 1.2M drive
+					; 101b = known 1.2M in 1.2M drive
+					; 110b = not used
+					; 111b = 720K in 720K or 1.44M in 1.44M
 fdc_m_360in360		equ	93h	; 250 Kbps, established, 360K in 360K
 fdc_m_720		equ	97h	; 250 Kbps, established, other drive
+fdc_m_try_360in1200	equ	61h	; 300 Kbps, not established, 360K in 1.2
 fdc_m_360in1200		equ	74h	; 300 Kbps, established, 360K in 1.2M
 fdc_m_try_1200in1200	equ	02h	; 500 Kbps, not established, 1.2M in 1.2
 fdc_m_1200in1200	equ	15h	; 500 Kbps, established, 1.2M in 1.2M
@@ -480,9 +494,9 @@ int_13_fn17:
 	jbe	.set_type		; no errors other than "disk changed"
 	cmp	ah,fdc_e_timeout
 	jne	.set_type		; floppy disk is installed
-	cmp	byte [bx],97h		; 250 Kbps and not 5.25?
+	cmp	byte [bx],fdc_m_720	; 250 Kbps and not 5.25?
 	je	.exit_check_error
-	mov	byte [bx],61h		; 300 Kpbs, try 360 in 1.2M
+	mov	byte [bx],fdc_m_try_360in1200 ; 300 Kpbs, try 360 in 1.2M
 	jmp	.exit_check_error
 
 .set_type:
@@ -541,7 +555,7 @@ int_13_fn18:
 	jne	.try_drive_1200
 	cmp	cx,2709h	 	; 40 tracks 9 sectors?
 	jnz	.unsupported_format
-	mov	al,93h			; 360K in 360K established, 250 Kbps
+	mov	al,fdc_m_360in360	; 360K in 360K established, 250 Kbps
 	lea	di,[media_360_in_360]
 	jmp	.set_media
 
@@ -550,14 +564,14 @@ int_13_fn18:
 	jne	.try_drive_2880
 	cmp	cx,4F0Fh		; 80 tracks 15 sectors?
 	jne	.try_media_360_in_1200
-	mov	al,15h			; 1.2M in 1.2M established, 500Kbps
+	mov	al,fdc_m_1200in1200	; 1.2M in 1.2M established, 500Kbps
 	lea	di,[media_1200]		; 1.2M
 	jmp	.set_media
 
 .try_media_360_in_1200:
 	cmp	cx,2709h		; 80 tracks 9 sectors?
 	jne	.unsupported_format
-	mov	al,74h			; 360K in 1.2M established, 300Kbps
+	mov	al,fdc_m_360in1200	; 360K in 1.2M established, 300Kbps
 	lea	di,[media_360_in_1200]	; 360K in 1.2M
 	jmp	.set_media
 
@@ -588,7 +602,7 @@ int_13_fn18:
 .try_media_720:	
 	cmp	cx,4F09h		; 80 tracks 9 sectors?
 	jne	.unsupported_format
-	mov	al,97h			; other established, 250Kbps
+	mov	al,fdc_m_720		; other established, 250Kbps
 	lea	di,[media_720]		; 720K
 
 .set_media:
@@ -705,8 +719,8 @@ fdc_seek:
 .skip_recalibrate:
 	mov	bh,00h
 	mov	bl,dl			; BX = drive number
-
-	test	byte [fdc_media_state+bx],20h 	; check double stepping bit
+	test	byte [fdc_media_state+bx],fdc_m_double_step ; check double
+					; steppig bit
 	jz	.no_double_stepping
 	shl	ch,1			; CH = CH * 2 (double cylinder number)
 
@@ -1474,9 +1488,9 @@ fdc_read_id:
 ;=========================================================================
 ; fdc_select_rate - Select FDC transfer rate
 ; Input:
-;	AL = data transfer rate (bits 7-6)
-; Output:
 ;	none
+; Output:
+;	AL = data transfer rate (bits 7-6)
 ;-------------------------------------------------------------------------
 fdc_select_rate:
 	push	bx
