@@ -361,8 +361,10 @@ int_09:
 	jne	.check_asterisk
 
 .turbo_off:
-	mov	al,00h			; clear bits 7-5 - 4.77 MHz CPU clock
-	out	fe_config_reg,al
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
 	jmp	keyboard_int_exit
 
 .check_asterisk:
@@ -370,7 +372,10 @@ int_09:
 	jne	.check_plus
 
 .turbo_7_16mhz:
-	mov	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
 	out	fe_config_reg,al
 	jmp	keyboard_int_exit
 
@@ -379,7 +384,10 @@ int_09:
 	jne	.6
 
 .turbo_9_55mhz:
-	mov	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
 	out	fe_config_reg,al
 	jmp	keyboard_int_exit
 

@@ -1505,8 +1505,8 @@ low_ram_ok:
 	call	rtc_read		; floppies type to AL
 %else ; AT_RTC
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-	call	print_floppy		; print floppy drive types
 %endif ; AT_RTC
+	call	print_floppy		; print floppy drive types
 
 	call	detect_ram		; test RAM, get RAM size in AX
 
