@@ -148,6 +148,9 @@ uart_wait_status:
 ;	CX - trashed
 ;-------------------------------------------------------------------------
 wait_for_port:
+
+%ifdef AT_DELAY
+
 	push	bx
 	mov	bl,byte [SI]		; get the timeout value in seconds
 
@@ -162,12 +165,12 @@ wait_for_port:
 	je	.exit
 
 .zero_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
 
 .one_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
 	loop	.loop_inner
@@ -178,6 +181,11 @@ wait_for_port:
 
 .exit:
 	pop	bx
+
+%else ; AT_DELAY
+	; FIXME: Implement check for XT
+%endif ; AT_DELAY
+
 	ret
 
 ;=========================================================================

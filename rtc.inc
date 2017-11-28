@@ -63,11 +63,6 @@ cmos_pf		equ	80h	; RTC periodic interrupt flag
 cmos_control_d	equ	0Dh	; RTC control D register
 cmos_vrt	equ	80h	; RTC vrt bit (1 = battery is OK)
 
-;-------------------------------------------------------------------------
-; NMI flag
-nmi_disable	equ	7Fh	; disable NMI AND mask (bit 7 = 0)
-nmi_enable	equ	80h	; enable NMI OR mask (bit 7 = 1)
-
 ;=========================================================================
 ; rtc_read - Read byte from RTC or CMOS memory
 ; Input:
@@ -774,61 +769,3 @@ print_rtc:
 	pop	bx
 	pop	ax
 	ret
-
-;=========================================================================
-; delay_15us - delay for multiplies of 15 microseconds
-; Input:
-;	CX = time to delay (in 15 microsecond units)
-; Notes:
-;	1.  Actual delay will be between (CX - 1) * 15us and CX * 15us
-;	2.  This relies on the "refresh" bit of port 61h and therefore on
-;	    timer channel 1. Will not function properly if timer gets
-;	    reprogrammed by an application or if it was not initialized yet
-;-------------------------------------------------------------------------
-delay_15us:
-	push	ax
-	push	cx
-.zero:
-	in	al,port_b_reg
-	test	al,refresh_flag
-	jz	.zero
-	dec	cx
-	jz	.exit
-.one:
-	in	al,port_b_reg
-	test	al,refresh_flag
-	jnz	.one
-	dec	cx
-	jnz	.zero
-.exit:
-	pop	cx
-	pop	ax
-	ret
-
-%if 0
-;=========================================================================
-; divide_32 - divide 64-bit argument by 32-bit, return 64-bit result
-; Input:
-;	DX:AX	- dividend
-;	CX	- divisor
-; Output:
-;	DX:AX	- quotient
-;-------------------------------------------------------------------------
-divide_32:
-	or	dx,dx
-	jnz	.1
-	div	cx
-	xor	dx,dx
-	ret
-.1:
-	push	bx
-	mov	bx,ax
-	mov	ax,dx
-	xor	dx,dx
-	div	cx
-	xchg	bx,ax
-	div	cx
-	mov	dx,bx
-	pop	bx
-	ret
-%endif ; 0

@@ -22,11 +22,24 @@
 ;
 ;=========================================================================
 
-%define DATE		'05/28/14'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.0'		; BIOS version
-%define	START		8000h		; BIOS starts at offset 8000h
+%define DATE		'11/27/17'	; BIOS release date MM/DD/YY
+%define VERSION		'0.9.2'		; BIOS version
 
-%define AT_COMPAT			; AT-compatible system, two PICs
+; Machine type is defined here
+; only one of the defines below needs to be uncommented
+;%define MACHINE_XI8088			; Xi 8088
+%define MACHINE_FE2010A 		; Faraday FE2010A
+;%define MACHINE_XT			; IBM PC/XT or highly compatible clone
+					; FIXME: not implemented yet
+
+; Settings for Xi 8088
+%ifdef MACHINE_XI8088
+%define	START		8000h		; BIOS starts at offset 8000h
+%define MODEL_BYTE	0FCh		; Pretend it is an IBM PC/AT
+%define AT_RTC				; Has AT-compatible RTC
+%define AT_DELAY			; Use refresh bit of port 61h for delays
+%define SECOND_PIC			; Has two PICs (AT-style)
+%define AT_KEYBOARD			; Has AT-compatible keyboard controller
 %define PS2_MOUSE			; Enable PS/2 auxiliary device support
 %define DISABLE_KBD_DURING_INTERRUPTS	; Don't disable keyboard in INT1
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
@@ -35,3 +48,36 @@
 %define EBDA_SIZE	1		; 1KB reserved for EBDA
 					; EBDA is required for PS/2 aux support
 %define SLOW_FLOPPY			; turn off turbo during floppy I/O
+%endif ; MACHINE_XI8088
+
+; Settings for FE2010A
+%ifdef MACHINE_FE2010A
+%define	START		8000h		; BIOS starts at offset 8000h
+%define MODEL_BYTE	0FEh		; IBM PC/XT
+;%define SECOND_PIC			; AT-compatible system, two PICs
+;%define PS2_MOUSE			; Enable PS/2 auxiliary device support
+%define DISABLE_KBD_DURING_INTERRUPTS	; Don't disable keyboard in INT1
+%define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
+%define MAX_RAM_SIZE	640		; Scan this much memory during POST
+%define RAM_TEST_BLOCK	16384		; block size for RAM test
+;%define EBDA_SIZE	1		; 1KB reserved for EBDA
+					; EBDA is required for PS/2 aux support
+%define SLOW_FLOPPY			; turn off turbo during floppy I/O
+%endif ; MACHINE_FE2010A
+
+; Settings for IBM PC/XT
+%ifdef MACHINE_XT
+%define	START		0E000h		; BIOS starts at offset 0E000h
+%define MODEL_BYTE	0FEh		; IBM PC/XT
+;%define SECOND_PIC			; AT-compatible system, two PICs
+;%define PS2_MOUSE			; Enable PS/2 auxiliary device support
+%define DISABLE_KBD_DURING_INTERRUPTS	; Don't disable keyboard in INT1
+%define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
+%define MAX_RAM_SIZE	640		; Scan this much memory during POST
+%define RAM_TEST_BLOCK	16384		; block size for RAM test
+;%define EBDA_SIZE	1		; 1KB reserved for EBDA
+					; EBDA is required for PS/2 aux support
+%define SLOW_FLOPPY			; turn off turbo during floppy I/O
+%endif ; MACHINE_FE2010A
+
+

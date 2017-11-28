@@ -53,17 +53,17 @@ sound:
 	mov	al,ah
 	out	pit_ch2_reg,al		; load divisor's high byte to PIC
 
-	in	al,port_b_reg		; read current value of PORT B
+	in	al,ppi_pb_reg		; read current value of PORT B
         or      al,03h			; turn on the speaker
-        out     port_b_reg,al		; write the new value
+        out     ppi_pb_reg,al		; write the new value
 
 .silent:
 	mov	cx,3000h
 	call	delay_15us		; delay while note is playing
 
-	in	al,port_b_reg		; read current value of PORT B
+	in	al,ppi_pb_reg		; read current value of PORT B
 	and	al,0FCh			; turn off the speaker
-        out     port_b_reg,al		; write the new value
+        out     ppi_pb_reg,al		; write the new value
 
         mov     cx,0100h
 	call	delay_15us		; delay after the note
@@ -87,15 +87,15 @@ beep:
 	out	pit_ch2_reg,al		; load divisor's low byte to PIC
 	mov	al,ah
 	out	pit_ch2_reg,al		; load divisor's high byte to PIC
-	in	al,port_b_reg		; read current value of PORT B
+	in	al,ppi_pb_reg		; read current value of PORT B
 	or	al,03h			; turn on the speaker
-	out	port_b_reg,al		; write the new value
+	out	ppi_pb_reg,al		; write the new value
 .loop:
 	mov	cx,6666			; 0.1 second delay
 	call	delay_15us
 	dec	bl
 	jnz	.loop
 	xor	al,03h			; turn off the speaker
-	out	port_b_reg,al		; write the new value
+	out	ppi_pb_reg,al		; write the new value
 	pop	ax
 	ret

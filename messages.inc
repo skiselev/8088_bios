@@ -23,10 +23,19 @@
 ;=========================================================================
 
 msg_copyright	db	0Dh, 0Ah
-		db	"Xi 8088 BIOS, Version "
+%ifdef MACHINE_XI8088
+		db	"Xi 8088"
+%endif ; MACHINE_XI8088
+%ifdef MACHINE_FE2010A
+		db	"Micro 8088"
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XT
+		db	"XT 8088"
+%endif ; MACHINE_XT
+		db	" BIOS, Version "
 		db	VERSION
 		db	". "
-		db	"Copyright (C) 2010 - 2014 Sergey Kiselev", 0Dh, 0Ah
+		db	"Copyright (C) 2010 - 2017 Sergey Kiselev", 0Dh, 0Ah
 		db	"Distributed under the terms of "
 		db	"the GNU General Public License", 0Dh, 0Ah
 msg_crlf	db      0Dh, 0Ah, 00h
@@ -55,7 +64,9 @@ msg_floppy_1200	db	'1.2 MB, 5.25"', 00h
 msg_floppy_720	db	'720 KB, 3.5"', 00h
 msg_floppy_1440	db	'1.44 MB, 3.5"', 00h
 msg_floppy_2880	db	'2.88 MB, 3.5"', 00h
+%ifdef PS2_MOUSE
 msg_mouse	db      'PS/2 Aux Device (Mouse):    ', 00h
+%endif ; PS2_MOUSE
 msg_present	db      'Present', 0Dh, 0Ah, 00h
 msg_absent	db      'Absent', 0Dh, 0Ah, 00h
 msg_serial	db	'Serial Ports:               ', 00h
@@ -65,7 +76,9 @@ msg_parallel_lpt db	'LPT', 00h
 msg_ram_testing	db	'Testing RAM (ESC to skip):  ', 00h
 msg_ram_error	db	0Dh, 0Ah, 'ERROR: Faulty memory detected at ', 00h
 msg_ram_total	db      0Dh, 'Total Conventional RAM:     ', 00h
+%ifdef EBDA_SIZE
 msg_ebda	db      'Reserved for EBDA:          ', 00h
+%endif ; EBDA_SIZE
 msg_ram_avail	db      'Available Conventional RAM: ', 00h
 msg_kib		db      ' KiB', 0Dh, 0Ah, 00h
 msg_boot_failed	db      'Boot failed, press any key to try again...', 0Dh, 0Ah, 0

@@ -78,17 +78,28 @@ pit_ch0_reg	equ	40h
 pit_ch1_reg	equ	41h
 pit_ch2_reg	equ	42h
 pit_ctl_reg	equ	43h
-port_b_reg	equ	61h
+ppi_pa_reg	equ	60h	; 8255 PPI port A I/O register
+ppi_pb_reg	equ	61h	; 8255 PPI port B I/O register
+ppi_pc_reg	equ	62h	; 8255 PPI port C I/O register
+ppi_cwd_reg	equ	63h	; 8255 PPI control word register
 iochk_disable	equ	08h	; clear and disable ~IOCHK NMI
 refresh_flag	equ	10h	; refresh flag, toggles every 15us
 iochk_enable	equ	0F7h	; enable ~IOCHK NMI
 iochk_status	equ	40h	; ~IOCHK status - 1 = ~IOCHK NMI signalled
 post_reg	equ	80h	; POST status output port
+nmi_mask_reg	equ	0A0h
+%ifdef SECOND_PIC
 pic2_reg0	equ	0A0h
 pic2_reg1	equ	0A1h
+%endif ; SECOND_PIC
 unused_reg	equ	0C0h	; used for hardware detection and I/O delays
 cga_mode_reg	equ	3D8h
 mda_mode_reg	equ	3B8h
+
+; NMI mask (written to 0A0h)
+nmi_disable	equ	00h	; disable NMI
+nmi_disa_mask	equ	7Fh	; disable NMI AND mask (bit 7 = 0)
+nmi_enable	equ	80h	; enable NMI OR mask (bit 7 = 1)
 
 pic_freq	equ	1193182	; PIC input frequency - 14318180 MHz / 12
 
@@ -183,23 +194,28 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %include	"messages.inc"		; POST messages
 %include	"fnt80-FF.inc"		; font for graphics modes
 ;%include	"inttrace.inc"		; XXX
+%ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
+%endif ; AT_RTC
+%include	"delay.inc"		; delay function
 %include	"time1.inc"		; time services
 %include	"floppy1.inc"		; floppy services
+%ifdef AT_KEYBOARD
 %include	"kbc.inc"		; keyboard controller functions
+%endif ; AT_KEYBOARD
 %include	"scancode.inc"		; keyboard scancodes translation func.
 %include	"serial1.inc"		; serial port services & detection
 %include	"printer1.inc"		; parallel printer services & detection
 %ifdef PS2_MOUSE
-%ifndef AT_COMPAT
-%error "PS2_MOUSE depends on AT_COMPAT. Please fix config.inc."
-%endif ; AT_COMPAT
+%ifndef SECOND_PIC
+%error "PS2_MOUSE depends on SECOND_PIC. Please fix config.inc."
+%endif ; SECOND_PIC
 %include	"ps2aux.inc"
 %endif
 %include	"sound.inc"		; sound test
 %include	"cpu.inc"		; CPU and FPU detection
 
-%ifdef AT_COMPAT
+%ifdef SECOND_PIC
 
 ;=========================================================================
 ; int_ignore2 - signal end of interrupt to PIC if hardware interrupt, return
@@ -235,7 +251,7 @@ int_75:
 	int	02h		; call NMI ISR
 	iret
 
-%endif ; AT_COMPAT
+%endif ; SECOND_PIC
 
 ;=========================================================================
 ; extension_scan - scan for BIOS extensions
@@ -884,6 +900,8 @@ print_display:
 	call	print
 	ret
 
+%ifdef PS2_MOUSE
+
 ;=========================================================================
 ; print PS/2 mouse presence
 ;-------------------------------------------------------------------------
@@ -898,6 +916,8 @@ print_mouse:
 .print_mouse:
 	call	print
 	ret
+
+%endif ; PS2_MOUSE
 
 ;=========================================================================
 ; detect_rom_ext - Look for BIOS extensions, initialize if found
@@ -976,7 +996,7 @@ interrupt_table:
 	dw	int_1E			; INT 1E - Floppy Paameters Table
 	dw	int_1F			; INT 1F - Font For Graphics Mode
 
-%ifdef AT_COMPAT
+%ifdef SECOND_PIC
 interrupt_table2:
 	dw	int_70			; INT 70 - IRQ8 - RTC
 	dw	int_71			; INT 71 - IRQ9 - redirection
@@ -990,7 +1010,7 @@ interrupt_table2:
 	dw	int_75			; INT 75 - IRQ13 - FPU
 	dw	int_ignore2		; INT 76 - IRQ14
 	dw	int_ignore2		; INT 77 - IRQ15
-%endif ; AT_COMPAT
+%endif ; SECOND_PIC
 
 ;=========================================================================
 ; cold_start, warm_start - BIOS POST (Power on Self Test) starts here
@@ -1066,9 +1086,9 @@ cpu_fail:
 	out	pit_ch2_reg,al
 	mov	al,ah
 	out	pit_ch2_reg,al
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	or	al,3			; turn speaker on and enable
-	out	port_b_reg,al		; PIT channel 2 to speaker
+	out	ppi_pb_reg,al		; PIT channel 2 to speaker
 
 .1:
 	hlt
@@ -1084,15 +1104,36 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; disable NMI, turbo mode, and video output on CGA and MDA
 
-	mov	al,0Dh & nmi_disable
+%ifdef AT_RTC
+	mov	al,0Dh & nmi_disa_mask
 	out	rtc_addr_reg,al		; disable NMI
 	jmp	$+2
 	in	al,rtc_data_reg		; dummy read to keep RTC happy
+%else
+	mov	al,nmi_disable
+	out	nmi_mask_reg,al		; disable NMI
+%endif ; AT_RTC
 
+%ifdef MACHINE_XI8088
 	mov	al,iochk_disable	; clear and disable ~IOCHK
-	out	port_b_reg,al
+	out	ppi_pb_reg,al
 	mov	al,00h			; clear turbo bit
-	out	port_b_reg,al		; and also turn off the speaker
+	out	ppi_pb_reg,al		; and also turn off the speaker
+%endif ; MACHINE_XI8088
+
+%ifdef MACHINE_FE2010A
+	mov	al,00000001b		; Disable parity checker
+	out	ppi_cwd_reg,al		; FE2010A chipset control register 2
+	mov	al,10110000b		; Clear keyboard, disable keyb clock
+	out	ppi_pb_reg,al		; Disable parity and IOCHK
+%endif ; MACHINE_FE2010A
+
+%ifdef MACHINE_XT
+	mov	al,10011001b		; PPI port A and port C inputs
+	out	ppi_cwd_reg,al		; PPI control word register
+	mov	al,10100101b		; FIXME: Add documentation
+	out	ppi_pb_reg,al
+%endif ; MACHINE_XT
 
 	mov	dx,cga_mode_reg
 	out	dx,al			; disable video output on CGA
@@ -1173,16 +1214,16 @@ low_ram_fail:
 	out	pit_ch2_reg,al
 	mov	al,ah
 	out	pit_ch2_reg,al
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 .1:
 	or	al,3			; turn speaker on and enable
-	out	port_b_reg,al		; PIT channel 2 to speaker
+	out	ppi_pb_reg,al		; PIT channel 2 to speaker
 	mov	cx,0
 .2:
 	nop
 	loop	.2
 	and	al,0FCh			; turn of speaker
-	out	port_b_reg,al
+	out	ppi_pb_reg,al
 	mov	cx,0
 .3:
 	nop
@@ -1218,7 +1259,7 @@ low_ram_ok:
 	movsw				; copy ISR address (offset part)
 	stosw				; store segment part
 	loop	.1
-%ifdef AT_COMPAT
+%ifdef SECOND_PIC
 	mov	di,70h*4		; starting from IRQ 70
 	mov	si,interrupt_table2
 	mov	cx,8			; 8 Interrupt vectors
@@ -1226,7 +1267,7 @@ low_ram_ok:
 	movsw				; copy ISR address (offset part)
 	stosw				; store segment part
 	loop	.2
-%endif ; AT_COMPAT
+%endif ; SECOND_PIC
 	mov     al,e_int_ok
 	out	post_reg,al
 
@@ -1261,7 +1302,7 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; Initialize PIC (8259)
 
-%ifdef AT_COMPAT
+%ifdef SECOND_PIC
 	mov	al,11h			; ICW1 - edge triggered, cascade, ICW4
 	out	pic1_reg0,al
 	out	pic2_reg0,al
@@ -1285,17 +1326,43 @@ low_ram_ok:
 	out	pic1_reg1,al
 	mov	al,e_pic_ok
 	out	post_reg,al
-%endif ; AT_COMPAT
+%endif ; SECOND_PIC
 
 ;-------------------------------------------------------------------------
 ; initialize keyboard controller (8242), keyboard and PS/2 auxiliary device
 
+%ifdef AT_KEYBOARD
 	call	kbc_init
+%else ; AT_KEYBOARD
+	in	al,ppi_pb_reg
+	or	al,10000000b		; set keyboard clear bit
+	out	ppi_pb_reg,al
+	or	al,01000000b		; enable keyboard clock
+	and	al,01111111b		; unset keyboard clear bit
+	out	ppi_pb_reg,al		; write back to the PPI port B
+%endif ; AT_KEYBOARD
+
+;-------------------------------------------------------------------------
+; setup keyboard buffer
+
+	mov	ax,kbd_buffer		; setup keyboard buffer
+	mov	word [kbd_buffer_start],ax
+	mov	word [kbd_buffer_head],ax
+	mov	word [kbd_buffer_tail],ax
+	add	ax,20h			; size of the keyboard buffer
+	mov	word [kbd_buffer_end],ax
+	xor     ax,ax			; clear keyboard flags
+	mov	word [kbd_flags_1],ax
+	mov	word [kbd_flags_2],ax
+	mov	word [kbd_flags_3],ax
+	mov	word [kbd_flags_4],ax
+	mov	al,e_kbd_ok
+	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ; enable interrupts
 
-%ifdef AT_COMPAT
+%ifdef SECOND_PIC
 	mov	al,0B8h		; OSW1: unmask timer, keyboard, IRQ2 and FDC
 	out	pic1_reg1,al
 %ifndef PS2_MOUSE
@@ -1307,7 +1374,7 @@ low_ram_ok:
 %else
 	mov	al,0BCh		; OSW1: unmask timer, keyboard and FDC
 	out	pic1_reg1,al
-%endif ; AT_COMPAT
+%endif ; SECOND_PIC
 	sti
 
 ;-------------------------------------------------------------------------
@@ -1349,10 +1416,14 @@ low_ram_ok:
 	mov	si,msg_copyright
 	call	print
 
+%ifdef AT_RTC
+
 ;-------------------------------------------------------------------------
 ; Initialize RTC / NVRAM
 
 	call	rtc_init
+
+%endif ; AT_RTC
 
 ; read equipment byte from CMOS and set it in BIOS data area
 
@@ -1364,19 +1435,23 @@ low_ram_ok:
 
 	call	detect_cpu		; detect and print CPU type
 	call	detect_fpu		; detect and print FPU presence
-
+%ifdef AT_RTC
 	call	print_rtc		; print current RTC time
-
+%endif ; AT_RTC
 	call	print_display		; print display type
+%ifdef PS2_MOUSE
 	call	print_mouse		; print mouse presence
-
+%endif ; PS2_MOUSE
 	call	detect_serial		; detect serial ports and print findings
 	call	detect_parallel		; detect parallel ports and print
 					; findings
-
+%ifdef AT_RTC
 	mov	al,cmos_floppy
 	call	rtc_read		; floppies type to AL
+%else ; AT_RTC
+	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
 	call	print_floppy		; print floppy drive types
+%endif ; AT_RTC
 
 	call	detect_ram		; test RAM, get RAM size in AX
 
@@ -1412,7 +1487,12 @@ low_ram_ok:
 
 	test	byte [post_flags],post_setup
 	jz	.no_setup
+; FIXME:
+; - implement a setup utility for FE2010A with EEPROM
+; - do not show setup prompt for XT machines
+%ifdef AT_RTC
 	call	rtc_setup
+%endif ; AT_RTC
 
 .no_setup:
 
@@ -1434,16 +1514,21 @@ low_ram_ok:
 	setloc	0E2C3h			; NMI Entry Point
 int_02:
 	push	ax
-	mov	al,0Dh & nmi_disable
+%ifdef AT_RTC
+	mov	al,0Dh & nmi_disa_mask
 	call	rtc_read		; disable NMI
-	in	al,port_b_reg		; read Port B
+%else
+	mov	al,nmi_disable
+	out	nmi_mask_reg,al
+%endif
+	in	al,ppi_pb_reg		; read Port B
 	mov	ah,al
 	or	al,iochk_disable	; clear and disable ~IOCHK
-	out	port_b_reg,al
+	out	ppi_pb_reg,al
 	test	al,iochk_status
 	jnz	.iochk_nmi
 	mov	al,ah
-	out	port_b_reg,al		; restore original bits
+	out	ppi_pb_reg,al		; restore original bits
 	jmp	.exit
 
 .iochk_nmi:
@@ -1464,8 +1549,13 @@ int_02:
 	je	cold_start
 	jmp	.1
 .exit:
+%ifdef AT_RTC
 	mov	al,0Dh | nmi_enable
 	call	rtc_read		; enable NMI
+%else
+	mov	al,nmi_enable
+	out	nmi_mask_reg,al
+%endif ; AT_RTC
 	pop	ax
 	iret
 
@@ -1499,10 +1589,11 @@ int_19:
 config_table:
 	dw	.size			; bytes 0 and 1: size of the table
 .bytes:
-%ifdef AT_COMPAT
-	db	0FCh			; byte 2: model = AT
+	db	MODEL_BYTE		; byte 2: model = AT
 	db	00h			; byte 3: submodel = 0
 	db	00h			; byte 4: release = 0
+%ifdef SECOND_PIC
+%ifdef AT_RTC
 	db	01110000b		; byte 5: feature byte 1
 ;		|||||||`-- system has dual bus (ISA and MCA)
 ;		||||||`-- bus is Micro Channel instead of ISA
@@ -1512,14 +1603,18 @@ config_table:
 ;		||`-- real time clock installed
 ;		|`-- 2nd interrupt controller installed
 ;		`-- DMA channel 3 used by hard disk BIOS
-	db	00h			; byte 6: feature byte 2
-	db	00h			; byte 7: feature byte 3
-	db	00h			; byte 8: feature byte 4
-	db	00h			; byte 9: feature byte 5
-%else
-	db	0FEh			; byte 2: model = XT
-	db	00h			; byte 3: submodel = 0
-	db	00h			; byte 4: release = 0
+%else ; AT_RTC
+	db	01010000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%endif ; AT_RTC
+%else ; SECOND_PIC
 	db	00000000b		; byte 5: feature byte 1
 ;		|||||||`-- system has dual bus (ISA and MCA)
 ;		||||||`-- bus is Micro Channel instead of ISA
@@ -1529,11 +1624,11 @@ config_table:
 ;		||`-- real time clock installed
 ;		|`-- 2nd interrupt controller installed
 ;		`-- DMA channel 3 used by hard disk BIOS
+%endif ; SECOND_PIC
 	db	00h			; byte 6: feature byte 2
 	db	00h			; byte 7: feature byte 3
 	db	00h			; byte 8: feature byte 4
 	db	00h			; byte 9: feature byte 5
-%endif ; AT_COMPAT
 .size	equ	$-.bytes
 
 ;=========================================================================
@@ -1597,7 +1692,7 @@ int_ignore:
 	push	ds
 	mov	ax,biosdseg
 	mov	ds,ax
-	mov	al,0Bh			; XXX - check PIC manual?
+	mov	al,0Bh			; PIC OCW3 - read in-service register
 	out	pic1_reg0,al
 	nop
 	in	al,pic1_reg0		; get IRQ number
@@ -1748,10 +1843,6 @@ start:
 	db	DATE			; BIOS release date MM/DD/YY
 	db	20h
 
-	setloc	0FFFEh			; System Model
-%ifdef AT_COMPAT
-	db	0fch			; system is an IBM AT compatible
-%else
-	db	0feh			; system is an IBM PC/XT compatible
-%endif ; AT_COMPAT
+	setloc	0FFFEh			; System Model byte
+	db	MODEL_BYTE
 	db	0ffh

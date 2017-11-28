@@ -56,6 +56,8 @@ int_1A_fn01:
 	mov	byte [new_day],00h
 	jmp	int_1A_exit
 
+%ifdef AT_RTC
+
 ;=========================================================================
 ; int_1A_fn02 - Read real time clock (RTC)
 ; Input:
@@ -310,3 +312,5 @@ int_70:
 .1:
 	pop	ax
 	iret
+
+%endif ; AT_RTC

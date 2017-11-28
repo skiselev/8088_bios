@@ -1312,8 +1312,12 @@ fdc_reset:
 ;=========================================================================
 
 read_cmos_type:
+%ifdef AT_RTC
 	mov	al,cmos_floppy
 	call	rtc_read		; read drive type
+%else ; AT_RTC
+	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+%endif ; AT_RTC
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
 	shr	al,1			; shift drive 0 bits 7-4 to 3-0
@@ -1546,6 +1550,7 @@ fdc_set_rate:
 ;	AL,CX - trashed
 ;-------------------------------------------------------------------------
 fdc_wait_irq:
+
 	sti
 	clc
 	mov	ax,9001h
@@ -1554,12 +1559,14 @@ fdc_wait_irq:
 	mov	bx,fdc_calib_state	; contains IRQ flag
 	xor	cx,cx
 
+%ifdef AT_DELAY
+
 .zero:
 	test	byte [bx],fdc_irq_flag	; test IRQ flag
 	jnz	.exit			; exit loop if interrupt had occurred
 
 .zero_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
 	loop	.one			; DEC CX; JNZ .one
@@ -1570,10 +1577,24 @@ fdc_wait_irq:
 	jnz	.exit			; exit loop if interrupt had occurred
 
 .one_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
 	loop	.zero			; DEC CX; JNZ .one
+
+%else ; AT_DELAY
+
+.1:
+	test	byte [bx],fdc_irq_flag	; test IRQ flag
+	jnz	.exit			; exit loop if interrupt had occurred
+	mov	al,10
+
+.2:
+	dec	al
+	jnz	.2
+	loop	.1
+
+%endif ; AT_DELAY
 
 .timeout:
 	mov	ah,fdc_e_timeout
@@ -1603,13 +1624,15 @@ fdc_wait_ready:
 	mov	dx,fdc_status_reg
 	xor	cx,cx
 
+%ifdef AT_DELAY
+
 .zero:
 	in	al,dx			; read I/O port
 	test	al,fdc_stat_ready
 	jnz	.exit			; exit loop if bit(s) set to 1
 
 .zero_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
 	dec	cx
@@ -1619,10 +1642,25 @@ fdc_wait_ready:
 	jnz	.exit			; exit loop of bit(s) set to 1
 
 .one_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
 	loop	.zero
+
+%else ; AT_DELAY
+
+.1:
+	in	al,dx			; read I/O port
+	test	al,fdc_stat_ready
+	jnz	.exit			; exit loop if bit(s) set to 1
+	mov	al,10
+
+.2:
+	dec	al
+	jnz	.2
+	loop	.1
+
+%endif ; AT_DELAY
 
 .timeout:
 	stc

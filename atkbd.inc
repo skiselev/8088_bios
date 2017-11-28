@@ -66,6 +66,7 @@ kbd_ins_bit	equ	80h
 ;-------------------------------------------------------------------------
 	setloc	0E82Eh
 int_16:
+;	call	int_trace		; DEBUG
 	push	bx
 	push	ds
 	mov	bx,biosdseg
@@ -81,7 +82,11 @@ int_16:
 	dw	int_16_fn00		; read char from buffer, wait if empty
 	dw	int_16_fn01		; check buffer, do not clear
 	dw	int_16_fn02		; get shift status
+%ifdef AT_KEYBOARD
 	dw	int_16_fn03		; set delays
+%else ; AT_KEYBOARD
+	dw	int_16_exit		; not implemented on XT
+%endif ; AT_KEYBOARD
 	dw	int_16_exit		; keyclick
 	dw	int_16_fn05		; write to keyboard buffer
 	dw	int_16_exit		; 06
@@ -129,6 +134,8 @@ int_16_exitf:
 int_16_fn02:
 	mov	al,byte [kbd_flags_1]
 	jmp	int_16_exit
+
+%ifdef AT_KEYBOARD
 
 ;=========================================================================
 ; int_16_fn03 - set keyboard typematic rate
@@ -178,6 +185,8 @@ int_16_fn03:
 	pop	bx
 .exit:
 	jmp	int_16_exit
+
+%endif ; AT_KEYBOARD
 
 ;=========================================================================
 ; int_16_fn05 - store keystroke in keyboard buffer
@@ -254,17 +263,30 @@ int_09:
 	mov	ax,biosdseg
 	mov	ds,ax
 
+%ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
 	call    kbc_send_cmd_byte
 %endif
-	in	al,kbc_input_reg	; get keyboard data
+%endif ; AT_KEYBOARD
+	in	al,ppi_pa_reg		; get keyboard data / scancode
+	mov	ah,al			; save it in AH
+	in	al,ppi_pb_reg		; read PPI port B, control
+	or	al,10000000b		; set keyboard clear bit
+	out	ppi_pb_reg,al		; write it back to PPI port B
+	and	al,01111111b		; unset keyboard clear bit
+	out	ppi_pb_reg,al		; write it back to PPI port B
+	mov	al,ah			; restore AL / scancode
 	sti
+%ifdef AT_KEYBOARD
 	mov	ah,4Fh
 	stc
 	int	15h			; keyboard intercept
 	jnc	keyboard_int_exit	; CF = 0, ignore scan code
-
+%else ; AT_KEYBOARD
+	cmp	al,0FFh			; check for overrun
+	jz	keyboard_int_exit
+%endif ; AT_KEYBOARD
 ; check for KBC response codes
 
 	cmp	al,0EEh			; echo response?
@@ -314,9 +336,9 @@ int_09:
 	jne	.check_plus
 
 .turbo_off:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	and	al,0FBh			; clear bit 2 (turbo enable bit)
-	out	port_b_reg,al
+	out	ppi_pb_reg,al
 	jmp	keyboard_int_exit
 
 .check_plus:
@@ -324,9 +346,9 @@ int_09:
 	jne	.6
 
 .turbo_on:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	or	al,04h			; set bit 2 (turbo enable bit)
-	out	port_b_reg,al
+	out	ppi_pb_reg,al
 	jmp	keyboard_int_exit
 
 ; Check for the INS key here. This one needs to toggle the ins bit
@@ -503,10 +525,12 @@ int_09:
 	and     byte [kbd_flags_3],0FCh	; E0, E1 not last code
 
 keyboard_int_exit:
+%ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_send_cmd_byte
 %endif
+%endif ; AT_KEYBOARD
 	mov	al,20h			; send EOI (end of interrupt)
 	out	pic1_reg0,al		; to the 8259A PIC.
 
@@ -540,6 +564,7 @@ print_screen:
 ; 	     variable and update LEDs on the keyboard
 ;-------------------------------------------------------------------------
 set_LEDs:
+%ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_send_cmd_byte
@@ -570,5 +595,6 @@ set_LEDs:
 	call	kbc_send_cmd_byte
 	mov	al,0F4h			; restart keyboard scanning
 	call	kbc_kb_send
+%endif ; AT_KEYBOARD
 	jmp	keyboard_int_exit1
 

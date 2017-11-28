@@ -44,12 +44,14 @@ int_1A:
 .dispatch:
 	dw	int_1A_fn00
 	dw	int_1A_fn01
+%ifdef AT_RTC
 	dw	int_1A_fn02
 	dw	int_1A_fn03
 	dw	int_1A_fn04
 	dw	int_1A_fn05
 	dw	int_1A_fn06
 	dw	int_1A_fn07
+%endif ; AT_RTC
 .max	equ	$-.dispatch
 int_1A_exit:
 	pop	ds
