@@ -354,15 +354,15 @@ int_09:
 	out	ppi_pb_reg,al
 	jmp	keyboard_int_exit
 %endif ; MACHINE_XI8088
-%ifdef MACHINE_FE2010A
 
+%ifdef MACHINE_FE2010A
 .check_minus:
 	cmp	al,4Ah			; gray - scancode
 	jne	.check_asterisk
 
 .turbo_off:
 	mov	al,00h			; clear bits 7-5 - 4.77 MHz CPU clock
-	out	ppi_cwd_reg,al
+	out	fe_config_reg,al
 	jmp	keyboard_int_exit
 
 .check_asterisk:
@@ -370,8 +370,8 @@ int_09:
 	jne	.check_plus
 
 .turbo_7_16mhz:
-	mov	al,40h			; set bit 6 - 7.16 MHz CPU clock
-	out	ppi_cwd_reg,al
+	mov	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
+	out	fe_config_reg,al
 	jmp	keyboard_int_exit
 
 .check_plus:
@@ -379,8 +379,8 @@ int_09:
 	jne	.6
 
 .turbo_9_55mhz:
-	mov	al,80h			; set bit 7 - 9.55 MHz CPU clock
-	out	ppi_cwd_reg,al
+	mov	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
+	out	fe_config_reg,al
 	jmp	keyboard_int_exit
 
 %endif ; MACHINE_FE2010A

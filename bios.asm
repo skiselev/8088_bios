@@ -78,14 +78,69 @@ pit_ch0_reg	equ	40h
 pit_ch1_reg	equ	41h
 pit_ch2_reg	equ	42h
 pit_ctl_reg	equ	43h
+
+; 8255 PPI port A I/O register - Read - keyboard data
 ppi_pa_reg	equ	60h	; 8255 PPI port A I/O register
+
+; Port 61h - 8255 PPI Port B - Write only
 ppi_pb_reg	equ	61h	; 8255 PPI port B I/O register
-ppi_pc_reg	equ	62h	; 8255 PPI port C I/O register
-ppi_cwd_reg	equ	63h	; 8255 PPI control word register
 iochk_disable	equ	08h	; clear and disable ~IOCHK NMI
 refresh_flag	equ	10h	; refresh flag, toggles every 15us
 iochk_enable	equ	0F7h	; enable ~IOCHK NMI
 iochk_status	equ	40h	; ~IOCHK status - 1 = ~IOCHK NMI signalled
+
+%ifdef MACHINE_XT or MACHINE_FE2010A
+; Port 62h - 8255 PPI Port C - Read only
+ppi_pc_reg	equ	62h	; 8255 PPI port C I/O registerA
+; XT DIP switches 1-4 (read when bit 3 of PPI Port B is 1)
+sw_post_loop	equ	01h	; XT DIP switch 1 - 1 = Loop on POST
+sw_fpu_present	equ	02h	; XT DIP switch 2 - 1 = FPU present
+sw_ram_256k	equ	00h	; XT DIP switches 3-4 - 256 KiB
+sw_ram_512k	equ	04h	; XT DIP switches 3-4 - 512 KiB
+sw_ram_576k	equ	08h	; XT DIP switches 3-4 - 576 KiB
+sw_ram_640k	equ	0Ch	; XT DIP switches 3-4 - 640 KiB
+; XT DIP switches 5-8 (read when bit 3 of PPI Port B is 0)
+sw_vid_none	equ	00h	; XT DIP switches 5-6 - No video, EGA, or VGA
+sw_vid_color_40	equ	01h	; XT DIP switches 5-6 - CGA, 80x25
+sw_vid_color_80	equ	02h	; XT DIP switches 5-6 - CGA, 40x25
+sw_vid_mono	equ	03h	; XT DIP switches 5-6 - Monochome, 80x25
+sw_one_floppy	equ	00h	; XT DIP switches 7-8 - One floppy
+sw_two_floppies	equ	01h	; XT DIP switches 7-8 - Two floppies
+sw_three_floppies equ	02h	; XT DIP switches 7-8 - Three floppies
+sw_four_floppies  equ	03h	; XT DIP switches 7-8 - Four floppies
+%endif ; MACHINE_XT or MACHINE_FE2010A
+
+; FE2010/FE2010 - Ports 62h-63h
+%ifdef MACHINE_FE2010A
+; Port 62h - Chipset Control Register - Write
+fe_control_reg	equ	62h
+fe_fpu_present	equ	02h	; FPU present
+fe_ram_256k	equ	00h	; XT DIP switches 3-4 - 256 KiB
+fe_ram_512k	equ	04h	; XT DIP switches 3-4 - 512 KiB
+fe_ram_576k	equ	08h	; XT DIP switches 3-4 - 576 KiB
+fe_ram_640k	equ	0Ch	; XT DIP switches 3-4 - 640 KiB
+fe_one_floppy	equ	00h	; XT DIP switches 7-8 - One floppy
+fe_two_floppies	equ	40h	; XT DIP switches 7-8 - Two floppies
+
+; Port 63h - Chipset Configuration Register - Write only
+fe_config_reg	equ	63h	; Chipset configuration register
+fe_par_disable	equ	01h	; Disable memory parity checking
+fe_fpu_nma_ena 	equ	02h	; Enable FPU NMI
+fe_config_lock	equ	08h	; Write lock of control register and
+				; bits 0-4 of configuration register
+fe_clk_7_16mhz	equ	40h	; FE2010A 7.16 MHz CPU clock frequency
+fe_clk_9_55mhz	equ	80h	; FE2010A 9.55 MHz CPU clock frequency
+%endif ; MACHINE_FE2010A
+
+; IBM PC/XT - Port 63h - 8255 PPI Control Word
+%ifdef MACHINE_XT
+ppi_cwd_reg	equ	63h	; 8255 PPI control word register
+ppi_cwd_value	equ	99h	; 8255 PPI control word value for IBM XT:
+				; Port A - mode 0 (simple I/O), input
+				; Port B - mode 0 (simple I/O), output
+				; Port C - output
+%endif ; MACHINE_XT
+
 post_reg	equ	80h	; POST status output port
 nmi_mask_reg	equ	0A0h
 %ifdef SECOND_PIC
@@ -1122,14 +1177,14 @@ cpu_ok:
 %endif ; MACHINE_XI8088
 
 %ifdef MACHINE_FE2010A
-	mov	al,00000001b		; Disable parity checker
-	out	ppi_cwd_reg,al		; FE2010A chipset control register 2
+	mov	al,fe_par_disable	; Disable parity checking
+	out	fe_config_reg,al	; FE2010A chipset configuration register
 	mov	al,10110000b		; Clear keyboard, disable keyb clock
 	out	ppi_pb_reg,al		; Disable parity and IOCHK
 %endif ; MACHINE_FE2010A
 
 %ifdef MACHINE_XT
-	mov	al,10011001b		; PPI port A and port C inputs
+	mov	al,ppi_cwd_value	; PPI port A and port C inputs
 	out	ppi_cwd_reg,al		; PPI control word register
 	mov	al,10100101b		; FIXME: Add documentation
 	out	ppi_pb_reg,al
@@ -1176,9 +1231,9 @@ low_ram_test:
 	mov	es,di
 	mov	dx,word [warm_boot+biosdseg*16] ; save soft reset flag to DX
 	mov	ax,55AAh		; first test pattern
-	mov	cx,4000h		; 32 KiB = 16384 words
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
     rep	stosw				; store test pattern
-	mov	cx,4000h		; 32 KiB = 16384 words
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
 .1:
 	lodsw
 	cmp	ax,55AAh		; compare to the test pattern
