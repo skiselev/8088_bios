@@ -1516,6 +1516,18 @@ low_ram_ok:
 	mov	si,msg_kib
 	call	print
 
+; FE2010A - Configure chipset according to detected equipment
+%ifdef MACHINE_FE2010A
+; Write settings for emulated DIP switches
+	mov	al,byte [equipment_list] ; switches are in low byte of equipment
+	and	al,0CEh			; keep floppy, memory size, and FPU bits
+	out	fe_control_reg,al
+; Enable FPU NMI if needed, and lock chipset configuration
+	and	al,equip_fpu		; enable NMI if the FPU is installed
+	or	al,fe_config_lock	; set lock chipset configuration bit
+	out	fe_config_reg,al
+%endif ; MACHINE_FE2010A
+
 	call	reserve_ebda		; reserve EBDA if needed
 
 	mov	si,msg_ram_avail
