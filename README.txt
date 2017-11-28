@@ -15,6 +15,11 @@ TODO:
 - Debug mouse issue with Intel 8242
 - Debug issues with Microsoft and Logitech mouse drivers
 
+Changes - Version 0.9.2
+-----------------------
+- Update configuration mechanism to enable support of multiple target platforms
+- Add initial support for Micro 8088 board using Faraday FE2010A chipset
+
 Changes - Version 0.9.0
 -----------------------
 - No updates except of BIOS date and version
