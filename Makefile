@@ -38,3 +38,6 @@ bios.bin: $(SOURCES)
 
 clean:
 	rm -f bios.bin bios-8.bin bios128k-1.0.bin bios128k-xtide-1.0.bin bios128k-2.0.bin bios128k-xtide-2.0.bin bios.lst
+
+flash:
+	minipro -p SST39SF010A -w bios128k-2.0.bin
