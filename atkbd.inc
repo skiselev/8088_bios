@@ -331,6 +331,9 @@ int_09:
 	mov	word [warm_boot],1234h ; warm boot flag
 	jmp	0F000h:warm_start	; reboot
 
+; handle turbo mode switch combinations
+
+%ifdef MACHINE_XI8088
 .check_minus:
 	cmp	al,4Ah			; gray - scancode
 	jne	.check_plus
@@ -350,6 +353,42 @@ int_09:
 	or	al,04h			; set bit 2 (turbo enable bit)
 	out	ppi_pb_reg,al
 	jmp	keyboard_int_exit
+%endif ; MACHINE_XI8088
+%ifdef MACHINE_FE2010A
+
+.check_minus:
+	cmp	al,4Ah			; gray - scancode
+	jne	.check_asterisk
+
+.turbo_off:
+	mov	al,00h			; clear bits 7-5 - 4.77 MHz CPU clock
+	out	ppi_cwd_reg,al
+	jmp	keyboard_int_exit
+
+.check_asterisk:
+	cmp	al,37h			; * scancode
+	jne	.check_plus
+
+.turbo_7_16mhz:
+	mov	al,40h			; set bit 6 - 7.16 MHz CPU clock
+	out	ppi_cwd_reg,al
+	jmp	keyboard_int_exit
+
+.check_plus:
+	cmp	al,4Eh			; gray + scancode
+	jne	.6
+
+.turbo_9_55mhz:
+	mov	al,80h			; set bit 7 - 9.55 MHz CPU clock
+	out	ppi_cwd_reg,al
+	jmp	keyboard_int_exit
+
+%endif ; MACHINE_FE2010A
+
+%ifdef MACHINE_XT
+.check_minus:
+					; do nothing for an XT
+%endif ; MACHINE_XT
 
 ; Check for the INS key here. This one needs to toggle the ins bit
 ; in the keyboard flags variables.
