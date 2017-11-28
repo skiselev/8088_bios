@@ -397,8 +397,10 @@ int_16_fn10:
 .2:
 	mov	word [kbd_buffer_head],bx
 	cmp	al,0F0h			; an extended key?
-	jne	.exit			; not a extended key
-	mov	al,00h			; set scancode to zero
+	jne	.exit			; not an extended key
+	cmp	ah,00h			; is it Alt + 240 (F0 00)?
+	je	.exit			; yes it is Alt + 240, return ASCII
+	mov	al,00h			; set ASCII character to zero
 
 .exit:
 	jmp	int_16_exit
