@@ -484,17 +484,6 @@ kbc_init:
 ;-------------------------------------------------------------------------
 ; setup keyboard buffer
 
-        mov     ax,kbd_buffer   ; setup keyboard buffer
-        mov     word [kbd_buffer_start],ax
-        mov     word [kbd_buffer_head],ax
-        mov     word [kbd_buffer_tail],ax
-        add     ax,20h          ; size of the keyboard buffer
-        mov     word [kbd_buffer_end],ax
-        xor     ax,ax           ; clear keyboard flags
-        mov     word [kbd_flags_1],ax
-        mov     word [kbd_flags_2],ax
-        mov     word [kbd_flags_3],ax
-        mov     word [kbd_flags_4],ax
 	mov	al,e_kbd_ok
 	out	post_reg,al
 	pop	dx
