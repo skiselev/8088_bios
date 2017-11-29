@@ -77,6 +77,8 @@ rtc_read:
 	out	rtc_addr_reg,al
 	jmp	$+2
 	jmp	$+2
+	jmp	$+2
+	jmp	$+2
 	in	al,rtc_data_reg
 	sti
 	ret
@@ -92,6 +94,8 @@ rtc_read:
 rtc_write:
 	cli
 	out	rtc_addr_reg,al
+	jmp	$+2
+	jmp	$+2
 	jmp	$+2
 	jmp	$+2
 	xchg	ah,al

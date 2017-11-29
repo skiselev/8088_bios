@@ -1209,8 +1209,8 @@ fdc_read:
 	in	al,dx
 	test	al,40h			; FDC is ready to send a byte? 
 	jz	.failure		; jump if not ready
-	jmp	short $+2		; I/O delay
-	jmp	short $+2
+	jmp	$+2			; I/O delay
+	jmp	$+2
 	mov	dx,fdc_data_reg
 	in	al,dx			; read the byte
 

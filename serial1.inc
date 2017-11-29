@@ -236,6 +236,7 @@ detect_serial:
 					; uart_base = uart_ier_reg - 1
 	mov	word [equip_serial+bx],dx ; store port address to the BIOS
 					; data area
+	add	word [equipment_list],0200h ; increment number of serial ports
 	mov	ax,dx
 	call	print_hex
 	jmp	.next

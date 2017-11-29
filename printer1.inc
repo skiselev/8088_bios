@@ -102,6 +102,7 @@ detect_parallel:
 	jne	.no_port		; no port at this address
 	mov	word [equip_parallel+bx],dx ; store port address to the BIOS
 					; data area
+	add	word [equipment_list],4000h ; increment number of printer ports
 	jmp	.next
 
 .no_port:
