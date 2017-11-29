@@ -2,10 +2,10 @@
 ; config.inc - Compilation time settings and settings
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2011 - 2017 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@
 ;
 ;=========================================================================
 
-%define DATE		'11/27/17'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.2'		; BIOS version
+%define DATE		'11/28/17'	; BIOS release date MM/DD/YY
+%define VERSION		'0.9.3'		; BIOS version
 
 ; Machine type is defined here
 ; only one of the defines below needs to be uncommented

@@ -1,7 +1,7 @@
 # Makefile - GNU Makefile
 # 
-# Copyright (C) 2011 - 2012 Sergey Kiselev.
-# Provided for hobbyist use on the Xi 8088 board.
+# Copyright (C) 2011 - 2017 Sergey Kiselev.
+# Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

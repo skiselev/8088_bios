@@ -2,10 +2,10 @@
 ; messages.inc - Messages printed by BIOS POST (Power On Self Test)
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2011 - 2017 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -78,8 +78,8 @@ msg_ram_error	db	0Dh, 0Ah, 'ERROR: Faulty memory detected at ', 00h
 msg_ram_total	db      0Dh, 'Total Conventional RAM:     ', 00h
 %ifdef EBDA_SIZE
 msg_ebda	db      'Reserved for EBDA:          ', 00h
-%endif ; EBDA_SIZE
 msg_ram_avail	db      'Available Conventional RAM: ', 00h
+%endif ; EBDA_SIZE
 msg_kib		db      ' KiB', 0Dh, 0Ah, 00h
 msg_boot_failed	db      'Boot failed, press any key to try again...', 0Dh, 0Ah, 0
 msg_no_basic    db      'No ROM BASIC', 0Dh, 0Ah, 0

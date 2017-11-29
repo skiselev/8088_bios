@@ -11,9 +11,18 @@ bios128k-1.0.bin	- BIOS image for Sergey's XT - Version 1.0
 bios128k-xtide-1.0.bin	- BIOS image for Sergey's XT - Version 1.0 with XT-IDE
 
 TODO:
-- Investigate 'FF' displayed in the year
 - Debug mouse issue with Intel 8242
 - Debug issues with Microsoft and Logitech mouse drivers
+
+Changes - Version 0.9.3
+-----------------------
+- Implement turbo mode switching using keyboard on Micro 8088
+- Fix the issue where the number of serial and printer ports was not
+  updated in the equipment word
+- Update XT keyboard reset and buffer flush code
+- Fix the issue where the BIOS would hang when one of the Lock keys is pressed
+- Increase I/O delay in RTC code to solve 'FF' displayed in the year issue
+
 
 Changes - Version 0.9.2
 -----------------------
@@ -123,8 +132,8 @@ TODO
 - [enh] Add PnP extension
 
 
-Switches and jumpers settings
------------------------------
+Switches and jumpers settings - Xi 8088
+---------------------------------------
 
 SW2-8: Display adapter type:
 	Off = CGA
