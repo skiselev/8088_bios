@@ -611,12 +611,6 @@ print_screen:
 ; 	     variable and update LEDs on the keyboard
 ;-------------------------------------------------------------------------
 set_LEDs:
-%ifdef AT_KEYBOARD
-%ifndef DISABLE_KBD_DURING_INTERRUPTS
-	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
-	call	kbc_send_cmd_byte
-%endif
-
 	mov	al,20h			; send EOI (end of interrupt)
 	out	pic1_reg0,al		; to the 8259A PIC
 
@@ -628,6 +622,11 @@ set_LEDs:
 	and	al,111b
 	and	byte [kbd_flags_4],0F8h	; clear LED bits.
 	or	byte [kbd_flags_4],al	; mask in new bits.
+%ifdef AT_KEYBOARD
+%ifndef DISABLE_KBD_DURING_INTERRUPTS
+	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
+	call	kbc_send_cmd_byte
+%endif
 	mov	ah,al			; save LED bits
 
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
