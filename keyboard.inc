@@ -1,5 +1,5 @@
 ;=========================================================================
-; atkbd.inc - AT keyboard support
+; keyboard.inc - Keyboard support
 ;       INT 16h - BIOS Keyboard Services
 ;		- function AH=02h
 ;		- function AH=03h

@@ -1,5 +1,5 @@
 ;=========================================================================
-; kbc.inc - Keyboard controller support
+; at_kbc.inc - AT style keyboard controller support
 ;-------------------------------------------------------------------------
 ;
 ; Compiles with NASM 2.07, might work with other versions

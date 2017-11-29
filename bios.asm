@@ -256,7 +256,7 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %include	"time1.inc"		; time services
 %include	"floppy1.inc"		; floppy services
 %ifdef AT_KEYBOARD
-%include	"kbc.inc"		; keyboard controller functions
+%include	"at_kbc.inc"		; keyboard controller functions
 %endif ; AT_KEYBOARD
 %include	"scancode.inc"		; keyboard scancodes translation func.
 %include	"serial1.inc"		; serial port services & detection
@@ -1691,7 +1691,7 @@ config_table:
 ;-------------------------------------------------------------------------
 
 %include	"serial2.inc"		; INT 14 - BIOS Serial Communications
-%include	"atkbd.inc"		; INT 16, INT 09
+%include	"keyboard.inc"		; INT 16, INT 09
 %include	"floppy2.inc"		; INT 13
 %include	"printer2.inc"		; INT 17
 %include	"video.inc"		; INT 10
