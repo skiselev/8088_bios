@@ -1523,6 +1523,7 @@ low_ram_ok:
 	call	rtc_read		; floppies type to AL
 %else ; AT_RTC
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+	or	byte [equipment_list],equip_floppies|equip_floppy2
 %endif ; AT_RTC
 	call	print_floppy		; print floppy drive types
 
@@ -1548,7 +1549,6 @@ low_ram_ok:
 
 %ifdef EBDA_SIZE
 	call	reserve_ebda		; reserve EBDA if needed
-%endif ; EBDA_SIZE
 
 	mov	si,msg_ram_avail
 	call	print
@@ -1556,6 +1556,7 @@ low_ram_ok:
 	call	print_dec		; print remaining RAM size
 	mov	si,msg_kib
 	call	print
+%endif ; EBDA_SIZE
 
 	call	detect_rom_ext		; detect and initialize extension ROMs
 
