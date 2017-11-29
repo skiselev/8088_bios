@@ -713,6 +713,7 @@ print_digit:
 	pop	ax
 	ret
 
+%ifdef EBDA_SIZE
 ;=========================================================================
 ; reserve_ebda - reserve EBDA (Extended BIOS Data Area) if using PS2_MOUSE
 ; Input:
@@ -722,7 +723,6 @@ print_digit:
 ;	- Does not reserve EBDA if PS/2 auxiliary device is not detected
 ;-------------------------------------------------------------------------
 reserve_ebda:
-%ifdef PS2_MOUSE
 	push	ax
 	push	cx
 	test	word [equipment_list],equip_mouse
@@ -748,8 +748,8 @@ reserve_ebda:
 .no_mouse:
 	pop	cx
 	pop	ax
-%endif ; PS2_MOUSE
 	ret
+%endif ; EBDA_SIZE
 
 ;=========================================================================
 ; detect_ram - Determine the size of installed RAM and test it
@@ -1390,11 +1390,25 @@ low_ram_ok:
 	call	kbc_init
 %else ; AT_KEYBOARD
 	in	al,ppi_pb_reg
-	or	al,10000000b		; set keyboard clear bit
+	and	al,00111111b		; set keyboard clock low
 	out	ppi_pb_reg,al
-	or	al,01000000b		; enable keyboard clock
+	mov	cx,10582		; hold clock low for 20 ms
+.kbd_reset_wait:
+	loop	.kbd_reset_wait
+	or	al,11000000b		; set keyboard clear bit, enable clock
+	out	ppi_pb_reg,al
 	and	al,01111111b		; unset keyboard clear bit
-	out	ppi_pb_reg,al		; write back to the PPI port B
+	out	ppi_pb_reg,al
+	mov	cx,1000
+.kbd_flush:
+	mov 	ah,01h
+	int	16h
+	jz	.kbd_no_key
+	mov	ah,00h
+	int	16h
+.kbd_no_key:
+	loop	.kbd_flush
+
 %endif ; AT_KEYBOARD
 
 	call	kbd_buffer_init		; setup keyboard buffer
@@ -1420,6 +1434,24 @@ low_ram_ok:
 %endif ; SECOND_PIC
 	sti
 
+%ifdef MACHINE_FE2010A or MACHINE_XT
+;-------------------------------------------------------------------------
+; Read video mode switches into equipment_list
+	in	al,ppi_pb_reg
+%ifdef MACHINE_FE2010A
+	and	al,0FDh		; clear switch select bit - select SW5-SW8
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XT
+	and	al,0F7h		; clear switch select bit - select SW5-SW8
+%endif ; MACHINE_XT
+	out	ppi_pb_reg,al
+	in	al,ppi_pc_reg	; read switches SW5-SW8
+	and	al,03h		; video mode is in SW5 and SW6
+	mov	cl,4
+	shl	al,cl		; move video mode to bits 5-4
+	or	[equipment_list],al
+%endif ; MACHINE_FE2010A or MACHINE_XT
+; 
 ;-------------------------------------------------------------------------
 ; look for video BIOS, initialize it if present
 
@@ -1463,15 +1495,13 @@ low_ram_ok:
 
 ;-------------------------------------------------------------------------
 ; Initialize RTC / NVRAM
-
+; Read equipment byte from CMOS and set it in BIOS data area
 	call	rtc_init
-
-%endif ; AT_RTC
-
-; read equipment byte from CMOS and set it in BIOS data area
 
 	mov	si,msg_setup
 	call	print
+
+%endif ; AT_RTC
 
 ;-------------------------------------------------------------------------
 ; detect and print availability of various equipment
@@ -1516,7 +1546,9 @@ low_ram_ok:
 	out	fe_config_reg,al
 %endif ; MACHINE_FE2010A
 
+%ifdef EBDA_SIZE
 	call	reserve_ebda		; reserve EBDA if needed
+%endif ; EBDA_SIZE
 
 	mov	si,msg_ram_avail
 	call	print
