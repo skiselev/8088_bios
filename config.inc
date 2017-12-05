@@ -22,8 +22,8 @@
 ;
 ;=========================================================================
 
-%define DATE		'11/28/17'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.3'		; BIOS version
+%define DATE		'12/04/17'	; BIOS release date MM/DD/YY
+%define VERSION		'0.9.4'		; BIOS version
 
 ; Machine type is defined here
 ; only one of the defines below needs to be uncommented
@@ -52,7 +52,7 @@
 
 ; Settings for FE2010A
 %ifdef MACHINE_FE2010A
-%define	START		8000h		; BIOS starts at offset 8000h
+%define	START		0C000h		; BIOS starts at offset 0C000h
 %define MODEL_BYTE	0FEh		; IBM PC/XT
 ;%define SECOND_PIC			; AT-compatible system, two PICs
 ;%define PS2_MOUSE			; Enable PS/2 auxiliary device support

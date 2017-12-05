@@ -251,7 +251,12 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 ;%include	"inttrace.inc"		; XXX
 %ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
+%else ; AT_RTC
+%ifndef MACHINE_XT
+%include	"flash.inc"		; Flash ROM configuration functions
+%endif ; MACHINE_XT
 %endif ; AT_RTC
+%include	"setup.inc"		; NVRAM setup functions
 %include	"delay.inc"		; delay function
 %include	"time1.inc"		; time services
 %include	"floppy1.inc"		; floppy services
@@ -1498,10 +1503,13 @@ low_ram_ok:
 ; Read equipment byte from CMOS and set it in BIOS data area
 	call	rtc_init
 
-	mov	si,msg_setup
-	call	print
-
 %endif ; AT_RTC
+
+%ifndef MACHINE_XT
+	mov	si,msg_setup		; print setup prompt
+	call	print
+%endif ; MACHINE_XT
+
 
 ;-------------------------------------------------------------------------
 ; detect and print availability of various equipment
@@ -1575,12 +1583,10 @@ low_ram_ok:
 
 	test	byte [post_flags],post_setup
 	jz	.no_setup
-; FIXME:
-; - implement a setup utility for FE2010A with EEPROM
-; - do not show setup prompt for XT machines
-%ifdef AT_RTC
-	call	rtc_setup
-%endif ; AT_RTC
+
+%ifndef MACHINE_XT
+	call	nvram_setup
+%endif ; MACHINE_XT
 
 .no_setup:
 
