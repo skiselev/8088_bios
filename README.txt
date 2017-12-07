@@ -1,5 +1,5 @@
-README file for Xi 8088 / Sergey's XT BIOS
-==========================================
+README file for Micro 8088 / Xi 8088 / Sergey's XT BIOS
+=======================================================
 
 BIOS Images
 -----------
@@ -13,8 +13,14 @@ bios-sergey-xt.bin	  - BIOS image for Sergey's XT Version 1.0
 bios-sergey-xt-xtide.bin  - BIOS image for Sergey's XT Version 1.0 with XT-IDE
 
 TODO:
-- Debug mouse issue with Intel 8242
-- Debug issues with Microsoft and Logitech mouse drivers
+- Xi 8088: Debug mouse issue with Intel 8242
+- Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
+
+Changes - Version 0.9.4
+-----------------------
+- Micro 8088: Implement BIOS setup utility including saving configuration to
+  the BIOS Flash ROM
+- Improve build configurability
 
 Changes - Version 0.9.3
 -----------------------

@@ -9,7 +9,7 @@
 # (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY# without even the implied warranty of
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
@@ -21,7 +21,7 @@
 #MACHINE=MACHINE_XI8088
 # Micro 8088 Board
 MACHINE=MACHINE_FE2010A
-# XT compatible board (FIXME: not implemented yet)
+# IBM PC/XT or highly compatible board (FIXME: not implemented yet)
 #MACHINE=MACHINE_XT
 
 # Flash ROM IC type (as supported by minipro programmer)
