@@ -77,7 +77,7 @@ nvram_setup:
 	cmp	al,'w'
 	je	.save
 	cmp	al,'q'
-	je	.exit
+	je	.no_save
 	cmp	al,'h'
 	je	.help
 	jmp	.menu_input
@@ -369,16 +369,23 @@ nvram_setup:
 %endif ; AT_RTC
 
 .save:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+
 %ifdef AT_RTC
 	call	rtc_save
 %else ; AT_RTC
 	call	flash_save
 %endif ; AT_RTC
+	jmp	.exit
 
-.exit:
+.no_save:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
+
+.exit:
 	mov	si,msg_crlf
 	call	print
 	pop	si

@@ -93,8 +93,10 @@ msg_setup	db	'Press F1 to run NVRAM setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
 msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the NVRAM setup utility', 00h
 msg_set_help	db	0Dh, 0Ah
 		db	'NVRAM setup commands:', 0Dh, 0Ah
+%ifdef AT_RTC
 		db	't - Set time', 0Dh, 0Ah
 		db	'd - Set date', 0Dh, 0Ah
+%endif ; AT_RTC
 		db	'f - Change first floppy drive type', 0Dh, 0Ah
 		db	'g - Change second floppy drive type', 0Dh, 0Ah
 		db	'p - Print current settings', 0Dh, 0Ah
@@ -116,6 +118,11 @@ msg_set_fd_help	db	0Dh, 0Ah
 		db	'h - Show this help', 0Dh, 0Ah, 00h
 msg_set_fd_prmt	db	0Dh, 0Ah, 'Enter floppy drive type (h for help): '
 		db	00h
+%ifdef MACHINE_FE2010A
+msg_saving	db	0Dh, 0Ah, 'Saving configuration to Flash ROM... ', 00h
+msg_save_ok	db	'OK', 0Dh, 0Ah, 00h
+msg_save_error	db	'ERROR', 0Dh, 0Ah, 00h
+%endif ; MACHINE FE2010A
 tbl_floppy	dw	msg_none
 		dw	msg_floppy_360
 		dw	msg_floppy_1200

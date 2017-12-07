@@ -1195,6 +1195,7 @@ cpu_ok:
 	out	ppi_pb_reg,al
 %endif ; MACHINE_XT
 
+	mov	al,00h
 	mov	dx,cga_mode_reg
 	out	dx,al			; disable video output on CGA
 	inc	al
@@ -1439,6 +1440,9 @@ low_ram_ok:
 %endif ; SECOND_PIC
 	sti
 
+	mov	al,nmi_enable
+	out	nmi_mask_reg,al	; enable NMIs
+
 %ifdef MACHINE_FE2010A or MACHINE_XT
 ;-------------------------------------------------------------------------
 ; Read video mode switches into equipment_list
@@ -1526,13 +1530,7 @@ low_ram_ok:
 	call	detect_serial		; detect serial ports and print findings
 	call	detect_parallel		; detect parallel ports and print
 					; findings
-%ifdef AT_RTC
-	mov	al,cmos_floppy
-	call	rtc_read		; floppies type to AL
-%else ; AT_RTC
-	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-	or	byte [equipment_list],equip_floppies|equip_floppy2
-%endif ; AT_RTC
+	call	detect_floppy		; detect floppy drive types
 	call	print_floppy		; print floppy drive types
 
 	call	detect_ram		; test RAM, get RAM size in AX

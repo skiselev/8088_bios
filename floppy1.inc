@@ -1316,7 +1316,11 @@ read_cmos_type:
 	mov	al,cmos_floppy
 	call	rtc_read		; read drive type
 %else ; AT_RTC
+%ifdef MACHINE_FE2010A
+	call	flash_get_floppy
+%else ; MACHINE_FE2010A
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+%endif ; MACHINE_FE2010A
 %endif ; AT_RTC
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
@@ -1667,6 +1671,33 @@ fdc_wait_ready:
 
 .exit:
 	pop	cx
+	ret
+;=========================================================================
+; detect_floppy - Detect floppy configuration
+;                 set equipment bits accordingly
+; Input:
+;	none
+; Ouput:
+;	AL = NVRAM floppy configuration byte
+;-------------------------------------------------------------------------
+detect_floppy:
+%ifdef AT_RTC
+	mov	al,cmos_floppy
+	call	rtc_read		; floppies type to AL
+%else ; AT_RTC
+%ifdef MACHINE_FE2010A
+	call	flash_get_floppy
+%else ; MACHINE_FE2010A
+	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+%endif ; MACHINE_FE2010A
+%endif ; AT_RTC
+	cmp	al,00h			; No floppy drives?
+	je	.exit
+	or	byte [equipment_list],equip_floppies
+	test	al,0Fh			; Second floppy drive installed?
+	jz	.exit
+	or	byte [equipment_list],equip_floppy2
+.exit:
 	ret
 
 ;=========================================================================
