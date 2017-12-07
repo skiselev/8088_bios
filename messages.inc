@@ -89,10 +89,10 @@ msg_boot	db      'Booting OS...', 0Dh, 0Ah, 0
 msg_rtc_bad	db	'ERROR: RTC battery is bad', 0Dh, 0Ah, 00h
 msg_rtc_sum	db	'ERROR: NVRAM checksum is invalid, '
 		db	'loading default values to NVRAM', 0Dh, 0Ah, 00h
-msg_setup	db	'Press F1 to run NVRAM setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
-msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the NVRAM setup utility', 00h
+msg_setup	db	'Press F1 to run BIOS setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
+msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the BIOS setup utility', 00h
 msg_set_help	db	0Dh, 0Ah
-		db	'NVRAM setup commands:', 0Dh, 0Ah
+		db	'BIOS setup commands:', 0Dh, 0Ah
 %ifdef AT_RTC
 		db	't - Set time', 0Dh, 0Ah
 		db	'd - Set date', 0Dh, 0Ah
