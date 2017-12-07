@@ -16,30 +16,70 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Target machine type is defined below
+# Xi 8088 Board
+#MACHINE=MACHINE_XI8088
+# Micro 8088 Board
+MACHINE=MACHINE_FE2010A
+# XT compatible board (FIXME: not implemented yet)
+#MACHINE=MACHINE_XT
+
+# Flash ROM IC type (as supported by minipro programmer)
+FLASH_ROM=SST39SF010A
+
 SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
-all: $(SOURCES) bios128k-1.0.bin bios128k-xtide-1.0.bin bios128k-2.0.bin bios128k-xtide-2.0.bin bios-mini8088.bin
+ifeq "$(MACHINE)" "MACHINE_XI8088"
+IMAGES=bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin
+FLASH_IMAGE=bios-xi8088.bin
+else
+ifeq "$(MACHINE)" "MACHINE_FE2010A"
+IMAGES=bios-micro8088.bin bios-micro8088-xtide.bin
+FLASH_IMAGE=bios-micro8088.bin
+else
+IMAGES=bios.bin
+endif
+endif
+
+all: $(SOURCES) $(IMAGES)
 
 bios.bin: $(SOURCES)
-	nasm -O9 -f bin -o bios.bin -l bios.lst bios.asm
+	nasm -D$(MACHINE) -O9 -f bin -o bios.bin -l bios.lst bios.asm
 
-bios-mini8088.bin: bios.bin ff-64k.bin ff-32k.bin ff-16k.bin
-	cat ff-32k.bin ff-16k.bin bios.bin ff-64k.bin > bios-mini8088.bin
+bios-micro8088.bin: bios.bin
+	dd if=/dev/zero ibs=1k count=48 | tr "\000" "\377" > bios-micro8088.bin
+	cat bios.bin >> bios-micro8088.bin
+	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088.bin
 
-bios128k-1.0.bin: bios.bin ff-64k.bin ff-32k.bin
-	cat ff-64k.bin ff-32k.bin bios.bin > bios128k-1.0.bin
+bios-micro8088-xtide.bin: bios.bin ide_xt.bin
+	cat ide_xt.bin > bios-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=40 | tr "\000" "\377" >> bios-micro8088-xtide.bin
+	cat bios.bin >> bios-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088-xtide.bin
 
-bios128k-xtide-1.0.bin: bios.bin ff-64k.bin ff-24k.bin ide_xt.bin
-	cat ff-64k.bin ide_xt.bin ff-24k.bin bios.bin > bios128k-xtide-1.0.bin
+bios-sergey-xt.bin: bios.bin
+	dd if=/dev/zero ibs=1k count=96 | tr "\000" "\377" > bios-sergey-xt.bin
+	cat bios.bin >> bios-sergey-xt.bin
 
-bios128k-2.0.bin: bios.bin ff-64k.bin ff-32k.bin
-	cat ff-32k.bin bios.bin ff-64k.bin > bios128k-2.0.bin
+bios-sergey-xt-xtide.bin: bios.bin ide_xt.bin
+	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" > bios-sergey-xt-xtide.bin
+	cat ide_xt.bin >> bios-sergey-xt-xtide.bin
+	dd if=/dev/zero ibs=1k count=24 | tr "\000" "\377" >> bios-sergey-xt-xtide.bin
+	cat bios.bin >> bios-sergey-xt-xtide.bin
 
-bios128k-xtide-2.0.bin: bios.bin ff-64k.bin ff-24k.bin ide_xt.bin
-	cat ide_xt.bin ff-24k.bin bios.bin ff-64k.bin > bios128k-xtide-2.0.bin
+bios-xi8088.bin: bios.bin
+	dd if=/dev/zero ibs=1k count=32 | tr "\000" "\377" > bios-xi8088.bin
+	cat bios.bin >> bios-xi8088.bin
+	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-xi8088.bin
+
+bios-xi8088-xtide.bin: bios.bin ide_xt.bin
+	cat ide_xt.bin > bios-xi8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=24 | tr "\000" "\377" >> bios-xi8088-xtide.bin
+	cat bios.bin >> bios-xi8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-xi8088-xtide.bin
 
 clean:
-	rm -f bios.bin bios-8.bin bios128k-1.0.bin bios128k-xtide-1.0.bin bios128k-2.0.bin bios128k-xtide-2.0.bin bios.lst
+	rm -f bios.lst bios.bin bios-micro8088.bin bios-micro8088-xtide.bin bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin
 
 flash:
-	minipro -p SST39SF010A -w bios-mini8088.bin
+	minipro -p $(FLASH_ROM) -w $(FLASH_IMAGE)

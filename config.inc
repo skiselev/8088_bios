@@ -25,10 +25,9 @@
 %define DATE		'12/04/17'	; BIOS release date MM/DD/YY
 %define VERSION		'0.9.4'		; BIOS version
 
-; Machine type is defined here
-; only one of the defines below needs to be uncommented
+; Machine type is defined in the Makefile
 ;%define MACHINE_XI8088			; Xi 8088
-%define MACHINE_FE2010A 		; Faraday FE2010A
+;%define MACHINE_FE2010A 		; Faraday FE2010A
 ;%define MACHINE_XT			; IBM PC/XT or highly compatible clone
 					; FIXME: not implemented yet
 
