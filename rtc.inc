@@ -244,11 +244,11 @@ rtc_init:
 	jbe	.nvram_clear_loop
 
 	mov	al,cmos_floppy		; write default floppy type
-	mov	ah,byte cs:[default_floppy]
+    cs	mov	ah,byte [default_floppy]
 	call	rtc_write
 
 	mov	al,cmos_equip		; write default equipment byte
-	mov	ah,byte cs:[default_equip]
+    cs	mov	ah,byte [default_equip]
 	call	rtc_write
 
 ; update checksum
@@ -318,7 +318,7 @@ rtc_checksum:
 	pop	ax
 	ret
 
-=========================================================================
+;=========================================================================
 ; rtc_save - Save configuration to CMOS memory
 ; Input:
 ;	CL - CMOS floppy drive type
