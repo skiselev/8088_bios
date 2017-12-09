@@ -214,12 +214,17 @@ flash_write_code:
 	xor	cx,cx
 
 .write_erase_byte1:
+	mov	al,20h			; additional delay
+					; Am29F010 is slow to erase...
+.write_erase_byte2:
+	dec	al
+	jnz	.write_erase_byte2
 	cmp	byte [bx],0FFh		; is it erased yet?
 	loopne	.write_erase_byte1
 	or	cx,cx			; CX ?= 0
 	jz	.error			; erase timed out
 
-.write_erase_byte2:
+.write_erase_byte3:
 	mov	byte [si],0AAh
 	mov	byte [di],55h
 	mov	byte [si],0A0h		; enter write mode
@@ -228,15 +233,15 @@ flash_write_code:
 	mov	byte [bx],al		; write it to flash
 	xor	cx,cx
 
-.write_erase_byte3:
+.write_erase_byte4:
 	cmp	al,byte [bx]		; wait for write operation to complete
-	loopne	.write_erase_byte3
+	loopne	.write_erase_byte4
 	or	cx,cx			; CX ?= 0
 	jz	.error			; write timed out
 
 	inc	bx
 	dec	dx
-	jnz	.write_erase_byte2
+	jnz	.write_erase_byte3
 	jmp	short .exit
 
 ; write Flash that auto erases itself and programmed sector by sector
