@@ -26,6 +26,10 @@ MACHINE=MACHINE_FE2010A
 
 # Flash ROM IC type (as supported by minipro programmer)
 FLASH_ROM=SST39SF010A
+#FLASH_ROM=SST29EE010
+#FLASH_ROM=AT29C010A
+#FLASH_ROM=W29EE011
+#FLASH_ROM="AM29F010 @DIP32"
 
 SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
