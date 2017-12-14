@@ -129,8 +129,6 @@ kbc_send_cmd:
 ; Output:
 ;	ZF == 1 - success
 ;	ZF == 0 - time out
-; Note:
-;	XXX - function should be reused in keyboard code
 ;-------------------------------------------------------------------------
 kbc_send_cmd_byte:
 	call	kbc_wait_write
@@ -173,9 +171,6 @@ kbc_wait_write:
 ;	AL = keyboard status register
 ;	ZF == 0 - data is available
 ;	ZF == 1 - time out
-; Note:
-;	XXX - if this function won't be reused anywhere else, it should
-;	      be merged with kbc_wait_aux_data
 ;-------------------------------------------------------------------------
 kbc_wait_data:
 	push	cx
