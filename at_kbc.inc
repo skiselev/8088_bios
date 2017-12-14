@@ -26,8 +26,6 @@
 ; Keyboard controller defines - ports, commands, and flags
 ;-------------------------------------------------------------------------
 kbc_data_reg	equ	60h
-kbc_input_reg	equ	60h
-kbc_output_reg	equ	60h
 ; keyboard controller return codes
 kbc_ret_test	equ	0AAh	; keyboard controller test passed
 ; keyboard controller status register and its bits
@@ -56,6 +54,8 @@ kbc_ctr_aux_dis equ	20h	; disable auxiliary interface
 kbc_ctr_xlat	equ	40h	; enable keyboard scancode translation
 ; keyboard controller input port bits
 kbc_in_display	equ	40h	; input port bit 6: 0 = MDA, 1 = CGA
+; timeout - number of retries
+kbc_ctr_timeout	equ	10000
 
 ;=========================================================================
 ; kbc_kb_send - send command to keyboard, wait for acknowledge
@@ -83,7 +83,7 @@ kbc_kb_send:
 	loopnz	.2
 
 	mov	al,ah
-	out	kbc_output_reg,al	; send command to the keyboard
+	out	kbc_data_reg,al		; send command to the keyboard
 	sti
 	xor	cx,cx
 .3:					; wait for acknowledge (set by IRQ1 ISR)
@@ -105,41 +105,21 @@ kbc_kb_send:
 ;	AL - command byte
 ;	AH = argument
 ; Output:
-;	ZF == 0 - success
-;	ZF == 1 - error
+;	ZF == 1 - success
+;	ZF == 0 - time out
 ;-------------------------------------------------------------------------
 kbc_send_cmd:
-	push	cx
-	mov	ch,al			; save command byte to CH
-	mov	cl,30			; 30 retries
-.1:
 	cli
-	mov	al,ch
-	call	kbc_send_cmd_byte
-	jnz	.exit			; time out
-	in	al,kbc_status_reg
-	test	al,kbc_stat_obf
-	jz	.3			; output buffer is empty
-	test	al,kbc_stat_aobf
-	jz	.2			; output buffer is full, not aux data
-	in	al,kbc_output_reg	; clean up auxiliary data from buffer
-%ifdef PS2_MOUSE
-	and	byte [mouse_flags_1],0F8h ; reset the mouse data index
-%endif ; PS2_MOUSE
-	jmp	.3
-.2:
-	sti
-	dec	cl
-	jnz	.1
-	jmp	.exit			; note: ZF=1
-.3:
-	mov	al,ah
-	out	kbc_input_reg,al
-	sti
-	or	cl,1			; set ZF=0
+	call	kbc_send_cmd_byte	; send the command byte
+	jnz	.exit			; ZF == 0 - time out
+	call	kbc_wait_write
+	jnz	.exit			; ZF == 0 - time out
+	xchg	al,ah
+	out	kbc_data_reg,al		; send the argument
+	xchg	al,ah			; restore AX
+
 .exit:
-	mov	al,ch			; restore AL
-	pop	cx
+	sti
 	ret
 
 ;=========================================================================
@@ -153,51 +133,62 @@ kbc_send_cmd:
 ;	XXX - function should be reused in keyboard code
 ;-------------------------------------------------------------------------
 kbc_send_cmd_byte:
-	push	cx
-	push	ax
-	xor	cx,cx
-				; wait for KBC to empty input buffer
-.1:
-	in	al,kbc_status_reg
-	test	al,kbc_stat_ibf
-	loopnz	.1
-	jnz	.exit		; time out
+	call	kbc_wait_write
+	jnz	.exit			; ZF == 0 - time out
+	out	kbc_command_reg,al	; write command
 
-	pop	ax
-	out	kbc_command_reg,al
-
-	push	ax
-	xor	cx,cx
-				; wait for KBC to empty input buffer
-.2:
-	in	al,kbc_status_reg
-	test	al,kbc_stat_ibf
-	loopnz	.2
 .exit:
-	pop	ax
-	pop	cx
 	ret
 
 ;=========================================================================
-; kbc_wait_output_full - wait for data in keyboard controller output buffer
+; kbc_wait_write - wait for keyboard controller input buffer to be empty
+; Input:
+;	none
+; Output:
+;	ZF == 1 - success
+;	ZF == 0 - time out
+;-------------------------------------------------------------------------
+kbc_wait_write:
+	push	ax
+	push	cx
+	mov	cx,kbc_ctr_timeout
+					; wait for KBC to empty input buffer
+.1:
+	push	cx
+	mov	cx,4
+	call	delay_15us		; 45-60us I/O delay
+	pop	cx
+	in	al,kbc_status_reg
+	test	al,kbc_stat_ibf
+	loopnz	.1
+	pop	cx
+	pop	ax
+	ret
+
+;=========================================================================
+; kbc_wait_data - wait for data in keyboard controller output buffer
 ; Input:
 ;	none
 ; Output:
 ;	AL = keyboard status register
 ;	ZF == 0 - data is available
-;	ZF == 1 - timed out
+;	ZF == 1 - time out
 ; Note:
 ;	XXX - if this function won't be reused anywhere else, it should
-;	      be merged with kbc_wait_aux_full
+;	      be merged with kbc_wait_aux_data
 ;-------------------------------------------------------------------------
-kbc_wait_output_full:
+kbc_wait_data:
 	push	cx
-	xor	cx,cx
+	mov	cx,kbc_ctr_timeout
+					; wait for data
 .1:
+	push	cx
+	mov	cx,4
+	call	delay_15us		; 45-60us I/O delay
+	pop	cx
 	in	al,kbc_status_reg
 	test	al,kbc_stat_obf
 	loopz	.1
-	or	cx,cx
 	pop	cx
 	ret
 
@@ -213,17 +204,16 @@ kbc_wait_output_full:
 ;-------------------------------------------------------------------------
 kbc_aux_read:
 	push	cx
-;	xor	cx,cx			; XXX too much?!
 	mov	cx,20			; retry 20 times
 .1:
-	call	kbc_wait_aux_full
+	call	kbc_wait_aux_data
 	jnz	.2			; if ZF=0 - data is available
 	loopz	.1
 	jmp	.error			; time out
 .2:
 	mov	cx,1
 	call	delay_15us
-	in	al,kbc_output_reg
+	in	al,kbc_data_reg
 	clc
 	jmp	.exit
 .error:
@@ -249,17 +239,17 @@ kbc_aux_send:
 	mov	ah,al			; store command to AH
 	mov	al,kbc_cmd_aux_snd	; write byte to auxiliary device
 	call	kbc_send_cmd
-	jz	.timeout		; kbc_send_cmd timed out
+	jnz	.timeout		; kbc_send_cmd timed out
 
 					; wait for acknowledge
 	mov	cx,10			; retry 10 times
 .1:
-	call	kbc_wait_aux_full
+	call	kbc_wait_aux_data
 	jnz	.2			; if ZF=0 - data is available
 	loop	.1
 	jmp	.timeout		; no reply - timeout
 .2:
-	in	al,kbc_output_reg
+	in	al,kbc_data_reg
 	cmp	al,0FAh			; ACK?
 	je	.ok
 	cmp	al,0FEh			; resend?
@@ -294,8 +284,8 @@ kbc_aux_send:
 ; Input:
 ;	none
 ; Output:
-;	ZF = 0 - no error
-;	ZF = 1 - error
+;	ZF = 1 - success
+;	ZF = 0 - error
 ;-------------------------------------------------------------------------
 kbc_aux_enable:
 	push	ax
@@ -312,8 +302,8 @@ kbc_aux_enable:
 ; Input:
 ;	none
 ; Output:
-;	ZF = 0 - no error
-;	ZF = 1 - error
+;	ZF = 1 - success
+;	ZF = 0 - error
 ;-------------------------------------------------------------------------
 kbc_aux_disable:
 	push	ax
@@ -326,16 +316,16 @@ kbc_aux_disable:
 	ret
 
 ;=========================================================================
-; kbc_wait_aux_full - wait for data in keyboard controller auxiliary buffer
+; kbc_wait_aux_data - wait for data in keyboard controller auxiliary buffer
 ; Input:
 ;	none
 ; Output:
 ;	AL = keyboard status register
 ;	ZF == 0 - data is available
-;	ZF == 1 - timed out
+;	ZF == 1 - time out
 ;-------------------------------------------------------------------------
-kbc_wait_aux_full:
-	call	kbc_wait_output_full
+kbc_wait_aux_data:
+	call	kbc_wait_data
 	jz	.error
 	test	al,kbc_stat_aobf
 .error:
@@ -392,9 +382,9 @@ kbc_init:
 .kbc_reset_retry:
 	mov	al,kbc_cmd_test		; send KBC self test command
 	call 	kbc_send_cmd_byte
-	call	kbc_wait_output_full	; wait for response
+	call	kbc_wait_data		; wait for response
 
-	in	al,kbc_output_reg
+	in	al,kbc_data_reg
 	cmp	al,55h			; check for success
 	loopne	.kbc_reset_retry
 	jne	kbd_ctrl_fail
@@ -404,9 +394,9 @@ kbc_init:
 .kbc_test_retry:
 	mov	al,kbc_cmd_kbd_tst	; send test keyboard interface command
 	call	kbc_send_cmd_byte
-	call	kbc_wait_output_full	; wait for test result
+	call	kbc_wait_data		; wait for test result
 
-	in	al,kbc_output_reg
+	in	al,kbc_data_reg
 	cmp	al,0			; check for success
 	loopne	.kbc_test_retry
 	jne	kbd_int_fail
@@ -416,9 +406,9 @@ kbc_init:
 
 	mov	al,kbc_cmd_rd_in	; send read input port command
 	call	kbc_send_cmd_byte
-	call	kbc_wait_output_full
+	call	kbc_wait_data
 
-	in	al,kbc_output_reg
+	in	al,kbc_data_reg
 	test	al,kbc_in_display
 	jnz	.get_disp_color		; input port bit 6 set => CGA display
 	or	word [equipment_list],equip_mono
@@ -453,8 +443,8 @@ kbc_init:
 	mov	cx,1000h
 	call	delay_15us
 
-	call	kbc_wait_output_full	; wait for response
-	in	al,kbc_output_reg	; clear the output buffer
+	call	kbc_wait_data		; wait for response
+	in	al,kbc_data_reg		; clear the output buffer
 
 
 %ifdef PS2_MOUSE
