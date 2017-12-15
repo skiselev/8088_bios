@@ -317,116 +317,6 @@ int_75:
 %endif ; SECOND_PIC
 
 ;=========================================================================
-; extension_scan - scan for BIOS extensions
-; Input:
-;	DX - start segment
-;	BX - end segment
-; Returns:
-;	DX - address for the continuation of the scan
-;	biosdseg:67h - address of the extension, 0000:0000 if not found
-;-------------------------------------------------------------------------
-extension_scan:
-	mov	word [67h],0
-	mov	word [69h],0
-.scan:
-	mov	es,dx
-    es	cmp	word [0],0AA55h		; check for signature
-	jnz	.next			; no signature, check next 2 KiB
-    es	mov	al,byte [2]		; AL = rom size in 512 byte blocks
-	mov	ah,0
-	mov	cl,5
-	shl	ax,cl			; convert size to paragraphs
-	add	dx,ax
-	add	dx,007Fh		; round DX to the nearest 2 KiB
-	and	dx,0FF80h		; (2 KiB = 128 x 16 bytes)
-	mov	cl,4
-	shl	ax,cl			; convert size to bytes
-	mov	cx,ax
-	mov	al,0
-	xor	si,si
-.checksum:
-    es	add	al,byte [si]
-	inc	si
-	loop	.checksum
-	or	al,al			; AL == 0?
-	jnz	.next			; AL not zero - bad checksum
-	mov	word [67h],3		; extension initialization offset
-	mov	word [69h],es		; extension segment
-	jmp	.exit
-.next:
-	add	dx,80h			; add 2 KiB
-	cmp	dx,bx
-	jb	.scan
-.exit:
-	ret
-
-;=========================================================================
-; ipl - Initial Program Load - try to read and execute boot sector
-;-------------------------------------------------------------------------
-ipl:
-	sti
-	xor	ax,ax
-	mov	ds,ax
-	mov	word [78h],int_1E
-	mov	word [7Ah],cs
-
-.retry:
-	mov	al,4			; try booting from floppy 4 times
-
-.fd_loop:
-	push	ax
-	mov	ah,00h			; reset disk system
-	mov	dl,00h			; drive 0
-	int	13h
-	jb	.fd_failed
-	mov	ah,08h			; get drive parameters
-	mov	dl,00h			; drive 0
-	int	13h
-	jc	.fd_failed
-	cmp	dl,00h
-	jz	.fd_failed		; jump if zero drives
-	mov	ax,0201h		; read one sector
-	xor	dx,dx			; head 0, drive 0
-	mov	es,dx			; to 0000:7C00
-	mov	bx,7C00h
-	mov	cx,0001h		; track 0, sector 1
-	int	13h
-	jc	.fd_failed
-    es	cmp	word [7DFEh],0AA55h
-	jnz	.fd_failed
-	jmp	0000h:7C00h
-
-.fd_failed:
-	pop	ax
-	dec	al
-	jnz	.fd_loop
-
-; try booting from HDD
-
-	mov	ah,0Dh			; reset hard disks
-	mov	dl,80h			; drive 80h
-	int	13h
-	jc	.hd_failed
-	mov	ax,0201h		; read one sector
-	mov	dx,0080h		; head 0, drive 80h
-	xor	bx,bx
-	mov	es,bx			; to 0000:7C00
-	mov	bx,7C00h
-	mov	cx,0001h		; track 0, sector 1
-	int	13h
-	jc	.hd_failed
-    es	cmp	word [7DFEh],0AA55h
-	jnz	.hd_failed
-	jmp	0000h:7C00h
-
-.hd_failed:
-	mov	si,msg_boot_failed
-	call	print
-	mov	ah,00h
-	int	16h
-	jmp	.retry
-
-;=========================================================================
 ; print - print ASCIIZ string to the console
 ; Input:
 ;	CS:SI - pointer to string to print
@@ -585,191 +475,6 @@ reserve_ebda:
 %endif ; EBDA_SIZE
 
 ;=========================================================================
-; detect_ram - Determine the size of installed RAM and test it
-; Input:
-;	none
-; Output:
-;	AX = RAM size
-;	CX, SI - trashed
-;-------------------------------------------------------------------------
-detect_ram:
-	mov	al,e_ram_start		; RAM scan start
-	out	post_reg,al
-
-	push	ds
-	mov	cl,6			; for SHL - converting KiB to segment
-	mov	ax,MIN_RAM_SIZE
-
-.fill_loop:
-	push	ax
-	shl	ax,cl			; convert KiB to segment (mult. by 64)
-	mov	ds,ax
-	mov	word [RAM_TEST_BLOCK-2],ax
-	pop	ax
-	add	ax,RAM_TEST_BLOCK/1024
-	cmp	ax,MAX_RAM_SIZE
-	jne	.fill_loop
-	mov	ax,MIN_RAM_SIZE
-
-.size_loop:
-	push	ax
-	shl	ax,cl			; convert KiB to segment (mult. by 64)
-	mov	ds,ax
-	cmp	word [RAM_TEST_BLOCK-2],ax
-	jne	.size_done
-	pop	ax
-	add	ax,RAM_TEST_BLOCK/1024
-	cmp	ax,MAX_RAM_SIZE
-	jnb	.size_exit
-	jmp	.size_loop
-
-.size_done:
-	pop	ax
-
-.size_exit:
-	pop	ds
-	mov	word [memory_size],ax	; store it for now... might change later
-
-; AX = detected memory size, now test the RAM
-
-	cmp	word [warm_boot],1234h	; warm boot - don't test RAM
-	je	.test_done
-
-	mov	si,msg_ram_testing
-	call	print
-	mov	ax,MIN_RAM_SIZE		; start from 32 KiB
-
-.test_loop:
-	push	ax
-	mov	ah,03h			; INT 10h, AH=03h - get cursor position
-	mov	bh,00h			; page 0
-	int	10h			; position returned in DX
-	pop	ax
-	call	print_dec
-	push	ax
-	mov	ah,02h			; INT 10h, AH=02h - set cursor position
-	mov	bh,00h			; page 0
-	int	10h
-	mov	ah,01h
-	int	16h
-	jz	.test_no_key
-	mov	ah,00h
-	int	16h			; read the keystroke
-	cmp	al,1Bh			; ESC?
-	je	.test_esc
-	cmp	ax,3B00h		; F1?
-	jne	.test_no_key
-	or	byte [post_flags],post_setup
-
-.test_no_key:
-	pop	ax
-	call	ram_test_block
-	jc	.test_error		; error in last test
-	add	ax,RAM_TEST_BLOCK/1024	; test the next block
-	cmp	ax,word [memory_size]
-	jb	.test_loop
-
-	push	ax
-	mov	al,e_ram_complete	; RAM scan complete
-	out	post_reg,al
-	pop	ax
-
-	jmp	.test_done
-
-.test_esc:
-	pop	ax
-	mov	ax,word [memory_size]
-
-	push	ax
-	mov	al,e_ram_esc		; RAM scan canceled
-	out	post_reg,al
-	pop	ax
-
-	jmp	.test_done
-
-.test_error:
-	mov	word [memory_size],ax	; store size of good memory
-	mov	si,msg_ram_error
-	call	print
-	call	print_dec
-	mov	si,msg_kib
-	call	print
-	mov	si,msg_crlf
-	call	print
-
-	push	ax
-	mov	al,e_ram_fail		; RAM scan failed
-	out	post_reg,al
-	pop	ax
-
-.test_done:
-	ret
-
-;=========================================================================
-; ram_test_block - Test a 16 KiB (RAM_TEST_BLOCK) of RAM
-; Input:
-;	AX = address of the memory to test (in KiB)
-; Output:
-;	CF = status
-;		0 = passed
-;		1 = failed
-;-------------------------------------------------------------------------
-ram_test_block:
-	push	ax
-	push	bx
-	push	cx
-	push	si
-	push	di
-	push	ds
-	push	es
-	mov	cl,6			; convert KiB to segment address
-	shl	ax,cl			; (multiply by 64)
-	mov	ds,ax
-	mov	es,ax
-	xor	si,si
-	xor	di,di
-	mov	bx,RAM_TEST_BLOCK/2	; RAM test block size in words
-	mov	ax,55AAh		; first test pattern
-	mov	cx,bx
-    rep	stosw				; store test pattern
-	mov	cx,bx			; RAM test block size
-.1:
-	lodsw
-	cmp	ax,55AAh		; compare to the test pattern
-	jne	.fail
-	loop	.1
-	xor	si,si
-	xor	di,di
-	mov	ax,0AA55h		; second test pattern
-	mov	cx,bx			; RAM test block size
-    rep stosw				; store test pattern
-	mov	cx,bx			; RAM test block size
-.2:
-	lodsw
-	cmp	ax,0AA55h		; compare to the test pattern
-	jne	.fail
-	loop	.2
-	xor	di,di
-	xor	ax,ax			; zero
-	mov	cx,bx			; RAM test block size
-    rep stosw				; zero the memory
-	clc				; test passed, clear CF
-	jmp	.exit
-
-.fail:
-	stc				; test failed, set CF
-	
-.exit:
-	pop	es
-	pop	ds
-	pop	di
-	pop	si
-	pop	cx
-	pop	bx
-	pop	ax
-	ret
-
-;=========================================================================
 ; print display type
 ;-------------------------------------------------------------------------
 print_display:
@@ -881,7 +586,7 @@ interrupt_table:
 	dw	int_dummy		; INT 1B - DOS Keyboard Break
 	dw	int_dummy		; INT 1C - User Timer Tick
 	dw	int_1D			; INT 1D - Video Parameters Table
-	dw	int_1E			; INT 1E - Floppy Paameters Table
+	dw	int_1E			; INT 1E - Floppy Parameters Table
 %ifndef MACHINE_XT
 	dw	int_1F			; INT 1F - Font For Graphics Mode
 %else ; MACHINE_XT
@@ -1604,6 +1309,302 @@ int_11:
 ;-------------------------------------------------------------------------
 
 %include	"misc.inc"
+
+;=========================================================================
+; extension_scan - scan for BIOS extensions
+; Input:
+;	DX - start segment
+;	BX - end segment
+; Returns:
+;	DX - address for the continuation of the scan
+;	biosdseg:67h - address of the extension, 0000:0000 if not found
+;-------------------------------------------------------------------------
+extension_scan:
+	mov	word [67h],0
+	mov	word [69h],0
+.scan:
+	mov	es,dx
+    es	cmp	word [0],0AA55h		; check for signature
+	jnz	.next			; no signature, check next 2 KiB
+    es	mov	al,byte [2]		; AL = rom size in 512 byte blocks
+	mov	ah,0
+	mov	cl,5
+	shl	ax,cl			; convert size to paragraphs
+	add	dx,ax
+	add	dx,007Fh		; round DX to the nearest 2 KiB
+	and	dx,0FF80h		; (2 KiB = 128 x 16 bytes)
+	mov	cl,4
+	shl	ax,cl			; convert size to bytes
+	mov	cx,ax
+	mov	al,0
+	xor	si,si
+.checksum:
+    es	add	al,byte [si]
+	inc	si
+	loop	.checksum
+	or	al,al			; AL == 0?
+	jnz	.next			; AL not zero - bad checksum
+	mov	word [67h],3		; extension initialization offset
+	mov	word [69h],es		; extension segment
+	jmp	.exit
+.next:
+	add	dx,80h			; add 2 KiB
+	cmp	dx,bx
+	jb	.scan
+.exit:
+	ret
+
+;=========================================================================
+; ipl - Initial Program Load - try to read and execute boot sector
+;-------------------------------------------------------------------------
+ipl:
+	sti
+	xor	ax,ax
+	mov	ds,ax
+	mov	es,ax			; read boot sector to segment 0
+	mov	word [78h],int_1E	; set Floppy Parameters Table location
+	mov	word [7Ah],cs
+
+.boot_retry:
+	mov	cx,4			; retry booting from floppy 4 times
+
+.fd_read_retry:
+	push	cx
+	mov	ah,00h			; reset disk system
+	mov	dl,00h			; drive 0
+	int	13h
+	jb	.fd_failed
+	mov	ah,08h			; get drive parameters
+	mov	dl,00h			; drive 0
+	int	13h
+	jc	.fd_failed
+	cmp	dl,00h
+	jz	.try_hdd		; jump if zero drives
+	mov	ax,0201h		; read one sector
+	xor	dx,dx			; head 0, drive 0
+	mov	bx,7C00h		; to 0000:7C00
+	mov	cx,0001h		; track 0, sector 1
+	int	13h
+	jc	.fd_failed
+	jmp	.check_signature	; read successful, check for boot sector
+
+.fd_failed:
+	pop	cx
+	loop	.fd_read_retry
+
+; try booting from HDD
+.try_hdd:
+	mov	ah,0Dh			; reset hard disks
+	mov	dl,80h			; drive 80h
+	int	13h
+	jc	.boot_failed
+	mov	ax,0201h		; read one sector
+	mov	dx,0080h		; head 0, drive 80h
+	mov	bx,7C00h		; to 0000:7C00
+	mov	cx,0001h		; track 0, sector 1
+	int	13h
+	jc	.boot_failed
+
+.check_signature:
+    es	cmp	word [7DFEh],0AA55h
+	jnz	.boot_failed		; boot sector signature not found
+	jmp	0000h:7C00h		; jump to the boot sector
+
+.boot_failed:
+	mov	si,msg_boot_failed
+	call	print
+	mov	ah,00h
+	int	16h
+	jmp	.boot_retry
+
+;=========================================================================
+; detect_ram - Determine the size of installed RAM and test it
+; Input:
+;	none
+; Output:
+;	AX = RAM size
+;	CX, SI - trashed
+;-------------------------------------------------------------------------
+detect_ram:
+	mov	al,e_ram_start		; RAM scan start
+	out	post_reg,al
+
+	push	ds
+	mov	cl,6			; for SHL - converting KiB to segment
+	mov	ax,MIN_RAM_SIZE
+
+.fill_loop:
+	push	ax
+	shl	ax,cl			; convert KiB to segment (mult. by 64)
+	mov	ds,ax
+	mov	word [RAM_TEST_BLOCK-2],ax
+	pop	ax
+	add	ax,RAM_TEST_BLOCK/1024
+	cmp	ax,MAX_RAM_SIZE
+	jne	.fill_loop
+	mov	ax,MIN_RAM_SIZE
+
+.size_loop:
+	push	ax
+	shl	ax,cl			; convert KiB to segment (mult. by 64)
+	mov	ds,ax
+	cmp	word [RAM_TEST_BLOCK-2],ax
+	jne	.size_done
+	pop	ax
+	add	ax,RAM_TEST_BLOCK/1024
+	cmp	ax,MAX_RAM_SIZE
+	jnb	.size_exit
+	jmp	.size_loop
+
+.size_done:
+	pop	ax
+
+.size_exit:
+	pop	ds
+	mov	word [memory_size],ax	; store it for now... might change later
+
+; AX = detected memory size, now test the RAM
+
+	cmp	word [warm_boot],1234h	; warm boot - don't test RAM
+	je	.test_done
+
+	mov	si,msg_ram_testing
+	call	print
+	mov	ax,MIN_RAM_SIZE		; start from 32 KiB
+
+.test_loop:
+	push	ax
+	mov	ah,03h			; INT 10h, AH=03h - get cursor position
+	mov	bh,00h			; page 0
+	int	10h			; position returned in DX
+	pop	ax
+	call	print_dec
+	push	ax
+	mov	ah,02h			; INT 10h, AH=02h - set cursor position
+	mov	bh,00h			; page 0
+	int	10h
+	mov	ah,01h
+	int	16h
+	jz	.test_no_key
+	mov	ah,00h
+	int	16h			; read the keystroke
+	cmp	al,1Bh			; ESC?
+	je	.test_esc
+	cmp	ax,3B00h		; F1?
+	jne	.test_no_key
+	or	byte [post_flags],post_setup
+
+.test_no_key:
+	pop	ax
+	call	ram_test_block
+	jc	.test_error		; error in last test
+	add	ax,RAM_TEST_BLOCK/1024	; test the next block
+	cmp	ax,word [memory_size]
+	jb	.test_loop
+
+	push	ax
+	mov	al,e_ram_complete	; RAM scan complete
+	out	post_reg,al
+	pop	ax
+
+	jmp	.test_done
+
+.test_esc:
+	pop	ax
+	mov	ax,word [memory_size]
+
+	push	ax
+	mov	al,e_ram_esc		; RAM scan canceled
+	out	post_reg,al
+	pop	ax
+
+	jmp	.test_done
+
+.test_error:
+	mov	word [memory_size],ax	; store size of good memory
+	mov	si,msg_ram_error
+	call	print
+	call	print_dec
+	mov	si,msg_kib
+	call	print
+	mov	si,msg_crlf
+	call	print
+
+	push	ax
+	mov	al,e_ram_fail		; RAM scan failed
+	out	post_reg,al
+	pop	ax
+
+.test_done:
+	ret
+
+;=========================================================================
+; ram_test_block - Test a 16 KiB (RAM_TEST_BLOCK) of RAM
+; Input:
+;	AX = address of the memory to test (in KiB)
+; Output:
+;	CF = status
+;		0 = passed
+;		1 = failed
+;-------------------------------------------------------------------------
+ram_test_block:
+	push	ax
+	push	bx
+	push	cx
+	push	si
+	push	di
+	push	ds
+	push	es
+	mov	cl,6			; convert KiB to segment address
+	shl	ax,cl			; (multiply by 64)
+	mov	ds,ax
+	mov	es,ax
+	xor	si,si
+	xor	di,di
+	mov	bx,RAM_TEST_BLOCK/2	; RAM test block size in words
+	mov	ax,55AAh		; first test pattern
+	mov	cx,bx
+    rep	stosw				; store test pattern
+	mov	cx,bx			; RAM test block size
+.1:
+	lodsw
+	cmp	ax,55AAh		; compare to the test pattern
+	jne	.fail
+	loop	.1
+	xor	si,si
+	xor	di,di
+	mov	ax,0AA55h		; second test pattern
+	mov	cx,bx			; RAM test block size
+    rep stosw				; store test pattern
+	mov	cx,bx			; RAM test block size
+.2:
+	lodsw
+	cmp	ax,0AA55h		; compare to the test pattern
+	jne	.fail
+	loop	.2
+	xor	di,di
+	xor	ax,ax			; zero
+	mov	cx,bx			; RAM test block size
+    rep stosw				; zero the memory
+	clc				; test passed, clear CF
+	jmp	.exit
+
+.fail:
+	stc				; test failed, set CF
+	
+.exit:
+	pop	es
+	pop	ds
+	pop	di
+	pop	si
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
+
+;=========================================================================
+; Includes with fixed entry points (for IBM compatibility)
+;-------------------------------------------------------------------------
 %include	"fnt00-7F.inc"
 %include	"time2.inc"
 
