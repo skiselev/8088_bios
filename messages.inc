@@ -104,10 +104,12 @@ msg_set_help	db	0Dh, 0Ah
 		db	'q - Exit without saving changes', 0Dh, 0Ah
 		db	'h - Show this help', 0Dh, 0Ah, 00h
 msg_set_prompt	db	0Dh, 0Ah, 'Enter command (h for help): ', 00h
+%ifdef AT_RTC
 msg_set_time	db	'Enter time (hh:mm:ss): ', 00h
 msg_set_date	db	'Enter date (YYYY-MM-DD): ', 00h
 msg_time_inval	db	'ERROR: Invalid time.', 0Dh, 0Ah, 00h
 msg_date_inval	db	'ERROR: Invalid date.', 0Dh, 0Ah, 00h
+%endif ; AT_RTC
 msg_set_fd_help	db	0Dh, 0Ah
 		db	'Floppy drive types:', 0Dh, 0Ah
 		db	'0 - Not installed   3 - 720 KB, 3.5"', 0Dh, 0Ah
