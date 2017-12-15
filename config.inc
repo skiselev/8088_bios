@@ -35,6 +35,7 @@
 %ifdef MACHINE_XI8088
 %define	START		8000h		; BIOS starts at offset 8000h
 %define MODEL_BYTE	0FCh		; Pretend it is an IBM PC/AT
+%define BIOS_SETUP			; Include BIOS setup utility
 %define AT_RTC				; Has AT-compatible RTC
 %define AT_DELAY			; Use refresh bit of port 61h for delays
 %define SECOND_PIC			; Has two PICs (AT-style)
@@ -46,37 +47,26 @@
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %define EBDA_SIZE	1		; 1KB reserved for EBDA
 					; EBDA is required for PS/2 aux support
-%define SLOW_FLOPPY			; turn off turbo during floppy I/O
 %endif ; MACHINE_XI8088
 
 ; Settings for FE2010A
 %ifdef MACHINE_FE2010A
 %define	START		0C000h		; BIOS starts at offset 0C000h
 %define MODEL_BYTE	0FEh		; IBM PC/XT
-;%define SECOND_PIC			; AT-compatible system, two PICs
-;%define PS2_MOUSE			; Enable PS/2 auxiliary device support
-%define DISABLE_KBD_DURING_INTERRUPTS	; Don't disable keyboard in INT1
+%define BIOS_SETUP			; Include BIOS setup utility
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
-;%define EBDA_SIZE	1		; 1KB reserved for EBDA
-					; EBDA is required for PS/2 aux support
-%define SLOW_FLOPPY			; turn off turbo during floppy I/O
 %endif ; MACHINE_FE2010A
 
 ; Settings for IBM PC/XT
 %ifdef MACHINE_XT
-%define	START		0E000h		; BIOS starts at offset 0E000h
+;%define	START		0E000h		; BIOS starts at offset 0E000h
+%define	START		0C000h		; FIXME: more ROM for development
 %define MODEL_BYTE	0FEh		; IBM PC/XT
-;%define SECOND_PIC			; AT-compatible system, two PICs
-;%define PS2_MOUSE			; Enable PS/2 auxiliary device support
-%define DISABLE_KBD_DURING_INTERRUPTS	; Don't disable keyboard in INT1
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
-;%define EBDA_SIZE	1		; 1KB reserved for EBDA
-					; EBDA is required for PS/2 aux support
-%define SLOW_FLOPPY			; turn off turbo during floppy I/O
 %endif ; MACHINE_FE2010A
 
 

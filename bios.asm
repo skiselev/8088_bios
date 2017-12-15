@@ -251,12 +251,13 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 ;%include	"inttrace.inc"		; XXX
 %ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
-%else ; AT_RTC
-%ifndef MACHINE_XT
-%include	"flash.inc"		; Flash ROM configuration functions
-%endif ; MACHINE_XT
 %endif ; AT_RTC
+%ifdef MACHINE_FE2010A
+%include	"flash.inc"		; Flash ROM configuration functions
+%endif ; MACHINE_FE2010A
+%ifdef BIOS_SETUP
 %include	"setup.inc"		; NVRAM setup functions
+%endif ; BIOS_SETUP
 %include	"delay.inc"		; delay function
 %include	"time1.inc"		; time services
 %include	"floppy1.inc"		; floppy services

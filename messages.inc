@@ -86,9 +86,12 @@ msg_no_basic    db      'No ROM BASIC', 0Dh, 0Ah, 0
 msg_rom_found   db      'Found BIOS extension ROM at ', 0
 msg_rom_init	db	'0, initializing...', 0Dh, 0Ah, 0
 msg_boot	db      'Booting OS...', 0Dh, 0Ah, 0
+%ifdef AT_RTC
 msg_rtc_bad	db	'ERROR: RTC battery is bad', 0Dh, 0Ah, 00h
 msg_rtc_sum	db	'ERROR: NVRAM checksum is invalid, '
 		db	'loading default values to NVRAM', 0Dh, 0Ah, 00h
+%endif ; AT_RTC
+%ifdef BIOS_SETUP
 msg_setup	db	'Press F1 to run BIOS setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
 msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the BIOS setup utility', 00h
 msg_set_help	db	0Dh, 0Ah
@@ -125,6 +128,7 @@ msg_saving	db	0Dh, 0Ah, 'Saving configuration to Flash ROM... ', 00h
 msg_save_ok	db	'OK', 0Dh, 0Ah, 00h
 msg_save_error	db	'ERROR', 0Dh, 0Ah, 00h
 %endif ; MACHINE FE2010A
+%endif ; BIOS_SETUP
 tbl_floppy	dw	msg_none
 		dw	msg_floppy_360
 		dw	msg_floppy_1200
