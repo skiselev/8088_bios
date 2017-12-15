@@ -47,8 +47,9 @@ e_ext_init_ok	equ	42h		; BIOS extension ROM initialized
 e_ext_complete	equ	43h		; BIOS extension scan complete
 e_cpu_fail	equ	52h		; CPU test failed
 e_low_ram_fail	equ	54h		; low RAM test failed
-e_kbd_ctrl_fail	equ	60h		; KBD test - controller selftest failed
-e_kbd_key_fail	equ	61h		; KBD test - echo test failed
-e_kbd_timeout	equ	62h		; KBD timeout
-e_kbd_int_fail	equ	63h		; KBD test - interface test failed
+e_kbc_flsh_fail	equ	60h		; unable to flush KBC output buffer
+e_kbc_test_fail	equ	61h		; keyboard controller self test failed
+e_kbd_key_fail	equ	62h		; KBD test - echo test failed
+e_kbd_timeout	equ	63h		; KBD timeout
+e_kbd_int_fail	equ	64h		; KBD test - interface test failed
 e_ram_fail	equ	80h		; RAM test failed
