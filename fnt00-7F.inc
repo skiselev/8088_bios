@@ -21,7 +21,7 @@
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 ;=========================================================================
-	setloc	0FA6Eh				; IBM graphics char set entry
+	setloc	0FA6Eh			; IBM graphics char set entry
 gfx_font:
 	db	 00h, 00h,   00h,  00h,  00h,  00h,  00h,  00h
 	db	 7Eh, 81h,  0A5h,  81h, 0BDh,  99h,  81h,  7Eh
