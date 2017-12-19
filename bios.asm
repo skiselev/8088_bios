@@ -1128,16 +1128,15 @@ int_02:
 .1:
 	mov	ah,0h
 	int	16h
-	cmp	al,'i'			; exit from NMI
-	je	.exit			;  ~IOCHK remains disabled
-	cmp	al,'I'
-	je	.exit
+	or	al,20h			; convert to lower case
+	cmp	al,'d'
+	je	.exit			; leave NMIs disabled and exit
+	cmp	al,'i'
+	je	.ignore			; enable NMIs and exit
 	cmp	al,'r'
 	je	cold_start
-	cmp	al,'R'
-	je	cold_start
 	jmp	.1
-.exit:
+.ignore:
 %ifdef AT_RTC
 	mov	al,0Dh | nmi_enable
 	call	rtc_read		; enable NMI
@@ -1145,11 +1144,12 @@ int_02:
 	mov	al,nmi_enable
 	out	nmi_mask_reg,al
 %endif ; AT_RTC
+.exit:
 	pop	ax
 	iret
 
 msg_iochk_nmi:
-	db	"IOCHK NMI detected. Type 'i' to ignore IOCHK NMIs, or 'r' to reboot."
+	db	"IOCHK NMI detected. Type 'i' to ignore, 'd' to disable NMIs, or 'r' to reboot."
 	db	0Dh, 0Ah, 00h
 
 ;=========================================================================
