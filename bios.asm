@@ -512,46 +512,6 @@ print_mouse:
 
 %endif ; PS2_MOUSE
 
-;=========================================================================
-; detect_rom_ext - Look for BIOS extensions, initialize if found
-;-------------------------------------------------------------------------
-
-detect_rom_ext:
-	mov	al,e_ext_start		; ROM extension scan start
-	out	post_reg,al
-
-	mov	dx,0C800h
-	mov	bx,0F800h
-
-.ext_scan_loop:
-	call	extension_scan
-	cmp	word [67h],0
-	jz	.ext_scan_done		; No ROM extension found
-	mov	al,e_ext_detect		; ROM extension found
-	out	post_reg,al
-	mov	si,msg_rom_found
-	call	print
-	mov	ax,word [69h]		; ROM extension's segment
-	call	print_hex
-	mov	si,msg_rom_init
-	call	print
-	push	bx
-	push	dx
-	call	far [67h]
-	mov	ax,biosdseg		; DS = BIOS data area
-	mov	ds,ax
-	mov	al,e_ext_init_ok	; ROM extension initialized
-	out	post_reg,al
-	pop	dx
-	pop	bx
-	jmp	.ext_scan_loop
-
-.ext_scan_done:
-	mov	al,e_ext_complete	; ROM extension scan complete
-	out	post_reg,al
-
-	ret
-
 ;=========================================================================	
 ; interrupt_table - offsets only (BIOS segment is always 0F000h)
 ;-------------------------------------------------------------------------
@@ -1269,6 +1229,46 @@ config_table:
 %include	"floppy2.inc"		; INT 13
 %include	"printer2.inc"		; INT 17
 %include	"video.inc"		; INT 10
+
+;=========================================================================
+; detect_rom_ext - Look for BIOS extensions, initialize if found
+;-------------------------------------------------------------------------
+
+detect_rom_ext:
+	mov	al,e_ext_start		; ROM extension scan start
+	out	post_reg,al
+
+	mov	dx,0C800h
+	mov	bx,0F800h
+
+.ext_scan_loop:
+	call	extension_scan
+	cmp	word [67h],0
+	jz	.ext_scan_done		; No ROM extension found
+	mov	al,e_ext_detect		; ROM extension found
+	out	post_reg,al
+	mov	si,msg_rom_found
+	call	print
+	mov	ax,word [69h]		; ROM extension's segment
+	call	print_hex
+	mov	si,msg_rom_init
+	call	print
+	push	bx
+	push	dx
+	call	far [67h]
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
+	mov	al,e_ext_init_ok	; ROM extension initialized
+	out	post_reg,al
+	pop	dx
+	pop	bx
+	jmp	.ext_scan_loop
+
+.ext_scan_done:
+	mov	al,e_ext_complete	; ROM extension scan complete
+	out	post_reg,al
+
+	ret
 
 ;=========================================================================
 ; int_12 - Get memory size
