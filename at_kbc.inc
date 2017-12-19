@@ -267,10 +267,16 @@ kbc_aux_send:
 ;-------------------------------------------------------------------------
 kbc_aux_enable:
 	push	ax
-	mov	al,kbc_cmd_wr_ctr	; write controller command byte
-	mov	ah,01000111b		; pc compatible, enable aux
-					; enable keyboard, enable aux obf
-					; interrupt, enable obf interrupt
+	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
+	mov	ah,01001111b
+;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
+;                  ||||||`-- 1 == enable OBF interrupt for aux port (IRQ12)
+;		   |||||`-- 1 == POST complete
+;                  ||||`-- 1 == disable the keyboard inhibit
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 0 == enable mouse interface
+;		   |`-- 1 == enable scancode translation
+;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
 	pop	ax
 	ret
@@ -285,10 +291,16 @@ kbc_aux_enable:
 ;-------------------------------------------------------------------------
 kbc_aux_disable:
 	push	ax
-	mov	al,kbc_cmd_wr_ctr	; write controller command byte
-	mov	ah,01100101b		; pc compatible, disable aux
-					; enable keyboard, disable aux obf
-					; interrupt, enable obf interrupt
+	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
+	mov	ah,01101101b
+;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
+;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   |||||`-- 1 == POST complete
+;                  ||||`-- 1 == disable the keyboard inhibit
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 1 == disable mouse interface
+;		   |`-- 1 == enable scancode translation
+;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
 	pop	ax
 	ret
@@ -312,6 +324,37 @@ kbc_wait_aux_read:
 %endif ; PS2_MOUSE
 
 ;=========================================================================
+; kbc_flush - flush all data from i8042 buffers
+; Input:
+;	none
+; Output:
+;	CF = 0 - flushed successfully
+;	CF = 1 - can't flush after 20 retries, probably no hardware
+;-------------------------------------------------------------------------
+kbc_flush:
+	push	ax
+	push	cx
+	mov	cx,20			; maximal KBC buffer size
+.flush_next_byte:
+	in	al,kbc_status_reg
+	test	al,kbc_stat_obf
+	jz	.flushed
+	push	cx
+	mov	cx,4
+	call	delay_15us		; 45-60us I/O delay
+	pop	cx
+	in	al,kbc_data_reg
+	loop	.flush_next_byte
+	stc				; unable to flush it
+	jmp	.exit
+.flushed:
+	clc
+.exit:
+	pop	cx
+	pop	ax
+	ret
+
+;=========================================================================
 ; kbc_init - Initialize keyboard controller
 ;-------------------------------------------------------------------------
 kbc_init:
@@ -322,43 +365,51 @@ kbc_init:
 ;-------------------------------------------------------------------------
 ; flush the data from keyboard controller output buffer
 
-	mov	cx,kbc_ctr_timeout
-.kbc_flush_retry:			; flush the data from KBC output buffer
-	push	cx
-	mov	cx,4
-	call	delay_15us		; 45-60us I/O delay
-	pop	cx
-	in	al,kbc_status_reg
-	mov	ah,al
-	test	ah,kbc_stat_obf		; KBC output buffer full?
-	jz	.kbc_flush_obf
-	in	al,kbc_data_reg		; flush a byte from KBC output buffer
-.kbc_flush_obf:
-	test	ah,kbc_stat_ibf		; KBC input buffer full?
-	loopnz	.kbc_flush_retry	; retry if input buffer is still full
-	jnz	kbc_flush_fail
+	call	kbc_flush		; flush all data from KBC
+	jc	kbc_flush_fail
+
+;-------------------------------------------------------------------------
+; set initial keyboard controller configuration
+
+	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
+	mov	ah,01101000b
+;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
+;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   |||||`-- 0 == power on / POST in progress
+;                  ||||`-- 1 == disable the keyboard inhibit
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 1 == disable mouse interface
+;		   |`-- 0 == disable scancode translation
+;		   `-- 0 == reserved, must be 0
+	call	kbc_send_cmd
 	
 ;-------------------------------------------------------------------------
 ; run keyboard controller self-test
 
+	mov	cx,10			; try 10 times
+
+.kbc_test_retry:
 	mov	al,kbc_cmd_test		; send KBC self test command
 	call 	kbc_send_cmd_byte
-; FIXME: need to wait for IBF empty? (meaning KBC had accepted the command)
 	call	kbc_wait_read		; wait for response
 	in	al,kbc_data_reg
 	cmp	al,55h			; check for success
+	loopne	.kbc_test_retry
 	jne	kbc_test_fail
 
 ;-------------------------------------------------------------------------
 ; run keyboard interface test
 
-.kbc_test_retry:
+	mov	cx,10			; try 10 times
+
+.kbd_test_retry:
 	mov	al,kbc_cmd_kbd_tst	; send test keyboard interface command
 	call	kbc_send_cmd_byte
 	call	kbc_wait_read		; wait for test result
 	in	al,kbc_data_reg
 	cmp	al,0			; check for success
-	jne	kbd_int_fail
+	loopne	.kbd_test_retry
+	jne	kbd_init_fail
 
 ;-------------------------------------------------------------------------
 ; read display type and set equipment bits accordingly
@@ -386,18 +437,20 @@ kbc_init:
 	call	kbc_send_cmd_byte
 
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
-	mov	ah,01101001B		; Bit 7 = 0 - reserved
-					; Bit 6 = 1 - IBM PC scancodes
-					; Bit 5 = 1 - IBM PC / no party check
-					; Bit 4 = 0 - Enable keyboard
-					; Bit 3 = 1 - Disable inhibit
-					; Bit 2 = 0 - system flag = 0
-					; Bit 1 = 0 - reserved
-					; Bit 0 = 1 - enable OBF interrupt
+	mov	ah,01101101b
+;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
+;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   |||||`-- 1 == POST complete
+;                  ||||`-- 1 == disable the keyboard inhibit
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 1 == disable mouse interface
+;		   |`-- 1 == enable scancode translation
+;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
 
+	call	kbc_wait_write		; wait for KBC to empty input buffer
 	mov	al,0FFh			; send keyboard reset command
-	call	kbc_send_cmd_byte
+	out	kbc_data_reg,al		; send command to the keyboard
 
 	mov	cx,1000h
 	call	delay_15us
@@ -451,9 +504,9 @@ kbc_test_fail:
 	hlt
 	jmp	.1
 
-kbd_int_fail:
+kbd_init_fail:
 	and	al,0Fh
-	add	al,e_kbd_int_fail
+	add	al,e_kbd_init_fail
 	out	post_reg,al
 .1:
 	hlt
