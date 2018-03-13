@@ -1361,7 +1361,6 @@ ipl:
 	sti
 	xor	ax,ax
 	mov	ds,ax
-	mov	es,ax			; read boot sector to segment 0
 	mov	word [78h],int_1E	; set Floppy Parameters Table location
 	mov	word [7Ah],cs
 
@@ -1382,7 +1381,8 @@ ipl:
 	jz	.try_hdd		; jump if zero drives
 	mov	ax,0201h		; read one sector
 	xor	dx,dx			; head 0, drive 0
-	mov	bx,7C00h		; to 0000:7C00
+	mov	es,dx			; to 0000:7C00
+	mov	bx,7C00h
 	mov	cx,0001h		; track 0, sector 1
 	int	13h
 	jc	.fd_failed
@@ -1400,8 +1400,10 @@ ipl:
 	jc	.boot_failed
 	mov	ax,0201h		; read one sector
 	mov	dx,0080h		; head 0, drive 80h
+	xor	cx,cx
+	mov	es,cx
 	mov	bx,7C00h		; to 0000:7C00
-	mov	cx,0001h		; track 0, sector 1
+	inc	cx			; CX == 0001h; track 0, sector 1
 	int	13h
 	jc	.boot_failed
 
