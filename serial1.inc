@@ -108,7 +108,7 @@ int_14_fn02:
 ;	BH = mask to wait for in MSR (Modem Status Register)
 ;	BL = mask to wait for in LSR (Line Status Register)
 ;	DX = UART base address
-;	SI = serial port number
+;	SI = address of the timeout value (in seconds)
 ; Output:
 ;	AH = line status
 ;	ZF = 0 - timeout
@@ -149,8 +149,6 @@ uart_wait_status:
 ;-------------------------------------------------------------------------
 wait_for_port:
 
-%ifdef AT_DELAY
-
 	push	bx
 	mov	bl,byte [SI]		; get the timeout value in seconds
 
@@ -164,6 +162,8 @@ wait_for_port:
 	cmp	al,bh			; required bits are set?
 	je	.exit
 
+%ifdef AT_DELAY
+
 .zero_loop:
 	in	al,ppi_pb_reg
 	test	al,refresh_flag
@@ -173,6 +173,17 @@ wait_for_port:
 	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
+
+%else ; AT_DELAY
+
+	; wait 30.17 us (Intel 8088 CPU running on 4.77 MHz)
+        mov     al,8
+.delay_loop:
+        dec     al
+        jnz     .delay_loop
+
+%endif ; AT_DELAY
+
 	loop	.loop_inner
 
 	dec	bl
@@ -181,11 +192,6 @@ wait_for_port:
 
 .exit:
 	pop	bx
-
-%else ; AT_DELAY
-	; FIXME: Implement check for XT
-%endif ; AT_DELAY
-
 	ret
 
 ;=========================================================================

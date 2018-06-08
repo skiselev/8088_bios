@@ -1591,6 +1591,8 @@ fdc_wait_irq:
 .1:
 	test	byte [bx],fdc_irq_flag	; test IRQ flag
 	jnz	.exit			; exit loop if interrupt had occurred
+
+	; wait 38.13 us (Intel 8088 CPU running on 4.77 MHz)
 	mov	al,10
 
 .2:
@@ -1657,6 +1659,8 @@ fdc_wait_ready:
 	in	al,dx			; read I/O port
 	test	al,fdc_stat_ready
 	jnz	.exit			; exit loop if bit(s) set to 1
+
+	; wait 38.13 us (Intel 8088 CPU running on 4.77 MHz)
 	mov	al,10
 
 .2:
