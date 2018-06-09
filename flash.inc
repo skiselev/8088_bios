@@ -25,6 +25,7 @@
 config_segment	equ	0000h
 config_space	equ	8000h		; offset of the configuration
 flash_floppy	equ	config_space
+flash_checksum	equ	config_space+0Eh ; 16-bit checksum
 temp_segment	equ	07C0h		; segment for flash writing code
 flash_write	equ	0		; offset for flash writing code
 
@@ -37,11 +38,33 @@ flash_write	equ	0		; offset for flash writing code
 ;	AL = floppy drive type
 ;-------------------------------------------------------------------------
 flash_get_floppy:
-    cs	mov	al,byte [flash_floppy]
-	cmp	al,0FFh			; config area erased in flash?
-	jne	.exit
+	push	cx
+	push	dx
+	push	di
+
+	xor	dx,dx
+	mov	di,config_space
+	mov	cx,000Eh
+
+.checksum_loop:				; calculate the 16-bit checksum
+    cs	add	dl,byte [di]
+	adc	dh,0
+	inc	di
+	loop	.checksum_loop
+
+    cs	cmp	word [flash_checksum],dx ; compare checksum to the stored value
+	jne	.checksum_error
+
+    cs	mov	al,byte [flash_floppy]	; checksum is ok, return floppy type
+	jmp	.exit
+
+.checksum_error:
     cs  mov	al,byte [default_floppy] ; load the default configuration
+
 .exit:
+	pop	di
+	pop	dx
+	pop	cx
 	ret
 
 ;=========================================================================
@@ -88,6 +111,25 @@ flash_save:
 	pop	cx			; load the original CX value
 	push	cx
     es  mov	byte [flash_floppy],cl	; set new floppy drive type
+
+	mov	al,00h			; zero the rest of
+	mov	di,config_space+1	; the configuration space
+	mov	cx,000Dh
+
+	cld
+    rep	stosb
+
+	xor	dx,dx
+	mov	di,config_space
+	mov	cx,000Eh
+
+.checksum_loop:				; calculate the 16-bit checksum
+    es	add	dl,byte [di]
+	adc	dh,0
+	inc	di
+	loop	.checksum_loop
+    es	mov	word [flash_checksum],dx ; store it to the configuration space
+
 	call	temp_segment:flash_write
 
 	jc	.error
