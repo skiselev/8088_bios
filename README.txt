@@ -16,6 +16,12 @@ TODO:
 - Xi 8088: Debug mouse issue with Intel 8242
 - Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
 
+Changes - Version 0.9.5
+-----------------------
+- Micro 8088: Fix reading serial port status
+- Micro 8088: Implement checksum for the Flash ROM configuration space
+- Fix booting without XTIDE Universal BIOS
+
 Changes - Version 0.9.4
 -----------------------
 - Micro 8088: Implement BIOS setup utility including saving configuration to

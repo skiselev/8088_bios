@@ -22,8 +22,8 @@
 ;
 ;=========================================================================
 
-%define DATE		'12/07/17'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.4'		; BIOS version
+%define DATE		'06/09/18'	; BIOS release date MM/DD/YY
+%define VERSION		'0.9.5'		; BIOS version
 
 ; Machine type is defined in the Makefile
 ;%define MACHINE_XI8088			; Xi 8088
