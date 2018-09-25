@@ -41,7 +41,7 @@ uart_lcr_peven	equ	10h		; LCR - parity even bit
 
 uart_mcr_reg	equ	4		; UART Modem Control Register
 uart_mcr_dtr	equ	1		; MCR - data terminal ready (DTR)
-uart_mcr_rts	equ	3		; MCR - request to send (RTS)
+uart_mcr_rts	equ	2		; MCR - request to send (RTS)
 
 uart_lsr_reg	equ	5		; UART Line Status Register
 uart_lsr_dr	equ	1		; LSR - data ready (DR)
@@ -66,9 +66,12 @@ num_serial	equ	4		; number of serial ports
 ;-------------------------------------------------------------------------
 int_14_fn01:
 	push	ax
-	mov	al,(uart_mcr_dtr | uart_mcr_rts) ; indicate DTR and RTS
-	mov	bh,(uart_msr_dsr | uart_msr_cts) ; wait for DSR and CTS in MSR
-	mov	bl,uart_lsr_thre	; and for THR empty in LSR
+	mov	al,(uart_mcr_dtr | uart_mcr_rts) ; set DTR and RTS in MCR:
+					; ready to communicate, request to send
+	mov	bh,(uart_msr_dsr | uart_msr_cts) ; wait for DSR and CTS in MSR:
+					; ready to communicate, clear to send
+	mov	bl,uart_lsr_thre	; and for THRE in LSR:
+					; UART is ready to accept new character
 	call	uart_wait_status
 	pop	cx
 	jnz	int_14_timeout		; timeout, original AL is in CL
@@ -92,9 +95,12 @@ int_14_timeout:
 ;-------------------------------------------------------------------------
 int_14_fn02:
 	push	ax
-	mov	al,(uart_mcr_dtr | uart_mcr_rts) ; indicate DTR and RTS
-	mov	bh,uart_msr_dsr		; wait for DSR in MSR
-	mov	bl,uart_lsr_dr		; and for DT in LSR
+	mov	al,uart_mcr_dtr		; set DTR in MCR:
+					; ready to communicate
+	mov	bh,uart_msr_dsr		; wait for DSR in MSR:
+					; ready to communicate
+	mov	bl,uart_lsr_dr		; and for DT in LSR:
+					; UART has received a character
 	call	uart_wait_status
 	pop	cx
 	jnz	int_14_timeout
