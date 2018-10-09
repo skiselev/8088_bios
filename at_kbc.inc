@@ -101,16 +101,29 @@ kbc_kb_send:
 ;	ZF == 0 - time out
 ;-------------------------------------------------------------------------
 kbc_send_cmd:
+	push	ax
 	cli
 	call	kbc_send_cmd_byte	; send the command byte
 	jnz	.exit			; ZF == 0 - time out
 	call	kbc_wait_write
 	jnz	.exit			; ZF == 0 - time out
-	xchg	al,ah
+	in	al,kbc_status_reg
+	test	al,kbc_stat_obf
+	jz	.send_argument		; output buffer is empty, send argument
+%ifdef PS2_MOUSE
+	test	al,kbc_stat_aobf
+	jz	.flush_output		; not an auxilairy data
+	and	byte [mouse_flags_1],0F8h ; reset the mouse data index
+%endif ; PS2_MOUSE
+.flush_output:
+	in	al,kbc_output_reg	; clean up data from buffer
+.send_argument:
+	mov	al,ah
 	out	kbc_data_reg,al		; send the argument
-	xchg	al,ah			; restore AX
-
+	or	al,1			; set ZF=0
 .exit:
+	sti
+	pop	ax
 	ret
 
 ;=========================================================================
