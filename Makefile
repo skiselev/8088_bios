@@ -18,9 +18,9 @@
 
 # Target machine type is defined below
 # Xi 8088 Board
-#MACHINE=MACHINE_XI8088
+MACHINE=MACHINE_XI8088
 # Micro 8088 Board
-MACHINE=MACHINE_FE2010A
+#MACHINE=MACHINE_FE2010A
 # IBM PC/XT or highly compatible board (FIXME: not implemented yet)
 #MACHINE=MACHINE_XT
 
