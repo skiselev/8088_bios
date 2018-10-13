@@ -55,7 +55,7 @@ kbc_ctr_xlat	equ	40h	; enable keyboard scancode translation
 ; keyboard controller input port bits
 kbc_in_display	equ	40h	; input port bit 6: 0 = MDA, 1 = CGA
 ; timeout - number of retries
-kbc_ctr_timeout	equ	10000
+kbc_ctr_timeout        equ     20000
 ; keyboard and auxiliary device commands
 kbd_cmd_reset	equ	0FFh	; keyboard reset and self-test command
 aux_cmd_reset	equ	0FFh	; auxiliary device reset and self-test command
@@ -480,9 +480,8 @@ kbc_init:
 	mov	al,kbc_cmd_kbd_ena	; send enable keyboard interface cmd
 	call	kbc_send_cmd_byte
 
-	call	kbc_wait_write		; wait for KBC to empty input buffer
 	mov	al,kbd_cmd_reset	; send keyboard reset command
-	out	kbc_data_reg,al		; send command to the keyboard
+	call	kbc_send_cmd_byte
 
 	mov	cx,1000h
 	call	delay_15us
@@ -511,19 +510,11 @@ kbc_init:
 	loopz	.mouse_reset_retry
 	jmp	.no_mouse
 .mouse_reset_ok:
-; FIXME - is the loop needed here?
-	mov	cx,10			; try 10 times
-.mouse_response_loop:
 	call	kbc_aux_read
 	jc	.no_mouse
 	cmp	al,0AAh			; Basic Assurance Test successful?
-	je	.mouse_test_ok
-	loop	.mouse_response_loop	; read next byte until 0AAh completion
-					; code in case mouse sent garbage
-	jmp	.no_mouse
-.mouse_test_ok:
-	call	kbc_aux_read		; read and throw away device ID
-					; FIXME - check that device ID is 0?
+	jne	.no_mouse
+	call	kbc_aux_read
 	jc	.no_mouse
 ; mouse reset successful, update equipment word accordingly
 	or      word [equipment_list],equip_mouse
