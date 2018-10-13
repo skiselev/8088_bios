@@ -158,6 +158,7 @@ kbc_send_cmd_byte:
 	call	kbc_wait_write
 	jc	.timeout		; CF == 1 - timeout
 	out	kbc_command_reg,al	; write command
+; FIXME - do we need to wait for KBC here?
 
 .timeout:
 	ret
@@ -310,12 +311,12 @@ kbc_aux_enable:
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
 	mov	ah,01000111b
 ;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
-;                  ||||||`-- 1 == enable OBF interrupt for aux port (IRQ12)
+;		   ||||||`-- 1 == enable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 1 == POST complete
-;                  ||||`-- 0 == reserved, must be 0
-;                  |||`-- 0 == enable keyboard interface
+;		   ||||`-- 0 == reserved, must be 0
+;		   |||`-- 0 == enable keyboard interface
 ;		   ||`-- 0 == enable auxiliary interface
-;		   |`-- 1 == enable scan code translation to IBM PC scancodes
+;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
 	pop	ax
@@ -334,10 +335,10 @@ kbc_aux_disable:
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
 	mov	ah,01100101b
 ;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
-;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 1 == POST complete
-;                  ||||`-- 0 == reserved, must be 0
-;                  |||`-- 0 == enable keyboard interface
+;		   ||||`-- 0 == reserved, must be 0
+;		   |||`-- 0 == enable keyboard interface
 ;		   ||`-- 1 == disable auxiliary interface
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
@@ -417,10 +418,10 @@ kbc_init:
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
 	mov	ah,01110000b
 ;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
-;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 0 == power on / POST in progress
-;                  ||||`-- 0 == reserved, must be 0
-;                  |||`-- 1 == disable keyboard interface
+;		   ||||`-- 0 == reserved, must be 0
+;		   |||`-- 1 == disable keyboard interface
 ;		   ||`-- 1 == disable auxiliary interface
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
@@ -429,7 +430,7 @@ kbc_init:
 
 	call	kbc_flush		; flush any remaining input data
 	jc	kbc_flush_fail
-	
+
 ;-------------------------------------------------------------------------
 ; run keyboard controller self-test
 
@@ -466,7 +467,7 @@ kbc_init:
 	call	kbc_send_cmd_byte
 	call	kbc_wait_read
 	in	al,kbc_data_reg
-	test	al,kbc_in_display	
+	test	al,kbc_in_display
 	jnz	.get_disp_color		; input port bit 6 set => CGA display
 	or	word [equipment_list],equip_mono
 	jmp	.get_disp_done
@@ -528,10 +529,10 @@ kbc_init:
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
 	mov	ah,01100101b
 ;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
-;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 1 == POST complete
-;                  ||||`-- 0 == reserved, must be 0
-;                  |||`-- 0 == enable keyboard interface
+;		   ||||`-- 0 == reserved, must be 0
+;		   |||`-- 0 == enable keyboard interface
 ;		   ||`-- 1 == disable auxiliary interface
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
