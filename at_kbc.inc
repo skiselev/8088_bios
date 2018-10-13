@@ -140,7 +140,7 @@ kbc_send_cmd:
 ;-------------------------------------------------------------------------
 kbc_send_cmd_byte:
 	call	kbc_wait_write
-	jc	.timeout		; CF == 1 - time out
+	jc	.timeout		; CF == 1 - timeout
 	out	kbc_command_reg,al	; write command
 
 .timeout:
@@ -223,14 +223,14 @@ kbc_wait_read:
 ;-------------------------------------------------------------------------
 kbc_aux_read:
 	call	kbc_wait_aux_read
-	jc	.timeout		; CF==1 - timeout waiting for data
+	jc	.exit			; CF==1 - timeout waiting for data
 	push	cx
 	mov	cx,1			; FIXME: why this delay is needed?
 	call	delay_15us
 	pop	cx
 	in	al,kbc_data_reg
-	clc				; CF=0 - no error, data is in AL
-.timeout:
+	clc				; set CF=0 - no error, data is in AL
+.exit:
 	ret
 
 ;=========================================================================
@@ -240,7 +240,7 @@ kbc_aux_read:
 ; Output:
 ;	AH - status:
 ;		00h - success
-;		03h - interface error (time out)
+;		03h - interface error (timeout)
 ;		04h - resend requested
 ;	CF == 0 - no error
 ;	CF == 1 - error
@@ -268,7 +268,7 @@ kbc_aux_send:
 	jmp	.timeout
 
 .ok:
-	xor	al,al			; success - ACK received
+	mov	al,00h			; success - ACK received
 	clc
 	jmp	.exit
 
@@ -346,11 +346,10 @@ kbc_aux_disable:
 ;-------------------------------------------------------------------------
 kbc_wait_aux_read:
 	call	kbc_wait_read
-	jc	.timeout		; CF==1 - timeout
+	jc	.exit			; CF==1 - timeout
 	test	al,kbc_stat_aobf
 	jnz	.exit			; note: test instruction sets CF=0
-.timeout:
-	stc				; CF==1 - timeout, or no auxiliary data
+	stc				; no auxiliary data, set CF=1
 .exit:
 	ret
 
@@ -455,8 +454,8 @@ kbc_init:
 
 	mov	al,kbc_cmd_rd_in	; send read input port command
 	call	kbc_send_cmd_byte
-	call	kbc_wait_read		; FIXME - replace with kbc_read_byte?
-	in	al,kbc_data_reg		; FIXME - replace with kbc_read_byte?
+	call	kbc_wait_read
+	in	al,kbc_data_reg
 	test	al,kbc_in_display	
 	jnz	.get_disp_color		; input port bit 6 set => CGA display
 	or	word [equipment_list],equip_mono
@@ -497,7 +496,7 @@ kbc_init:
 
 %ifdef PS2_MOUSE
 ;-------------------------------------------------------------------------
-; initialize auxiliary port and check for PS/2 mouse presence
+; enable auxiliary port and check for PS/2 mouse presence
 
 	mov	al,kbc_cmd_aux_ena	; send enable auxiliary interface cmd
 	call	kbc_send_cmd_byte
