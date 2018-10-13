@@ -70,6 +70,7 @@ aux_cmd_reset	equ	0FFh	; auxiliary device reset and self-test command
 kbc_kb_send:
 	push	ax
 	push	cx
+	mov	ah,al			; save command to AH
 	mov	cx,3			; try 3 times
 
 .retry:
@@ -77,7 +78,14 @@ kbc_kb_send:
 	cli
 ; clear the Error, Acknowledge received, and resend received flags
 	and	byte [kbd_flags_4],4Fh
-	call	kbc_wait_write		; wait for KBC to empty input buffer
+	xor	cx,cx
+
+.2:					; wait for KBC to empty input buffer
+	in	al,kbc_status_reg
+	test	al,kbc_stat_ibf
+	loopnz	.2
+
+	mov	al,ah
 	out	kbc_data_reg,al		; send command to the keyboard
 	sti
 	xor	cx,cx
@@ -104,30 +112,38 @@ kbc_kb_send:
 ;	CF == 1 - timeout
 ;-------------------------------------------------------------------------
 kbc_send_cmd:
-	push	ax
+	push	cx
+	mov	ch,al			; save command byte to CH
+	mov	cl,30			; 30 retries
+.1:
 	cli
-	call	kbc_send_cmd_byte	; send the command byte
-	jc	.timeout		; CF == 1 - timeout
-	call	kbc_wait_write
-	jc	.timeout		; CF == 1 - timeout
+	mov	al,ch
+	call	kbc_send_cmd_byte
+	jc	.exit			; timeout
 	in	al,kbc_status_reg
 	test	al,kbc_stat_obf
-	jz	.send_argument		; output buffer is empty, send argument
-%ifdef PS2_MOUSE
+	jz	.3			; output buffer is empty
 	test	al,kbc_stat_aobf
-	jz	.flush_output		; not an auxilairy data
+	jz	.2			; output buffer is full, not aux data
+	in	al,kbc_data_reg		; clean up auxiliary data from buffer
+%ifdef PS2_MOUSE
 	and	byte [mouse_flags_1],0F8h ; reset the mouse data index
 %endif ; PS2_MOUSE
-.flush_output:
-	in	al,kbc_data_reg		; clean up data from buffer
-.send_argument:
-	mov	al,ah
-	out	kbc_data_reg,al		; send the argument
-	clc				; set CF=0 - no error
-
-.timeout:
+	jmp	.3
+.2:
 	sti
-	pop	ax
+	dec	cl
+	jnz	.1
+	stc				; CF=1 - timeout
+	jmp	.exit
+.3:
+	mov	al,ah
+	out	kbc_data_reg,al
+	sti
+	clc				; CF=0 - no error
+.exit:
+	mov	al,ch			; restore AL
+	pop	cx
 	ret
 
 ;=========================================================================
