@@ -160,20 +160,15 @@ kbc_wait_write:
 	mov	cx,kbc_ctr_timeout
 					; wait for KBC to empty input buffer
 .wait:
+	in	al,kbc_status_reg
+	test	al,kbc_stat_ibf
+	jz	.exit			; note: test instruction sets CF=0
 	push	cx
 	mov	cx,4
 	call	delay_15us		; 45-60us I/O delay
 	pop	cx
-	in	al,kbc_status_reg
-	test	al,kbc_stat_ibf
-	jz	.no_error		; IBF is clear, input buffer is empty
 	loop	.wait
 	stc				; CF=1 - timeout
-	jmp	.exit
-
-.no_error:
-	clc				; CF=0 - no error, input buffer empty
-
 .exit:
 	pop	cx
 	pop	ax
@@ -193,20 +188,16 @@ kbc_wait_read:
 	mov	cx,kbc_ctr_timeout
 					; wait for data
 .wait:
+	in	al,kbc_status_reg
+	test	al,kbc_stat_obf
+	jnz	.exit			; note: test instruction sets CF=0
 	push	cx
 	mov	cx,4
 	call	delay_15us		; 45-60us I/O delay
 	pop	cx
-	in	al,kbc_status_reg
-	test	al,kbc_stat_obf
-	jnz	.no_error		; OBF set, data is available - exit
 	loop	.wait
 	stc				; CF=1 - timeout
 	jmp	.exit
-
-.no_error:
-	clc				; CF=0 - no error, data is available
-
 .exit:
 	pop	cx
 	ret
@@ -250,13 +241,16 @@ kbc_aux_send:
 	mov	ah,al			; store command to AH
 	mov	al,kbc_cmd_aux_snd	; write byte to auxiliary device
 	call	kbc_send_cmd
-	jc	.timeout		; CF==1 - kbc_send_cmd timed out
+	jc	.timeout		; kbc_send_cmd timed out
 
 					; wait for acknowledge
 	mov	cx,10			; retry 10 times
 .retry:
 	call	kbc_wait_aux_read
-	jc	.timeout		; CF==1 - timeout waiting for data
+	jnc	.read_reply		; CF==0 - data is available
+	loop	.retry
+	jmp	.timeout		; no reply - timeout
+.read_reply:
 	in	al,kbc_data_reg
 	cmp	al,0FAh			; ACK?
 	je	.ok
