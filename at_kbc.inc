@@ -116,7 +116,6 @@ kbc_send_cmd:
 	mov	ch,al			; save command byte to CH
 	mov	cl,30			; 30 retries
 .1:
-	cli
 	mov	al,ch
 	call	kbc_send_cmd_byte
 	jc	.exit			; timeout
@@ -131,7 +130,6 @@ kbc_send_cmd:
 %endif ; PS2_MOUSE
 	jmp	.3
 .2:
-	sti
 	dec	cl
 	jnz	.1
 	stc				; CF=1 - timeout
@@ -139,7 +137,6 @@ kbc_send_cmd:
 .3:
 	mov	al,ah
 	out	kbc_data_reg,al
-	sti
 	clc				; CF=0 - no error
 .exit:
 	mov	al,ch			; restore AL
@@ -299,14 +296,14 @@ kbc_aux_send:
 	ret
 
 ;=========================================================================
-; kbc_aux_enable - enable auxiliary device
+; kbc_enable_irqs - enable KBC interrupts
 ; Input:
 ;	none
 ; Output:
 ;	CF = 0 - no error
 ;	CF = 1 - timeout
 ;-------------------------------------------------------------------------
-kbc_aux_enable:
+kbc_enable_irqs:
 	push	ax
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
 	mov	ah,01000111b
@@ -318,31 +315,37 @@ kbc_aux_enable:
 ;		   ||`-- 0 == enable auxiliary interface
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
+	pushf
+	cli
 	call	kbc_send_cmd
+	popf
 	pop	ax
 	ret
 
 ;=========================================================================
-; kbc_aux_disable - disable auxiliary device
+; kbc_disable_irqs - disable KBC interrupts
 ; Input:
 ;	none
 ; Output:
 ;	CF = 0 - no error
 ;	CF = 1 - timeout
 ;-------------------------------------------------------------------------
-kbc_aux_disable:
+kbc_disable_irqs:
 	push	ax
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
-	mov	ah,01100101b
-;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
+	mov	ah,01000100b
+;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
 ;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 1 == POST complete
 ;		   ||||`-- 0 == reserved, must be 0
 ;		   |||`-- 0 == enable keyboard interface
-;		   ||`-- 1 == disable auxiliary interface
+;		   ||`-- 0 == enable auxiliary interface
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
+	pushf
+	cli
 	call	kbc_send_cmd
+	popf
 	pop	ax
 	ret
 
