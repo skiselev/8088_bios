@@ -465,20 +465,10 @@ kbc_init:
 .get_disp_done:
 
 ;-------------------------------------------------------------------------
-; set keyboard controller configuration:
-; enable keyboard interface, disable auxiliary interface, set POST complete
+; enable keyboard interface and reset the keyboard
 
-	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
-	mov	ah,01100101b
-;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
-;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
-;		   |||||`-- 1 == POST complete
-;                  ||||`-- 0 == reserved, must be 0
-;                  |||`-- 0 == enable keyboard interface
-;		   ||`-- 1 == disable auxiliary interface
-;		   |`-- 1 == enable scan code translation to IBM PC scan codes
-;		   `-- 0 == reserved, must be 0
-	call	kbc_send_cmd
+	mov	al,kbc_cmd_kbd_ena	; send enable keyboard interface cmd
+	call	kbc_send_cmd_byte
 
 	call	kbc_wait_write		; wait for KBC to empty input buffer
 	mov	al,kbd_cmd_reset	; send keyboard reset command
@@ -511,6 +501,7 @@ kbc_init:
 	loopz	.mouse_reset_retry
 	jmp	.no_mouse
 .mouse_reset_ok:
+; FIXME - is the loop needed here?
 	mov	cx,10			; try 10 times
 .mouse_response_loop:
 	call	kbc_aux_read
@@ -520,14 +511,30 @@ kbc_init:
 	loop	.mouse_response_loop	; read next byte until 0AAh completion
 					; code in case mouse sent garbage
 	jmp	.no_mouse
+.mouse_test_ok:
 	call	kbc_aux_read		; read and throw away device ID
 					; FIXME - check that device ID is 0?
 	jc	.no_mouse
-.mouse_test_ok:
 ; mouse reset successful, update equipment word accordingly
 	or      word [equipment_list],equip_mouse
 .no_mouse:
 %endif ; PS2_MOUSE
+
+;-------------------------------------------------------------------------
+; set keyboard controller configuration:
+; enable keyboard interface, disable auxiliary interface, set POST complete
+
+	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
+	mov	ah,01100101b
+;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
+;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   |||||`-- 1 == POST complete
+;                  ||||`-- 0 == reserved, must be 0
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 1 == disable auxiliary interface
+;		   |`-- 1 == enable scan code translation to IBM PC scan codes
+;		   `-- 0 == reserved, must be 0
+	call	kbc_send_cmd
 
 	mov	al,e_kbd_ok
 	out	post_reg,al
