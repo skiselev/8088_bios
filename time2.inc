@@ -90,7 +90,7 @@ int_08:
 	jnz	.3
 	mov	word [ticks_hi],0
 	mov	word [ticks_lo],0
-	mov	word [new_day],1
+	mov	byte [new_day],1
 .3:
 	int	1Ch			; User timer interrupt
 	mov	al,20h
