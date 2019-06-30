@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2011 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -35,13 +35,18 @@ msg_copyright	db	0Dh, 0Ah
 		db	" BIOS, Version "
 		db	VERSION
 		db	". "
-		db	"Copyright (C) 2010 - 2018 Sergey Kiselev", 0Dh, 0Ah
+		db	"Copyright (C) 2010 - 2019 Sergey Kiselev", 0Dh, 0Ah
 		db	"Distributed under the terms of "
 		db	"the GNU General Public License", 0Dh, 0Ah
 msg_crlf	db      0Dh, 0Ah, 00h
 msg_none	db	'none', 00h
 msg_colon	db	': ', 00h
 msg_semicolon	db	'; ', 00h
+msg_arrow   	db	' -> ', 00h
+msg_cpuclock	db	'CPU Clock set at ', 00h
+msg_4_77mhz 	db	'4.77Mhz ', 00h
+msg_7_16mhz	    db	'7.16Mhz ', 00h
+msg_9_55mhz 	db	'9.55Mhz ', 00h
 msg_cpu		db      'Main Processor:             ', 00h
 msg_fpu		db      'Mathematics Co-processor:   ', 00h
 msg_cpu_8088_78	db      "Intel 8088 '78", 0Dh, 0Ah
@@ -96,6 +101,11 @@ msg_setup	db	'Press F1 to run BIOS setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
 msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the BIOS setup utility', 00h
 msg_set_help	db	0Dh, 0Ah
 		db	'BIOS setup commands:', 0Dh, 0Ah
+%ifdef MACHINE_FE2010A
+		db	'0 - 4.77 MHz CPU clock', 0Dh, 0Ah
+		db	'1 - 7.16 MHz CPU clock', 0Dh, 0Ah
+        db	'2 - 9.55 MHz CPU clock', 0Dh, 0Ah
+%endif ; MACHINE_FE2010A
 %ifdef AT_RTC
 		db	't - Set time', 0Dh, 0Ah
 		db	'd - Set date', 0Dh, 0Ah

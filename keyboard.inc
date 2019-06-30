@@ -12,7 +12,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2011 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -361,10 +361,7 @@ int_09:
 	jne	.check_asterisk
 
 .turbo_off:
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
+    call set_cpu_clock_4_77mhz
 	jmp	keyboard_int_exit
 
 .check_asterisk:
@@ -372,11 +369,7 @@ int_09:
 	jne	.check_plus
 
 .turbo_7_16mhz:
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
-	out	fe_config_reg,al
+    call set_cpu_clock_7_16mhz
 	jmp	keyboard_int_exit
 
 .check_plus:
@@ -384,11 +377,7 @@ int_09:
 	jne	.6
 
 .turbo_9_55mhz:
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
-	out	fe_config_reg,al
+    call set_cpu_clock_9_55mhz
 	jmp	keyboard_int_exit
 
 %endif ; MACHINE_FE2010A

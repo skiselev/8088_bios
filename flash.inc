@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2011 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -25,10 +25,49 @@
 config_segment	equ	0000h
 config_space	equ	8000h		; offset of the configuration
 flash_floppy	equ	config_space
+flash_cpuclock	equ	config_space+01h
 flash_checksum	equ	config_space+0Eh ; 16-bit checksum
 temp_segment	equ	07C0h		; segment for flash writing code
 flash_write	equ	0		; offset for flash writing code
 
+;========================================================
+; flash_get_fe2010a_clock - Returns cpu clock for fe2010a
+; 
+; Input:
+;	none
+; Output:
+;	AL = cpu clock (0: 4.77Mhz, 1: 7.16Mhz, 3: 9.55Mhz)
+;-------------------------------------------------------------------------
+flash_get_fe2010a_clock:
+	push	cx
+	push	dx
+	push	di
+
+	xor	dx,dx
+	mov	di,config_space
+	mov	cx,000Eh
+
+.checksum_loop:				; calculate the 16-bit checksum
+    cs	add	dl,byte [di]
+	adc	dh,0
+	inc	di
+	loop	.checksum_loop
+
+    cs	cmp	word [flash_checksum],dx ; compare checksum to the stored value
+	jne	.checksum_error
+
+    cs	mov	al,byte [flash_cpuclock]	; checksum is ok, return cpu clock
+	jmp	.exit
+
+.checksum_error:
+;    cs  mov	al,byte [default_cpuclock] ; load the default configuration
+    cs  mov	al,0 ; load the default configuration
+.exit:
+	pop	di
+	pop	dx
+	pop	cx
+	ret
+  
 ;=========================================================================
 ; flash_get_floppy - Returns floppy drive type from Flash ROM configuration
 ;                    area
@@ -70,6 +109,11 @@ flash_get_floppy:
 ;=========================================================================
 ; flash_save - Save configuration to Flash ROM
 ; Input:
+;	CH - CPU Clock type for fe2010a
+;	     0 - 4.77Mhz
+;	     1 - 7.16Mhz
+;	     2 - 9.55Mhz
+;
 ;	CL - CMOS floppy drive type
 ;	     7-4 - first floppy drive type
 ;	     3-0 - second floppy drive type
@@ -110,11 +154,12 @@ flash_save:
 
 	pop	cx			; load the original CX value
 	push	cx
-    es  mov	byte [flash_floppy],cl	; set new floppy drive type
-
+    es  mov	byte [flash_cpuclock],ch	; set new cpu clock type
+    es  mov	byte [flash_floppy],cl	; set new floppy drive type    
+    
 	mov	al,00h			; zero the rest of
-	mov	di,config_space+1	; the configuration space
-	mov	cx,000Dh
+	mov	di,config_space+2	; the configuration space
+	mov	cx,000Ch
 
 	cld
     rep	stosb
