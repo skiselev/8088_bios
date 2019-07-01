@@ -9,7 +9,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2011 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -315,6 +315,17 @@ int_75:
 	iret
 
 %endif ; SECOND_PIC
+
+;-------------------------------------------------------------------------
+; boot the OS
+
+boot_os:
+	mov	al,e_boot		; boot the OS POST code
+	out	post_reg,al
+
+	mov	si,msg_boot
+	call	print
+	int	19h			; boot the OS
 
 ;=========================================================================
 ; print - print ASCIIZ string to the console
@@ -1083,17 +1094,15 @@ low_ram_ok:
 	call	nvram_setup
 %endif ; MACHINE_XT
 
+jmp boot_os
+
 .no_setup:
 
-;-------------------------------------------------------------------------
-; boot the OS
+%ifdef MACHINE_FE2010A
+	call	set_cpu_clock	; read cpu clock type from configuration and set it  
+%endif ; MACHINE_FE2010A
 
-	mov	al,e_boot		; boot the OS POST code
-	out	post_reg,al
-
-	mov	si,msg_boot
-	call	print
-	int	19h			; boot the OS
+jmp boot_os
 
 ;=========================================================================
 ; int_02 - NMI
