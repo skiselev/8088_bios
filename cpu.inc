@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2011 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,59 @@
 
 flags_tf	equ	0100h		; TF flag - enables single-step
 
+%ifdef MACHINE_FE2010A
+;=========================================================================
+; set_cpu_clock_4_77mhz - Set CPU Clock at 4.77Mhz for fe2010a
+; set_cpu_clock_7_16mhz - Set CPU Clock at 7.16Mhz for fe2010a
+; set_cpu_clock_9_55mhz - Set CPU Clock at 9.55Mhz for fe2010a
+; set_cpu_clock         - Set CPU Clock from configuration
+; Input:
+;	none
+; Output:
+;	none
+;-------------------------------------------------------------------------
+set_cpu_clock_4_77mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
+	pop ax
+	ret
+
+set_cpu_clock_7_16mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
+	out	fe_config_reg,al
+	pop ax
+	ret
+
+set_cpu_clock_9_55mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
+	out	fe_config_reg,al
+	pop ax
+	ret
+
+set_cpu_clock:
+; check cpu clock for fe2010a
+
+	call	flash_get_fe2010a_clock	; read cpu clock type from configuration   
+	cmp	al, 1   
+	je	set_cpu_clock_7_16mhz
+	cmp	al, 2
+	je	set_cpu_clock_9_55mhz   
+	jmp	set_cpu_clock_4_77mhz   
+	ret
+
+%endif ; MACHINE_FE2010A
+
 ;=========================================================================
 ; detect_cpu - detect and print CPU type
 ; Note:
@@ -35,6 +88,31 @@ detect_cpu:
 	push	si
 	mov	si,msg_cpu
 	call	print
+
+%ifdef MACHINE_FE2010A
+; check cpu clock for fe2010a
+
+	call	flash_get_fe2010a_clock	; read cpu clock type from configuration   
+	cmp	al, 1   
+	je	.turbo_7_16mhz
+	cmp	al, 2
+	je	.turbo_9_55mhz
+	mov	si,msg_4_77mhz
+	call	print
+	jmp	.test_cpu
+
+.turbo_7_16mhz:
+	mov	si,msg_7_16mhz
+	call	print
+	jmp	.test_cpu
+
+.turbo_9_55mhz:
+	mov	si,msg_9_55mhz
+	call	print
+
+%endif ; MACHINE_FE2010A
+
+.test_cpu:
 
 ; test for NEC V20
 	mov	ax,0101h

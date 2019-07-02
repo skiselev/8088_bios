@@ -5,7 +5,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2011 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -40,6 +40,11 @@ nvram_setup:
 	push	dx
 	push	si
 
+%ifdef MACHINE_FE2010A
+	call	set_cpu_clock	; read cpu clock type from configuration and set it
+	mov		ch, al			; save it to CH
+%endif ; MACHINE_FE2010A
+
 %ifdef AT_RTC
 	mov	al,cmos_floppy
 	call	rtc_read		; read currently configured floppies
@@ -68,6 +73,14 @@ nvram_setup:
 	je	.set_floppy
 	cmp	al,'p'
 	je	.print_settings
+%ifdef MACHINE_FE2010A
+	cmp	al,'0'
+	je	.cpuclock0
+	cmp	al,'1'
+	je	.cpuclock1
+	cmp	al,'2'
+	je	.cpuclock2
+%endif ; MACHINE_FE2010A
 %ifdef AT_RTC
 	cmp	al,'t'
 	je	.set_time
@@ -144,12 +157,72 @@ nvram_setup:
 	call	print
 	jmp	.set_floppy_prompt
 
+.cpuclock0:
+	mov	ch, 0
+	call	set_cpu_clock_4_77mhz
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_arrow
+	call	print
+	mov	si,msg_cpuclock
+	call	print
+	mov	si,msg_4_77mhz
+	call	print
+	jmp	.menu_loop
+.cpuclock1:
+	mov	ch, 1
+	call	set_cpu_clock_7_16mhz
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_arrow
+	call	print
+	mov	si,msg_cpuclock
+	call	print
+	mov	si,msg_7_16mhz
+	call	print
+	jmp	.menu_loop
+.cpuclock2:
+	mov	ch, 2
+	call	set_cpu_clock_9_55mhz
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_arrow
+	call	print
+	mov	si,msg_cpuclock
+	call	print
+	mov	si,msg_9_55mhz
+	call	print
+	jmp	.menu_loop    
 .print_settings:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
 	mov	si,msg_crlf
 	call	print
+%ifdef MACHINE_FE2010A
+	mov	si,msg_cpuclock
+	call	print
+	mov	al, ch
+	cmp	al,1
+	je	.msgclock1
+	cmp	al,2
+	je	.msgclock2
+	mov	si,msg_4_77mhz
+	jmp	.msgclock_ok
+.msgclock1:
+	mov	si,msg_7_16mhz
+	jmp	.msgclock_ok
+.msgclock2:
+	mov	si,msg_9_55mhz
+	jmp	.msgclock_ok
+.msgclock_ok:
+	call	print
+	mov	si,msg_crlf
+	call	print
+%endif ; MACHINE_FE2010A
 %ifdef AT_RTC
 	call	print_rtc		; print current RTC time
 %endif ; AT_RTC
