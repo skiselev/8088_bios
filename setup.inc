@@ -41,8 +41,8 @@ nvram_setup:
 	push	si
 
 %ifdef MACHINE_FE2010A
-	call	set_cpu_clock	; read cpu clock type from configuration and set it
-	mov		ch, al			; save it to CH
+	call	set_cpu_clock		; read cpu clock type from configuration and set it
+	mov	ch, al			; save it to CH
 %endif ; MACHINE_FE2010A
 
 %ifdef AT_RTC
@@ -74,12 +74,8 @@ nvram_setup:
 	cmp	al,'p'
 	je	.print_settings
 %ifdef MACHINE_FE2010A
-	cmp	al,'0'
-	je	.cpuclock0
-	cmp	al,'1'
-	je	.cpuclock1
-	cmp	al,'2'
-	je	.cpuclock2
+	cmp	al,'c'
+	je	.set_cpu_clk
 %endif ; MACHINE_FE2010A
 %ifdef AT_RTC
 	cmp	al,'t'
@@ -155,74 +151,107 @@ nvram_setup:
 	int	10h
 	mov	si,msg_set_fd_help
 	call	print
+	mov	si,msg_set_sub_help
+	call	print
 	jmp	.set_floppy_prompt
 
-.cpuclock0:
-	mov	ch, 0
+.set_cpu_clk:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+
+.set_cpu_clk_prompt:
+	mov	si,msg_set_clk_prmt
+	call	print
+
+.cpu_clk_input:
+	mov	ah,00h
+	int	16h
+	or	al,20h			; convert to lower case
+	cmp	al,'r'
+	je	.cpu_clk_exit
+	cmp	al,'h'
+	je	.cpu_clk_help
+	cmp	al,'4'
+	je	.cpu_clk_4_77mhz
+	cmp	al,'7'
+	je	.cpu_clk_7_16mhz
+	cmp	al,'9'
+	je	.cpu_clk_9_55mhz
+	jmp	.cpu_clk_input
+
+.cpu_clk_4_77mhz:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	ch,0			; CH = 0 -> 4.77 MHz
 	call	set_cpu_clock_4_77mhz
+	jmp	.menu_loop
+
+.cpu_clk_7_16mhz:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	si,msg_arrow
-	call	print
-	mov	si,msg_cpuclock
-	call	print
-	mov	si,msg_4_77mhz
-	call	print
-	jmp	.menu_loop
-.cpuclock1:
-	mov	ch, 1
+	mov	ch,1			; CH = 1 -> 7.16 MHz
 	call	set_cpu_clock_7_16mhz
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_arrow
-	call	print
-	mov	si,msg_cpuclock
-	call	print
-	mov	si,msg_7_16mhz
-	call	print
 	jmp	.menu_loop
-.cpuclock2:
-	mov	ch, 2
-	call	set_cpu_clock_9_55mhz
+
+.cpu_clk_9_55mhz:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	si,msg_arrow
+	mov	ch,2			; CH = 2 -> 9.55 MHz
+	call	set_cpu_clock_9_55mhz
+	jmp	.menu_loop
+
+.cpu_clk_exit:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	jmp	.menu_loop
+
+.cpu_clk_help:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_set_clk_help
 	call	print
-	mov	si,msg_cpuclock
+	mov	si,msg_set_sub_help
 	call	print
-	mov	si,msg_9_55mhz
-	call	print
-	jmp	.menu_loop    
+	jmp	.set_cpu_clk_prompt
+
 .print_settings:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
 	mov	si,msg_crlf
 	call	print
+
 %ifdef MACHINE_FE2010A
-	mov	si,msg_cpuclock
+	mov	si,msg_cpu_clk
 	call	print
-	mov	al, ch
+	mov	al,ch
 	cmp	al,1
-	je	.msgclock1
+	je	.print_cpu_clk_7_16mhz
 	cmp	al,2
-	je	.msgclock2
-	mov	si,msg_4_77mhz
-	jmp	.msgclock_ok
-.msgclock1:
-	mov	si,msg_7_16mhz
-	jmp	.msgclock_ok
-.msgclock2:
-	mov	si,msg_9_55mhz
-	jmp	.msgclock_ok
-.msgclock_ok:
+	je	.print_cpu_clk_9_55mhz
+	mov	si,msg_clk_4_77mhz
+	jmp	.print_cpu_clk_done
+
+.print_cpu_clk_7_16mhz:
+	mov	si,msg_clk_7_16mhz
+	jmp	.print_cpu_clk_done
+
+.print_cpu_clk_9_55mhz:
+	mov	si,msg_clk_9_55mhz
+	jmp	.print_cpu_clk_done
+
+.print_cpu_clk_done:
 	call	print
 	mov	si,msg_crlf
 	call	print
 %endif ; MACHINE_FE2010A
+
 %ifdef AT_RTC
 	call	print_rtc		; print current RTC time
 %endif ; AT_RTC

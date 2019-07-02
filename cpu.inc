@@ -89,31 +89,6 @@ detect_cpu:
 	mov	si,msg_cpu
 	call	print
 
-%ifdef MACHINE_FE2010A
-; check cpu clock for fe2010a
-
-	call	flash_get_fe2010a_clock	; read cpu clock type from configuration   
-	cmp	al, 1   
-	je	.turbo_7_16mhz
-	cmp	al, 2
-	je	.turbo_9_55mhz
-	mov	si,msg_4_77mhz
-	call	print
-	jmp	.test_cpu
-
-.turbo_7_16mhz:
-	mov	si,msg_7_16mhz
-	call	print
-	jmp	.test_cpu
-
-.turbo_9_55mhz:
-	mov	si,msg_9_55mhz
-	call	print
-
-%endif ; MACHINE_FE2010A
-
-.test_cpu:
-
 ; test for NEC V20
 	mov	ax,0101h
 	aad	10h			; NEC V20 ignores the argument
@@ -166,20 +141,61 @@ detect_cpu:
 .harris:				; Harris / Intersil 80C88
 	mov	si,msg_cpu_harris
 	call	print
-	jmp	.exit
+	jmp	.cpu_freq
 
 .i8088_78:
 	mov	si,msg_cpu_8088_78
 	call	print
-	jmp	.exit
+	jmp	.cpu_freq
 
 .i8088_81:
 	mov	si,msg_cpu_8088_81
 	call	print
-	jmp	.exit
+	jmp	.cpu_freq
 
 .nec_v20:
 	mov	si,msg_cpu_nec_v20
+	call	print
+
+.cpu_freq:
+
+%ifdef MACHINE_FE2010A
+; check cpu clock for fe2010a
+
+	push	ax
+
+	mov	si,msg_at
+	call	print
+
+	call	flash_get_fe2010a_clock	; read cpu clock type from configuration   
+	cmp	al, 1   
+	je	.turbo_7_16mhz
+	cmp	al, 2
+	je	.turbo_9_55mhz
+	mov	si,msg_clk_4_77mhz
+	call	print
+	jmp	.cpu_freq_exit
+
+.turbo_7_16mhz:
+	mov	si,msg_clk_7_16mhz
+	call	print
+	jmp	.cpu_freq_exit
+
+.turbo_9_55mhz:
+	mov	si,msg_clk_9_55mhz
+	call	print
+
+.cpu_freq_exit:
+	pop	ax
+
+%endif ; MACHINE_FE2010A
+
+	mov	si,msg_crlf
+	call	print
+
+	cmp	ax,0001h		; if AX = 0001h - we have INTEL (C) 1978
+	jnz	.exit
+	mov	si,msg_cpu_bug
 	call	print
 
 .exit:
