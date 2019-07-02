@@ -25,6 +25,9 @@
 
 default_floppy	db	cmos_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
+%ifdef MACHINE_FE2010A
+default_cpu_clk	db	0		; 4.77 MHz
+%endif ; MACHINE_FE2010A
 
 ;=========================================================================
 ; nvram_setup - NVRAM configuration utility
@@ -41,7 +44,7 @@ nvram_setup:
 	push	si
 
 %ifdef MACHINE_FE2010A
-	call	set_cpu_clock		; read cpu clock type from configuration and set it
+	call	flash_get_cpu_clk	; read CPU clock from configuration
 	mov	ch, al			; save it to CH
 %endif ; MACHINE_FE2010A
 
@@ -185,7 +188,6 @@ nvram_setup:
 	mov	bx,0007h
 	int	10h
 	mov	ch,0			; CH = 0 -> 4.77 MHz
-	call	set_cpu_clock_4_77mhz
 	jmp	.menu_loop
 
 .cpu_clk_7_16mhz:
@@ -193,7 +195,6 @@ nvram_setup:
 	mov	bx,0007h
 	int	10h
 	mov	ch,1			; CH = 1 -> 7.16 MHz
-	call	set_cpu_clock_7_16mhz
 	jmp	.menu_loop
 
 .cpu_clk_9_55mhz:
@@ -201,7 +202,6 @@ nvram_setup:
 	mov	bx,0007h
 	int	10h
 	mov	ch,2			; CH = 2 -> 9.55 MHz
-	call	set_cpu_clock_9_55mhz
 	jmp	.menu_loop
 
 .cpu_clk_exit:

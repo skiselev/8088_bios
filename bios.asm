@@ -316,13 +316,11 @@ int_75:
 
 %endif ; SECOND_PIC
 
+;=========================================================================
+; boot_os -Boot the OS
 ;-------------------------------------------------------------------------
-; boot the OS
 
 boot_os:
-	mov	al,e_boot		; boot the OS POST code
-	out	post_reg,al
-
 	mov	si,msg_boot
 	call	print
 	int	19h			; boot the OS
@@ -1094,15 +1092,17 @@ low_ram_ok:
 	call	nvram_setup
 %endif ; MACHINE_XT
 
-jmp boot_os
-
 .no_setup:
 
 %ifdef MACHINE_FE2010A
-	call	set_cpu_clock	; read cpu clock type from configuration and set it  
+	call	flash_get_cpu_clk	; read CPU clock from configuration
+	call	set_cpu_clk		; set CPU clock
 %endif ; MACHINE_FE2010A
 
-jmp boot_os
+	mov	al,e_boot		; boot the OS POST code
+	out	post_reg,al
+
+	jmp boot_os
 
 ;=========================================================================
 ; int_02 - NMI

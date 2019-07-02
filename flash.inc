@@ -25,51 +25,36 @@
 config_segment	equ	0000h
 config_space	equ	8000h		; offset of the configuration
 flash_floppy	equ	config_space
-flash_cpuclock	equ	config_space+01h
+flash_cpu_clk	equ	config_space+01h
 flash_checksum	equ	config_space+0Eh ; 16-bit checksum
 temp_segment	equ	07C0h		; segment for flash writing code
 flash_write	equ	0		; offset for flash writing code
-
-;========================================================
-; flash_get_fe2010a_clock - Returns cpu clock for fe2010a
-; 
+;=========================================================================
+; flash_get_cpu_clk - Return CPU clock frequency setting from Flash ROM
+;		      configuration area
 ; Input:
 ;	none
 ; Output:
-;	AL = cpu clock (0: 4.77Mhz, 1: 7.16Mhz, 3: 9.55Mhz)
+;	AL - NVRAM CPU clock frequency configuration setting
+;		0 - 4.77 MHz
+;		1 - 7.16 MHz
+;		2 - 9.55 MHz
 ;-------------------------------------------------------------------------
-flash_get_fe2010a_clock:
-	push	cx
-	push	dx
-	push	di
+flash_get_cpu_clk:
+	call	flash_verify_checksum
+	jnz	.checksum_error		; ZF == 1 - checksum is invalid
 
-	xor	dx,dx
-	mov	di,config_space
-	mov	cx,000Eh
-
-.checksum_loop:				; calculate the 16-bit checksum
-    cs	add	dl,byte [di]
-	adc	dh,0
-	inc	di
-	loop	.checksum_loop
-
-    cs	cmp	word [flash_checksum],dx ; compare checksum to the stored value
-	jne	.checksum_error
-
-    cs	mov	al,byte [flash_cpuclock]	; checksum is ok, return cpu clock
+    cs	mov	al,byte [flash_cpu_clk]	; return CPU clock configuration
 	jmp	.exit
 
 .checksum_error:
-;    cs  mov	al,byte [default_cpuclock] ; load the default configuration
-    cs  mov	al,0 ; load the default configuration
+    cs	mov	al,byte [default_cpu_clk] ; load the default configuration
+
 .exit:
-	pop	di
-	pop	dx
-	pop	cx
 	ret
   
 ;=========================================================================
-; flash_get_floppy - Returns floppy drive type from Flash ROM configuration
+; flash_get_floppy - Return floppy drive type from Flash ROM configuration
 ;                    area
 ; Input:
 ;	none
@@ -77,10 +62,30 @@ flash_get_fe2010a_clock:
 ;	AL = floppy drive type
 ;-------------------------------------------------------------------------
 flash_get_floppy:
+	call	flash_verify_checksum
+	jnz	.checksum_error		; ZF == 0 - checksum is invalid
+
+    cs	mov	al,byte [flash_floppy]	; return floppy type
+	jmp	.exit
+
+.checksum_error:
+    cs  mov	al,byte [default_floppy] ; load the default configuration
+
+.exit:
+	ret
+
+;=========================================================================
+; flash_verify_checksum - Verify that checksum is correct
+; Input:
+;	none
+; Output:
+;	ZF == 1 - checksum is valid
+;	ZF == 0 - checksum is invalid
+;-------------------------------------------------------------------------
+flash_verify_checksum:
 	push	cx
 	push	dx
 	push	di
-
 	xor	dx,dx
 	mov	di,config_space
 	mov	cx,000Eh
@@ -92,15 +97,6 @@ flash_get_floppy:
 	loop	.checksum_loop
 
     cs	cmp	word [flash_checksum],dx ; compare checksum to the stored value
-	jne	.checksum_error
-
-    cs	mov	al,byte [flash_floppy]	; checksum is ok, return floppy type
-	jmp	.exit
-
-.checksum_error:
-    cs  mov	al,byte [default_floppy] ; load the default configuration
-
-.exit:
 	pop	di
 	pop	dx
 	pop	cx
@@ -154,7 +150,7 @@ flash_save:
 
 	pop	cx			; load the original CX value
 	push	cx
-    es  mov	byte [flash_cpuclock],ch	; set new cpu clock type
+    es  mov	byte [flash_cpu_clk],ch	; set new cpu clock type
     es  mov	byte [flash_floppy],cl	; set new floppy drive type    
     
 	mov	al,00h			; zero the rest of

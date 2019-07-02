@@ -24,59 +24,6 @@
 
 flags_tf	equ	0100h		; TF flag - enables single-step
 
-%ifdef MACHINE_FE2010A
-;=========================================================================
-; set_cpu_clock_4_77mhz - Set CPU Clock at 4.77Mhz for fe2010a
-; set_cpu_clock_7_16mhz - Set CPU Clock at 7.16Mhz for fe2010a
-; set_cpu_clock_9_55mhz - Set CPU Clock at 9.55Mhz for fe2010a
-; set_cpu_clock         - Set CPU Clock from configuration
-; Input:
-;	none
-; Output:
-;	none
-;-------------------------------------------------------------------------
-set_cpu_clock_4_77mhz:
-	push ax
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
-	pop ax
-	ret
-
-set_cpu_clock_7_16mhz:
-	push ax
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
-	out	fe_config_reg,al
-	pop ax
-	ret
-
-set_cpu_clock_9_55mhz:
-	push ax
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
-	out	fe_config_reg,al
-	pop ax
-	ret
-
-set_cpu_clock:
-; check cpu clock for fe2010a
-
-	call	flash_get_fe2010a_clock	; read cpu clock type from configuration   
-	cmp	al, 1   
-	je	set_cpu_clock_7_16mhz
-	cmp	al, 2
-	je	set_cpu_clock_9_55mhz   
-	jmp	set_cpu_clock_4_77mhz   
-	ret
-
-%endif ; MACHINE_FE2010A
-
 ;=========================================================================
 ; detect_cpu - detect and print CPU type
 ; Note:
@@ -160,32 +107,14 @@ detect_cpu:
 .cpu_freq:
 
 %ifdef MACHINE_FE2010A
-; check cpu clock for fe2010a
-
-	push	ax
+; print CPU clock frequency
 
 	mov	si,msg_at
 	call	print
 
-	call	flash_get_fe2010a_clock	; read cpu clock type from configuration   
-	cmp	al, 1   
-	je	.turbo_7_16mhz
-	cmp	al, 2
-	je	.turbo_9_55mhz
-	mov	si,msg_clk_4_77mhz
-	call	print
-	jmp	.cpu_freq_exit
-
-.turbo_7_16mhz:
-	mov	si,msg_clk_7_16mhz
-	call	print
-	jmp	.cpu_freq_exit
-
-.turbo_9_55mhz:
-	mov	si,msg_clk_9_55mhz
-	call	print
-
-.cpu_freq_exit:
+	push	ax
+	call	flash_get_cpu_clk	; read cpu clock type from configuration
+	call	print_cpu_clk
 	pop	ax
 
 %endif ; MACHINE_FE2010A
@@ -269,3 +198,82 @@ detect_fpu:
 	pop	cx
 	pop	ax
 	ret
+
+%ifdef MACHINE_FE2010A
+;=========================================================================
+; print_cpu_clk - Print CPU clock frequency
+; Input:
+;	AL - NVRAM CPU clock frequency configuration
+;		0 - 4.77 MHz
+;		1 - 7.16 MHz
+;		2 - 9.55 MHz
+; Output:
+;	none
+;-------------------------------------------------------------------------
+print_cpu_clk:
+	push	si
+	mov	si,ax
+	and     si,0003h
+	shl	si,1
+    cs	mov	si,word [tbl_cpu_clk+si]
+	call    print
+	pop	si
+	ret
+
+;=========================================================================
+; set_cpu_clk         - Set CPU clock frequency
+; Input:
+;	AL - NVRAM CPU clock frequency configuration
+;		0 - 4.77 MHz
+;		1 - 7.16 MHz
+;		2 - 9.55 MHz
+; Output:
+;	none
+;-------------------------------------------------------------------------
+set_cpu_clk:
+	cmp	al, 1 
+	je	set_cpu_clk_7_16mhz
+	cmp	al, 2
+	je	set_cpu_clk_9_55mhz   
+	jmp	set_cpu_clk_4_77mhz   
+	ret
+
+;=========================================================================
+; set_cpu_clk_4_77mhz - Set CPU clock at 4.77 MHz
+; set_cpu_clk_7_16mhz - Set CPU clock at 7.16 MHz
+; set_cpu_clk_9_55mhz - Set CPU clock at 9.55 MHz
+; Input:
+;	none
+; Output:
+;	none
+;-------------------------------------------------------------------------
+set_cpu_clk_4_77mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
+	pop ax
+	ret
+
+set_cpu_clk_7_16mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
+	out	fe_config_reg,al
+	pop ax
+	ret
+
+set_cpu_clk_9_55mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
+	out	fe_config_reg,al
+	pop ax
+	ret
+
+%endif ; MACHINE_FE2010A

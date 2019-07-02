@@ -361,7 +361,7 @@ int_09:
 	jne	.check_asterisk
 
 .turbo_off:
-    call set_cpu_clock_4_77mhz
+	call	set_cpu_clk_4_77mhz
 	jmp	keyboard_int_exit
 
 .check_asterisk:
@@ -369,7 +369,7 @@ int_09:
 	jne	.check_plus
 
 .turbo_7_16mhz:
-    call set_cpu_clock_7_16mhz
+	call	set_cpu_clk_7_16mhz
 	jmp	keyboard_int_exit
 
 .check_plus:
@@ -377,7 +377,7 @@ int_09:
 	jne	.6
 
 .turbo_9_55mhz:
-    call set_cpu_clock_9_55mhz
+	call	set_cpu_clk_9_55mhz
 	jmp	keyboard_int_exit
 
 %endif ; MACHINE_FE2010A

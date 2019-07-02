@@ -48,6 +48,9 @@ msg_at		db	' @ ', 00h
 msg_clk_4_77mhz	db	'4.77 MHz ', 00h
 msg_clk_7_16mhz	db	'7.16 MHz ', 00h
 msg_clk_9_55mhz	db	'9.55 MHz ', 00h
+tbl_cpu_clk	dw	msg_clk_4_77mhz
+		dw	msg_clk_7_16mhz
+		dw	msg_clk_9_55mhz
 %endif ; MACHINE_FE2010A
 msg_cpu		db      'Main Processor:             ', 00h
 msg_fpu		db      'Mathematics Co-processor:   ', 00h
