@@ -56,7 +56,6 @@ int_1A_fn01:
 	mov	byte [new_day],00h
 	jmp	int_1A_exit
 
-%ifdef AT_RTC
 
 ;=========================================================================
 ; int_1A_fn02 - Read real time clock (RTC)
@@ -70,6 +69,8 @@ int_1A_fn01:
 ;	DL - daylight savings flag: 00h = standard time, 01h = daylight time
 ;-------------------------------------------------------------------------
 int_1A_fn02:
+	call	rtc_exists  ; check if RTC is present
+    jne int_1A_exitf
 	push	ax
 	mov	al,cmos_control_a
 	call	rtc_read		; read control A register
@@ -108,6 +109,8 @@ int_1A_fn02:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn03:
+	call	rtc_exists  ; check if RTC is present
+    jne int_1A_exitf
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -153,6 +156,8 @@ int_1A_fn03:
 ;	DL = BCD date
 ;-------------------------------------------------------------------------
 int_1A_fn04:
+	call	rtc_exists  ; check if RTC is present
+    jne int_1A_exitf
 	push	ax
 	mov	al,cmos_control_a
 	call	rtc_read		; read control A register
@@ -190,6 +195,8 @@ int_1A_fn04:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn05:
+	call	rtc_exists  ; check if RTC is present
+    jne int_1A_exitf
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -232,6 +239,8 @@ int_1A_fn05:
 ;	CF = 1 - alarm already set
 ;-------------------------------------------------------------------------
 int_1A_fn06:
+	call	rtc_exists  ; check if RTC is present
+    jne int_1A_exitf
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -282,6 +291,8 @@ int_1A_fn06:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn07:
+	call	rtc_exists  ; check if RTC is present
+    jne int_1A_exitf
 	push	ax
 
 	mov	al,cmos_control_b
@@ -293,7 +304,8 @@ int_1A_fn07:
 
 	pop	ax
 	jmp	int_1A_exit
-	
+
+%ifdef SECOND_PIC    
 ;=========================================================================
 ; int_70 - RTC interrupt service routine (IRQ8)
 ; Notes:
@@ -312,5 +324,4 @@ int_70:
 .1:
 	pop	ax
 	iret
-
-%endif ; AT_RTC
+%endif ; SECOND_PIC

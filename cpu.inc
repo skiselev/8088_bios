@@ -113,7 +113,14 @@ detect_cpu:
 	call	print
 
 	push	ax
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent
+	mov al,cmos_cpu_clk	
+	call	rtc_read		; read currently configured CPU clock   
+	jmp .rtc_present
+.rtc_absent:
 	call	flash_get_cpu_clk	; read cpu clock type from configuration
+.rtc_present:
 	call	print_cpu_clk
 	pop	ax
 

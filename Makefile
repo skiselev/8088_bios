@@ -51,15 +51,20 @@ bios.bin: $(SOURCES)
 	nasm -D$(MACHINE) -O9 -f bin -o bios.bin -l bios.lst bios.asm
 
 bios-micro8088.bin: bios.bin
-	dd if=/dev/zero ibs=1k count=48 | tr "\000" "\377" > bios-micro8088.bin
+	dd if=/dev/zero ibs=1k count=32 | tr "\000" "\377" > bios-micro8088.bin
 	cat bios.bin >> bios-micro8088.bin
 	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088.bin
 
 bios-micro8088-xtide.bin: bios.bin ide_xt.bin
 	cat ide_xt.bin > bios-micro8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=40 | tr "\000" "\377" >> bios-micro8088-xtide.bin
-	cat bios.bin >> bios-micro8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088-xtide.bin
+	cat ide_xtpl.bin > bios-micro8088-xtide-pl.bin
+	dd if=/dev/zero ibs=1k count=24 | tr "\000" "\377" >> bios-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=20 | tr "\000" "\377" >> bios-micro8088-xtide-pl.bin
+	cat bios.bin >> bios-micro8088-xtide-pl.bin
+	cat bios-micro8088-xtide.bin >> bios-micro8088-xtide-pl.bin
+	cat bios.bin >> bios-micro8088-xtide-pl.bin
+	rm -f bios-micro8088-xtide.bin
+	mv bios-micro8088-xtide-pl.bin bios-micro8088-xtide.bin
 
 bios-sergey-xt.bin: bios.bin
 	dd if=/dev/zero ibs=1k count=96 | tr "\000" "\377" > bios-sergey-xt.bin

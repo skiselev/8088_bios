@@ -22,8 +22,8 @@
 ;
 ;=========================================================================
 
-%define DATE		'07/02/19'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.6'		; BIOS version
+%define DATE		'09/05/19'	; BIOS release date MM/DD/YY
+%define VERSION		'0.9.7'		; BIOS version
 
 ; Machine type is defined in the Makefile
 ;%define MACHINE_XI8088			; Xi 8088
@@ -51,7 +51,8 @@
 
 ; Settings for FE2010A
 %ifdef MACHINE_FE2010A
-%define	START		0C000h		; BIOS starts at offset 0C000h
+;%define	START		0C000h		; BIOS starts at offset 0C000h
+%define	START		8000h		; BIOS starts at offset 8000h
 %define MODEL_BYTE	0FEh		; IBM PC/XT
 %define BIOS_SETUP			; Include BIOS setup utility
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system

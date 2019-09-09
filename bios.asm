@@ -65,6 +65,7 @@
 
 	cpu	8086
 
+	
 %include "macro.inc"
 %include "config.inc"
 %include "errno.inc"
@@ -243,6 +244,12 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 
 	org	START		; Use only upper 32 KiB of ROM
 
+%ifdef MACHINE_FE2010A
+; Allocate space for SST flash configuration
+db 00h, 00h, 00h, 00h, 00h, 00h, 00h, 00h
+db 00h, 00h, 00h, 00h, 00h, 00h, 01h, 02h ; Last bytes Non Zeros for checksum error and get default config
+%endif ; MACHINE_FE2010A
+
 ;=========================================================================
 ; Includes
 ;-------------------------------------------------------------------------
@@ -251,9 +258,7 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %include	"fnt80-FF.inc"		; font for graphics modes
 %endif ; MACHINE_XT
 ;%include	"inttrace.inc"		; XXX
-%ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
-%endif ; AT_RTC
 %ifdef MACHINE_FE2010A
 %include	"flash.inc"		; Flash ROM configuration functions
 %endif ; MACHINE_FE2010A
@@ -669,7 +674,6 @@ cpu_ok:
 
 ;-------------------------------------------------------------------------
 ; disable NMI, turbo mode, and video output on CGA and MDA
-
 %ifdef AT_RTC
 	mov	al,0Dh & nmi_disa_mask
 	out	rtc_addr_reg,al		; disable NMI
@@ -1006,14 +1010,15 @@ low_ram_ok:
 	mov	si,msg_copyright
 	call	print
 
-%ifdef AT_RTC
-
+	
 ;-------------------------------------------------------------------------
 ; Initialize RTC / NVRAM
 ; Read equipment byte from CMOS and set it in BIOS data area
 	call	rtc_init
-
-%endif ; AT_RTC
+	call	rtc_exists  ; check if RTC is present
+    jne .rtc_absent	
+    and byte [config_table + 5], 20h ; set RTC bit    
+.rtc_absent:
 
 %ifndef MACHINE_XT
 	mov	si,msg_setup		; print setup prompt
@@ -1026,9 +1031,7 @@ low_ram_ok:
 
 	call	detect_cpu		; detect and print CPU type
 	call	detect_fpu		; detect and print FPU presence
-%ifdef AT_RTC
 	call	print_rtc		; print current RTC time
-%endif ; AT_RTC
 	call	print_display		; print display type
 %ifdef PS2_MOUSE
 	call	print_mouse		; print mouse presence
@@ -1095,9 +1098,19 @@ low_ram_ok:
 .no_setup:
 
 %ifdef MACHINE_FE2010A
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent1
+	mov al,cmos_cpu_clk	
+	call	rtc_read		; read currently configured CPU clock   
+	jmp .rtc_present
+   
+.rtc_absent1:
 	call	flash_get_cpu_clk	; read CPU clock from configuration
+
+.rtc_present:
 	call	set_cpu_clk		; set CPU clock
 %endif ; MACHINE_FE2010A
+
 
 	mov	al,e_boot		; boot the OS POST code
 	out	post_reg,al
@@ -1109,7 +1122,9 @@ low_ram_ok:
 ; Note: Xi 8088 only implements IOCHK NMI, system board parity is not
 ;	implemented
 ;-------------------------------------------------------------------------
-	setloc	0E2C3h			; NMI Entry Point
+;	setloc	0E2C3h			; NMI Entry Point
+	setloc	0E2DDh			; NMI Entry Point
+
 int_02:
 	push	ax
 %ifdef AT_RTC
@@ -1118,7 +1133,7 @@ int_02:
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
-%endif
+%endif ; AT_RTC
 	in	al,ppi_pb_reg		; read Port B
 	mov	ah,al
 	or	al,iochk_disable	; clear and disable ~IOCHK
@@ -1191,17 +1206,6 @@ config_table:
 	db	00h			; byte 3: submodel = 0
 	db	00h			; byte 4: release = 0
 %ifdef SECOND_PIC
-%ifdef AT_RTC
-	db	01110000b		; byte 5: feature byte 1
-;		|||||||`-- system has dual bus (ISA and MCA)
-;		||||||`-- bus is Micro Channel instead of ISA
-;		|||||`-- extended BIOS area allocated (usually on top of RAM)
-;		||||`-- wait for external event (INT 15h/AH=41h) supported
-;		|||`-- INT 15h/AH=4Fh called upon INT 09h
-;		||`-- real time clock installed
-;		|`-- 2nd interrupt controller installed
-;		`-- DMA channel 3 used by hard disk BIOS
-%else ; AT_RTC
 	db	01010000b		; byte 5: feature byte 1
 ;		|||||||`-- system has dual bus (ISA and MCA)
 ;		||||||`-- bus is Micro Channel instead of ISA
@@ -1211,7 +1215,6 @@ config_table:
 ;		||`-- real time clock installed
 ;		|`-- 2nd interrupt controller installed
 ;		`-- DMA channel 3 used by hard disk BIOS
-%endif ; AT_RTC
 %else ; SECOND_PIC
 	db	00000000b		; byte 5: feature byte 1
 ;		|||||||`-- system has dual bus (ISA and MCA)

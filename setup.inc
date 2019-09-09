@@ -43,20 +43,27 @@ nvram_setup:
 	push	dx
 	push	si
 
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent
+%ifdef MACHINE_FE2010A
+	mov al,cmos_cpu_clk	
+    call	rtc_read		; read currently configured CPU clock    
+	mov	ch, al			; save it to CH
+%endif ; MACHINE_FE2010A    
+	mov	al,cmos_floppy
+    call	rtc_read		; read currently configured floppies	
+	jmp .rtc_present
+
+.rtc_absent:
 %ifdef MACHINE_FE2010A
 	call	flash_get_cpu_clk	; read CPU clock from configuration
 	mov	ch, al			; save it to CH
 %endif ; MACHINE_FE2010A
-
-%ifdef AT_RTC
-	mov	al,cmos_floppy
-	call	rtc_read		; read currently configured floppies
-%else ; AT_RTC
 	call	flash_get_floppy	; read floppies from configuration
 					; section of Flash ROM
-%endif ; AT_RTC
-	mov	cl,al			; save it to CL
 
+.rtc_present:
+	mov	cl,al			; save it to CL
 	mov	si,msg_set_welcome
 	call	print
 
@@ -80,12 +87,15 @@ nvram_setup:
 	cmp	al,'c'
 	je	.set_cpu_clk
 %endif ; MACHINE_FE2010A
-%ifdef AT_RTC
+
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent2
 	cmp	al,'t'
 	je	.set_time
 	cmp	al,'d'
 	je	.set_date
-%endif ; AT_RTC
+.rtc_absent2:
+
 	cmp	al,'w'
 	je	.save
 	cmp	al,'q'
@@ -98,7 +108,14 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	si,msg_set_help
+	mov	si,msg_set_help1
+	call	print
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent5
+	mov	si,msg_set_datetime
+	call	print
+.rtc_absent5:
+	mov	si,msg_set_help2
 	call	print
 	jmp	.menu_loop
 
@@ -252,14 +269,15 @@ nvram_setup:
 	call	print
 %endif ; MACHINE_FE2010A
 
-%ifdef AT_RTC
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent3
 	call	print_rtc		; print current RTC time
-%endif ; AT_RTC
+.rtc_absent3:    
+
 	mov	al,cl			; floppy bytes to AL
 	call	print_floppy
 	jmp	.menu_loop
 
-%ifdef AT_RTC
 .set_time:
 	push	cx
 	push	di
@@ -468,18 +486,16 @@ nvram_setup:
 	call	print
 	jmp	.set_date_exit
 
-%endif ; AT_RTC
-
 .save:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-
-%ifdef AT_RTC
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent4
 	call	rtc_save
-%else ; AT_RTC
+    jmp .exit
+.rtc_absent4:
 	call	flash_save
-%endif ; AT_RTC
 	jmp	.exit
 
 .no_save:

@@ -1685,16 +1685,20 @@ fdc_wait_ready:
 ;	AL = NVRAM floppy configuration byte
 ;-------------------------------------------------------------------------
 detect_floppy:
-%ifdef AT_RTC
+
+	call	rtc_exists  ; check if RTC is present
+	jne .rtc_absent
 	mov	al,cmos_floppy
 	call	rtc_read		; floppies type to AL
-%else ; AT_RTC
+	jmp .rtc_present    
+.rtc_absent:
 %ifdef MACHINE_FE2010A
 	call	flash_get_floppy
 %else ; MACHINE_FE2010A
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
 %endif ; MACHINE_FE2010A
-%endif ; AT_RTC
+.rtc_present:
+
 	cmp	al,00h			; No floppy drives?
 	je	.exit
 	or	byte [equipment_list],equip_floppies

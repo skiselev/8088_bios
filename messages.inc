@@ -79,6 +79,7 @@ msg_mouse	db      'PS/2 Aux Device (Mouse):    ', 00h
 %endif ; PS2_MOUSE
 msg_present	db      'Present', 0Dh, 0Ah, 00h
 msg_absent	db      'Absent', 0Dh, 0Ah, 00h
+msg_absent_or_unk db 'Absent or Unknown', 0Dh, 0Ah, 00h
 msg_serial	db	'Serial Ports:               ', 00h
 msg_serial_com	db	'COM', 00h
 msg_parallel	db	'Parallel Ports:             ', 00h
@@ -96,23 +97,21 @@ msg_no_basic    db      'No ROM BASIC', 0Dh, 0Ah, 0
 msg_rom_found   db      'Found BIOS extension ROM at ', 0
 msg_rom_init	db	'0, initializing...', 0Dh, 0Ah, 0
 msg_boot	db      'Booting OS...', 0Dh, 0Ah, 0
-%ifdef AT_RTC
 msg_rtc_bad	db	'ERROR: RTC battery is bad', 0Dh, 0Ah, 00h
 msg_rtc_sum	db	'ERROR: NVRAM checksum is invalid, '
 		db	'loading default values to NVRAM', 0Dh, 0Ah, 00h
-%endif ; AT_RTC
 %ifdef BIOS_SETUP
 msg_setup	db	'Press F1 to run BIOS setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
 msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the BIOS setup utility', 00h
-msg_set_help	db	0Dh, 0Ah
-		db	'BIOS setup commands:', 0Dh, 0Ah
+msg_set_help1	db	0Dh, 0Ah
+		db	'BIOS setup commands:', 0Dh, 0Ah, 00h
 %ifdef MACHINE_FE2010A
 		db	'c - Set default CPU clock frequency', 0Dh, 0Ah
 %endif ; MACHINE_FE2010A
-%ifdef AT_RTC
+msg_set_datetime
 		db	't - Set time', 0Dh, 0Ah
-		db	'd - Set date', 0Dh, 0Ah
-%endif ; AT_RTC
+		db	'd - Set date', 0Dh, 0Ah, 00h
+msg_set_help2
 		db	'f - Change first floppy drive type', 0Dh, 0Ah
 		db	'g - Change second floppy drive type', 0Dh, 0Ah
 		db	'p - Print current settings', 0Dh, 0Ah
@@ -129,12 +128,10 @@ msg_set_clk_help db 	0Dh, 0Ah
 msg_set_clk_prmt db	0Dh, 0Ah, 'Enter CPU clock frequency (h for help): '
 		db	00h
 %endif ; MACHINE_FE2010A
-%ifdef AT_RTC
 msg_set_time	db	'Enter time (hh:mm:ss): ', 00h
 msg_set_date	db	'Enter date (YYYY-MM-DD): ', 00h
 msg_time_inval	db	'ERROR: Invalid time.', 0Dh, 0Ah, 00h
 msg_date_inval	db	'ERROR: Invalid date.', 0Dh, 0Ah, 00h
-%endif ; AT_RTC
 msg_set_fd_help	db	0Dh, 0Ah
 		db	'Floppy drive types:', 0Dh, 0Ah
 		db	'0 - Not installed   3 - 720 KB, 3.5"', 0Dh, 0Ah

@@ -40,6 +40,9 @@ cmos_date	equ	07h	; date location in RTC
 cmos_month	equ	08h	; month location in RTC
 cmos_year	equ	09h	; year location in RTC
 cmos_floppy	equ	10h	; floppy type byte
+%ifdef MACHINE_FE2010A
+cmos_cpu_clk	equ	11h	; cpu clock for 
+%endif ; MACHINE_FE2010A
 cmos_equip	equ	14h	; equipment byte
 cmos_sum_hi	equ	2Eh	; checksum of bytes 10h - 20h - high byte
 cmos_sum_lo	equ	2Fh	; checksum of bytes 10h - 20h - low byte 
@@ -62,6 +65,19 @@ cmos_af		equ	40h	; RTC alarm interrupt flag
 cmos_pf		equ	80h	; RTC periodic interrupt flag
 cmos_control_d	equ	0Dh	; RTC control D register
 cmos_vrt	equ	80h	; RTC vrt bit (1 = battery is OK)
+
+;=========================================================================
+; rtc_exists - Check RTC 0x70 port
+; Output:
+;	Z Flag = true, exists 
+;-------------------------------------------------------------------------
+rtc_exists:
+	push ax
+	mov	al,cmos_control_a	; select control A register
+	call    rtc_read    ; check if RTC is present
+	cmp     al, 26h
+	pop ax
+	ret
 
 ;=========================================================================
 ; rtc_read - Read byte from RTC or CMOS memory
@@ -122,7 +138,10 @@ rtc_init:
 	mov	ah,26h			; turn on oscillator and time keeping
 					; set SQW frequency to 1.024 KHz
 	call	rtc_write		; write control register A
-
+    
+	call	rtc_exists  ; check if RTC is present
+    jne     .exit
+    
 	mov	al,cmos_control_b
 	mov	ah,cmos_24hours		; 24 hours, BCD format, DSE disabled
 					; interrupts disabled
@@ -242,6 +261,12 @@ rtc_init:
 	inc	al
 	cmp	al,20h			; last address is 20h
 	jbe	.nvram_clear_loop
+    
+%ifdef MACHINE_FE2010A
+	mov	al,cmos_cpu_clk		; write default CPU clock
+    cs	mov	ah,byte [default_cpu_clk]
+	call	rtc_write
+%endif ; MACHINE_FE2010A
 
 	mov	al,cmos_floppy		; write default floppy type
     cs	mov	ah,byte [default_floppy]
@@ -275,6 +300,7 @@ rtc_init:
 	mov	al,e_rtc_init_ok	; RTC initialzied successfully
 	out	post_reg,al
 
+.exit:
 	pop	di
 	pop	si
 	pop	dx
@@ -329,6 +355,12 @@ rtc_save:
 	push	ax
 	push	bx
 
+%ifdef MACHINE_FE2010A
+	mov al,cmos_cpu_clk
+	mov ah,ch
+	call	rtc_write
+%endif ; MACHINE_FE2010A
+  
 	mov	al,cmos_floppy
 	mov	ah,cl
 	call	rtc_write
@@ -384,7 +416,14 @@ print_rtc:
 	push	si
 	mov	si,msg_rtc
 	call	print
-
+    
+	call	rtc_exists  ; check if RTC is present
+    je .rtc_present
+    mov	si,msg_absent_or_unk
+	call	print
+    jmp exit_print_rtc
+    
+.rtc_present:
 ; print date
 	mov	ah,04h
 	int	1Ah			; read RTC date
@@ -437,6 +476,7 @@ print_rtc:
 
 	mov	si,msg_crlf
 	call	print
+exit_print_rtc:
 	pop	si
 	pop	dx
 	pop	cx
