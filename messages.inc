@@ -64,7 +64,8 @@ msg_cpu_nec_v20 db      'NEC V20', 00h
 msg_fpu_present db      'Intel 8087', 0Dh, 0Ah, 00h
 msg_disp	db      'Display Adapter Type:       ', 00h
 msg_disp_ega	db      'EGA/VGA (Video BIOS Present)', 0Dh, 0Ah, 00h
-msg_disp_cga	db      'CGA', 0Dh, 0Ah, 00h
+msg_disp_cga_80	db      'CGA (80x25)', 0Dh, 0Ah, 00h
+msg_disp_cga_40	db      'CGA (40x25)', 0Dh, 0Ah, 00h
 msg_disp_mda	db      'MDA or Hercules', 0Dh, 0Ah, 00h
 msg_rtc		db	'RTC (Real Time Clock) time: ', 00h
 msg_floppy	db	'Floppy disk drives:         Drive 0: ', 00h

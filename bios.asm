@@ -171,7 +171,8 @@ equip_floppies	equ	0000000000000001b	; floppy drivers installed
 equip_fpu	equ	0000000000000010b	; FPU installed
 equip_mouse	equ	0000000000000100b
 equip_video	equ	0000000000110000b	; video type bit mask
-equip_color	equ	0000000000100000b	; color 80x25 (mode 3)
+equip_color_40	equ	0000000000010000b	; color 40x24 (mode 1)
+equip_color_80	equ	0000000000100000b	; color 80x25 (mode 3)
 equip_mono	equ	0000000000110000b	; mono 80x25 (mode 7)
 equip_floppy2	equ	0000000001000000b	; 2nd floppy drive installed
 ;			|||||||||||||||`-- floppy drives installed
@@ -319,8 +320,38 @@ int_75:
 ;=========================================================================
 ; boot_os -Boot the OS
 ;-------------------------------------------------------------------------
-
 boot_os:
+
+;-------------------------------------------------------------------------
+; Check for F1 (setup key), run setup utility if pressed
+
+	mov	ah,01h
+	int	16h
+	jz	.no_key
+	mov	ah,00h
+	int	16h			; read the keystroke
+	cmp	ax,3B00h		; F1?
+	jne	.no_key
+	or	byte [post_flags],post_setup
+.no_key:
+
+	test	byte [post_flags],post_setup
+	jz	.no_setup
+
+%ifndef MACHINE_XT
+	call	nvram_setup
+%endif ; MACHINE_XT
+
+.no_setup:
+
+%ifdef MACHINE_FE2010A
+	call	flash_get_cpu_clk	; read CPU clock from configuration
+	call	set_cpu_clk		; set CPU clock
+%endif ; MACHINE_FE2010A
+
+	mov	al,e_boot		; boot the OS POST code
+	out	post_reg,al
+
 	mov	si,msg_boot
 	call	print
 	int	19h			; boot the OS
@@ -494,8 +525,11 @@ print_display:
 	mov	si,msg_disp_mda
 	cmp	al,equip_mono		; monochrome?
 	jz	.print_disp
-	mov	si,msg_disp_cga
-	cmp	al,equip_color		; CGA?
+	mov	si,msg_disp_cga_80
+	cmp	al,equip_color_80	; CGA 80x25?
+	jz	.print_disp
+	mov	si,msg_disp_cga_40
+	cmp	al,equip_color_40	; CGA 40x25?
 	jz	.print_disp
 	mov	si,msg_disp_ega		; otherwise EGA or later
 .print_disp:
@@ -993,6 +1027,9 @@ low_ram_ok:
 	cmp	ah,equip_mono		; monochrome?
 	jz	.set_mode
 	mov	al,03h			; color 80x25 mode
+	cmp	ah,equip_color_80	; 80x25 color?
+	jz	.set_mode
+	mov	al,01h			; color 40x24 mode
 
 .set_mode:
 	mov	ah,00h			; INT 10, AH=00 - Set video mode
@@ -1071,36 +1108,6 @@ low_ram_ok:
 %endif ; EBDA_SIZE
 
 	call	detect_rom_ext		; detect and initialize extension ROMs
-
-;-------------------------------------------------------------------------
-; Check for F1 (setup key), run setup utility if pressed
-
-	mov	ah,01h
-	int	16h
-	jz	.no_key
-	mov	ah,00h
-	int	16h			; read the keystroke
-	cmp	ax,3B00h		; F1?
-	jne	.no_key
-	or	byte [post_flags],post_setup
-.no_key:
-
-	test	byte [post_flags],post_setup
-	jz	.no_setup
-
-%ifndef MACHINE_XT
-	call	nvram_setup
-%endif ; MACHINE_XT
-
-.no_setup:
-
-%ifdef MACHINE_FE2010A
-	call	flash_get_cpu_clk	; read CPU clock from configuration
-	call	set_cpu_clk		; set CPU clock
-%endif ; MACHINE_FE2010A
-
-	mov	al,e_boot		; boot the OS POST code
-	out	post_reg,al
 
 	jmp boot_os
 

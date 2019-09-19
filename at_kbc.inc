@@ -437,7 +437,7 @@ kbc_init:
 	or	word [equipment_list],equip_mono
 	jmp	.get_disp_done
 .get_disp_color:
-	or	word [equipment_list],equip_color
+	or	word [equipment_list],equip_color_80
 .get_disp_done:
 
 ;-------------------------------------------------------------------------
