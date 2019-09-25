@@ -116,7 +116,7 @@ kbc_send_cmd:
 	and	byte [mouse_flags_1],0F8h ; reset the mouse data index
 %endif ; PS2_MOUSE
 .flush_output:
-	in	al,kbc_output_reg	; clean up data from buffer
+	in	al,kbc_data_reg		; clean up data from buffer
 .send_argument:
 	mov	al,ah
 	out	kbc_data_reg,al		; send the argument

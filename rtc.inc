@@ -215,12 +215,13 @@ rtc_init:
 					; DX = low word of tick count
 	
 	mov	ah,01h			; int 1Ah, function 01h - set time
-	int	1Ah	
+	int	1Ah
 
 
+%ifdef AT_RTC_NVRAM
 ; compare NVRAM checksum with stored value
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	call	rtc_read
@@ -253,7 +254,7 @@ rtc_init:
 
 ; update checksum
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	mov	ah,bh
@@ -274,6 +275,7 @@ rtc_init:
 
 	mov	al,e_rtc_init_ok	; RTC initialzied successfully
 	out	post_reg,al
+%endif ; AT_RTC_NVRAM
 
 	pop	di
 	pop	si
@@ -295,14 +297,15 @@ bcd_to_binary:
 	pop	cx
 	ret
 
+%ifdef AT_RTC_NVRAM
 ;=========================================================================
-; rtc_checksum - calculate NVRAM checksum
+; nvram_checksum - calculate NVRAM checksum
 ; Input:
 ;	none
 ; Output:
 ;	BX = NVRAM checksum
 ;-------------------------------------------------------------------------
-rtc_checksum:
+nvram_checksum:
 	push	ax
 	xor	bx,bx
 	mov	ah,10h			; start from 10h
@@ -319,13 +322,13 @@ rtc_checksum:
 	ret
 
 ;=========================================================================
-; rtc_save - Save configuration to CMOS memory
+; nvram_save - Save configuration to CMOS memory
 ; Input:
 ;	CL - CMOS floppy drive type
 ;	     7-4 - first floppy drive type
 ;	     3-0 - second floppy drive type
 ;-------------------------------------------------------------------------
-rtc_save:
+nvram_save:
 	push	ax
 	push	bx
 
@@ -351,7 +354,7 @@ rtc_save:
 	mov	al,cmos_equip
 	call	rtc_write
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	mov	ah,bh
@@ -364,6 +367,7 @@ rtc_save:
 	pop	bx
 	pop	ax
 	ret
+%endif ; AT_RTC_NVRAM
 
 ;=========================================================================
 ; print_rtc - print current RTC date and time

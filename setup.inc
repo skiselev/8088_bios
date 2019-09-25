@@ -48,13 +48,13 @@ nvram_setup:
 	mov	ch, al			; save it to CH
 %endif ; MACHINE_FE2010A
 
-%ifdef AT_RTC
+%ifdef AT_RTC_NVRAM
 	mov	al,cmos_floppy
 	call	rtc_read		; read currently configured floppies
-%else ; AT_RTC
+%else ; AT_RTC_NVRAM
 	call	flash_get_floppy	; read floppies from configuration
 					; section of Flash ROM
-%endif ; AT_RTC
+%endif ; AT_RTC_NVRAM
 	mov	cl,al			; save it to CL
 
 	mov	si,msg_set_welcome
@@ -158,6 +158,7 @@ nvram_setup:
 	call	print
 	jmp	.set_floppy_prompt
 
+%ifdef MACHINE_FE2010A
 .set_cpu_clk:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
@@ -219,6 +220,7 @@ nvram_setup:
 	mov	si,msg_set_sub_help
 	call	print
 	jmp	.set_cpu_clk_prompt
+%endif ; MACHINE_FE2010A
 
 .print_settings:
 	mov	ah,0Eh			; echo
@@ -475,11 +477,11 @@ nvram_setup:
 	mov	bx,0007h
 	int	10h
 
-%ifdef AT_RTC
-	call	rtc_save
-%else ; AT_RTC
+%ifdef AT_RTC_NVRAM
+	call	nvram_save
+%else ; AT_RTC_NVRAM
 	call	flash_save
-%endif ; AT_RTC
+%endif ; AT_RTC_NVRAM
 	jmp	.exit
 
 .no_save:
