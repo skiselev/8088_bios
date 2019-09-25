@@ -704,7 +704,7 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; disable NMI, turbo mode, and video output on CGA and MDA
 
-%ifdef AT_RTC
+%ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
 	out	rtc_addr_reg,al		; disable NMI
 	jmp	$+2
@@ -712,7 +712,7 @@ cpu_ok:
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al		; disable NMI
-%endif ; AT_RTC
+%endif ; AT_NMI
 
 %ifdef MACHINE_XI8088
 	mov	al,iochk_disable	; clear and disable ~IOCHK
@@ -1119,13 +1119,13 @@ low_ram_ok:
 	setloc	0E2C3h			; NMI Entry Point
 int_02:
 	push	ax
-%ifdef AT_RTC
+%ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
 	call	rtc_read		; disable NMI
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
-%endif
+%endif ; AT_NMI
 	in	al,ppi_pb_reg		; read Port B
 	mov	ah,al
 	or	al,iochk_disable	; clear and disable ~IOCHK
@@ -1153,13 +1153,13 @@ int_02:
 	je	cold_start
 	jmp	.1
 .ignore:
-%ifdef AT_RTC
+%ifdef AT_NMI
 	mov	al,0Dh | nmi_enable
 	call	rtc_read		; enable NMI
 %else
 	mov	al,nmi_enable
 	out	nmi_mask_reg,al
-%endif ; AT_RTC
+%endif ; AT_NMI
 .exit:
 	pop	ax
 	iret

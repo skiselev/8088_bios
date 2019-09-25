@@ -38,6 +38,7 @@
 %define BIOS_SETUP			; Include BIOS setup utility
 %define AT_RTC				; Has AT-compatible RTC
 %define AT_RTC_NVRAM			; Use AT RTC for BIOS configuration
+%define AT_NMI				; NMI is controlled using port 70h
 %define AT_DELAY			; Use refresh bit of port 61h for delays
 %define SECOND_PIC			; Has two PICs (AT-style)
 %define AT_KEYBOARD			; Has AT-compatible keyboard controller
