@@ -123,6 +123,12 @@ rtc_init:
 					; set SQW frequency to 1.024 KHz
 	call	rtc_write		; write control register A
 
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_read		; read back control A register
+	cmp	al,26h
+	jne	.exit			; RTC is not responding, exit
+%endif ; AT_RTC_AUTODETECT
+
 	mov	al,cmos_control_b
 	mov	ah,cmos_24hours		; 24 hours, BCD format, DSE disabled
 					; interrupts disabled
@@ -277,6 +283,7 @@ rtc_init:
 	out	post_reg,al
 %endif ; AT_RTC_NVRAM
 
+.exit:
 	pop	di
 	pop	si
 	pop	dx
@@ -389,6 +396,15 @@ print_rtc:
 	mov	si,msg_rtc
 	call	print
 
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect
+	jnc	.rtc_present
+	mov	si,msg_absent
+	call	print
+	jmp	.exit
+.rtc_present:
+%endif ; AT_RTC_AUTODETCT
+
 ; print date
 	mov	ah,04h
 	int	1Ah			; read RTC date
@@ -441,9 +457,37 @@ print_rtc:
 
 	mov	si,msg_crlf
 	call	print
+
+.exit:
 	pop	si
 	pop	dx
 	pop	cx
 	pop	bx
 	pop	ax
 	ret
+
+%ifdef AT_RTC_AUTODETECT
+;=========================================================================
+; rtc_detect - Check RTC is present at 0x70 port
+; Input:
+;	none
+; Output:
+;	CF == 0 - RTC is present
+;	CF == 1 - RTC is not detected
+;-------------------------------------------------------------------------
+rtc_detect:
+	push ax
+	mov	al,cmos_control_a	; select control A register
+	call    rtc_read		; check if RTC is present
+	cmp     al,26h
+	je	.rtc_present
+	stc				; no RTC - set CF
+	jmp	.exit
+
+.rtc_present:
+	clc				; RTC detected - clear CF
+
+.exit:
+	pop ax
+	ret
+%endif ; AT_RTC_AUTODETECT

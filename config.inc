@@ -38,7 +38,7 @@
 %define BIOS_SETUP			; Include BIOS setup utility
 %define AT_RTC				; Has AT-compatible RTC
 %define AT_RTC_NVRAM			; Use AT RTC for BIOS configuration
-%define AT_NMI				; NMI is controlled using port 70h
+%define AT_NMI				; Use port 70h for NMI enable/disable
 %define AT_DELAY			; Use refresh bit of port 61h for delays
 %define SECOND_PIC			; Has two PICs (AT-style)
 %define AT_KEYBOARD			; Has AT-compatible keyboard controller
@@ -53,9 +53,11 @@
 
 ; Settings for FE2010A
 %ifdef MACHINE_FE2010A
-%define	START		0C000h		; BIOS starts at offset 0C000h
+%define	START		0A000h		; BIOS starts at offset 0A000h
 %define MODEL_BYTE	0FEh		; IBM PC/XT
 %define BIOS_SETUP			; Include BIOS setup utility
+%define AT_RTC				; Has AT-compatible RTC
+%define AT_RTC_AUTODETECT		; Autodetect RTC presence
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
@@ -69,6 +71,6 @@
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
-%endif ; MACHINE_FE2010A
+%endif ; MACHINE_XT
 
 

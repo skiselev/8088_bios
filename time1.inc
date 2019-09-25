@@ -70,6 +70,10 @@ int_1A_fn01:
 ;	DL - daylight savings flag: 00h = standard time, 01h = daylight time
 ;-------------------------------------------------------------------------
 int_1A_fn02:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_a
 	call	rtc_read		; read control A register
@@ -108,6 +112,10 @@ int_1A_fn02:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn03:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -153,6 +161,10 @@ int_1A_fn03:
 ;	DL = BCD date
 ;-------------------------------------------------------------------------
 int_1A_fn04:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_a
 	call	rtc_read		; read control A register
@@ -190,6 +202,10 @@ int_1A_fn04:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn05:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -232,6 +248,10 @@ int_1A_fn05:
 ;	CF = 1 - alarm already set
 ;-------------------------------------------------------------------------
 int_1A_fn06:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -282,6 +302,10 @@ int_1A_fn06:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn07:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 
 	mov	al,cmos_control_b
@@ -294,6 +318,7 @@ int_1A_fn07:
 	pop	ax
 	jmp	int_1A_exit
 	
+%ifdef SECOND_PIC
 ;=========================================================================
 ; int_70 - RTC interrupt service routine (IRQ8)
 ; Notes:
@@ -312,5 +337,6 @@ int_70:
 .1:
 	pop	ax
 	iret
+%endif ; SECOND_PIC
 
 %endif ; AT_RTC
