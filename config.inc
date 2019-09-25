@@ -35,7 +35,6 @@
 %ifdef MACHINE_XI8088
 %define	START		8000h		; BIOS starts at offset 8000h
 %define MODEL_BYTE	0FCh		; Pretend it is an IBM PC/AT
-%define BIOS_SETUP			; Include BIOS setup utility
 %define AT_RTC				; Has AT-compatible RTC
 %define AT_RTC_NVRAM			; Use AT RTC for BIOS configuration
 %define AT_NMI				; Use port 70h for NMI enable/disable
@@ -55,9 +54,9 @@
 %ifdef MACHINE_FE2010A
 %define	START		0A000h		; BIOS starts at offset 0A000h
 %define MODEL_BYTE	0FEh		; IBM PC/XT
-%define BIOS_SETUP			; Include BIOS setup utility
 %define AT_RTC				; Has AT-compatible RTC
 %define AT_RTC_AUTODETECT		; Autodetect RTC presence
+%define FLASH_NVRAM			; Use Flash ROM for BIOS configuration
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
@@ -73,4 +72,8 @@
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %endif ; MACHINE_XT
 
+; Automatic settings based on the machine settings above
+%ifdef AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
+%define BIOS_SETUP			; Include BIOS setup utility
+%endif ; AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
 

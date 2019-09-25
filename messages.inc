@@ -146,11 +146,11 @@ msg_set_sub_help db	'Setup commands:', 0Dh, 0Ah
 		db	'h - Show this help', 0Dh, 0Ah, 00h
 msg_set_fd_prmt	db	0Dh, 0Ah, 'Enter floppy drive type (h for help): '
 		db	00h
-%ifdef MACHINE_FE2010A
+%ifdef FLASH_NVRAM
 msg_saving	db	0Dh, 0Ah, 'Saving configuration to Flash ROM... ', 00h
 msg_save_ok	db	'OK', 0Dh, 0Ah, 00h
 msg_save_error	db	'ERROR', 0Dh, 0Ah, 00h
-%endif ; MACHINE FE2010A
+%endif ; FLASH_NVRAM
 %endif ; BIOS_SETUP
 tbl_floppy	dw	msg_none
 		dw	msg_floppy_360

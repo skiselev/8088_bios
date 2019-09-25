@@ -255,9 +255,9 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
 %endif ; AT_RTC
-%ifdef MACHINE_FE2010A
+%ifdef FLASH_NVRAM
 %include	"flash.inc"		; Flash ROM configuration functions
-%endif ; MACHINE_FE2010A
+%endif ; FLASH_NVRAM
 %ifdef BIOS_SETUP
 %include	"setup.inc"		; NVRAM setup functions
 %endif ; BIOS_SETUP
@@ -1052,10 +1052,10 @@ low_ram_ok:
 
 %endif ; AT_RTC
 
-%ifndef MACHINE_XT
+%ifdef BIOS_SETUP
 	mov	si,msg_setup		; print setup prompt
 	call	print
-%endif ; MACHINE_XT
+%endif ; BIOS_SETUP
 
 
 ;-------------------------------------------------------------------------
@@ -1220,6 +1220,17 @@ config_table:
 ;		`-- DMA channel 3 used by hard disk BIOS
 %endif ; AT_RTC
 %else ; SECOND_PIC
+%ifdef AT_RTC
+	db	00100000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%else ; AT_RTC
 	db	00000000b		; byte 5: feature byte 1
 ;		|||||||`-- system has dual bus (ISA and MCA)
 ;		||||||`-- bus is Micro Channel instead of ISA
@@ -1229,6 +1240,7 @@ config_table:
 ;		||`-- real time clock installed
 ;		|`-- 2nd interrupt controller installed
 ;		`-- DMA channel 3 used by hard disk BIOS
+%endif ; AT_RTC
 %endif ; SECOND_PIC
 	db	00h			; byte 6: feature byte 2
 	db	00h			; byte 7: feature byte 3

@@ -51,10 +51,11 @@ nvram_setup:
 %ifdef AT_RTC_NVRAM
 	mov	al,cmos_floppy
 	call	rtc_read		; read currently configured floppies
-%else ; AT_RTC_NVRAM
+%endif ; AT_RTC_NVRAM
+%ifdef FLASH_NVRAM
 	call	flash_get_floppy	; read floppies from configuration
 					; section of Flash ROM
-%endif ; AT_RTC_NVRAM
+%endif ; FLASH_NVRAM
 	mov	cl,al			; save it to CL
 
 	mov	si,msg_set_welcome
@@ -479,9 +480,10 @@ nvram_setup:
 
 %ifdef AT_RTC_NVRAM
 	call	nvram_save
-%else ; AT_RTC_NVRAM
-	call	flash_save
 %endif ; AT_RTC_NVRAM
+%ifdef FLASH_NVRAM
+	call	flash_save
+%endif ; FLASH_NVRAM
 	jmp	.exit
 
 .no_save:
