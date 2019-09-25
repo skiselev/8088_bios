@@ -25,43 +25,42 @@
 config_segment	equ	0000h
 config_space	equ	8000h		; offset of the configuration
 flash_floppy	equ	config_space
-flash_cpu_clk	equ	config_space+01h
+flash_config_a	equ	config_space+01h ; BIOS configuration byte A
 flash_checksum	equ	config_space+0Eh ; 16-bit checksum
 temp_segment	equ	07C0h		; segment for flash writing code
 flash_write	equ	0		; offset for flash writing code
 ;=========================================================================
-; flash_get_cpu_clk - Return CPU clock frequency setting from Flash ROM
-;		      configuration area
+; get_config_a - Return BIOS configuration byte A from Flash ROM
+;		 configuration area
 ; Input:
 ;	none
 ; Output:
 ;	AL - NVRAM CPU clock frequency configuration setting
-;		0 - 4.77 MHz
-;		1 - 7.16 MHz
-;		2 - 9.55 MHz
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010A only)
 ;-------------------------------------------------------------------------
-flash_get_cpu_clk:
+get_config_a:
 	call	flash_verify_checksum
 	jnz	.checksum_error		; ZF == 1 - checksum is invalid
 
-    cs	mov	al,byte [flash_cpu_clk]	; return CPU clock configuration
+    cs	mov	al,byte [flash_config_a] ; return CPU clock configuration
 	jmp	.exit
 
 .checksum_error:
-    cs	mov	al,byte [default_cpu_clk] ; load the default configuration
+    cs	mov	al,byte [default_config_a] ; load the default configuration
 
 .exit:
 	ret
   
 ;=========================================================================
-; flash_get_floppy - Return floppy drive type from Flash ROM configuration
-;                    area
+; get_floppy - Return floppy drive type from Flash ROM configuration area
 ; Input:
 ;	none
 ; Output:
 ;	AL = floppy drive type
 ;-------------------------------------------------------------------------
-flash_get_floppy:
+get_floppy:
 	call	flash_verify_checksum
 	jnz	.checksum_error		; ZF == 0 - checksum is invalid
 
@@ -105,10 +104,10 @@ flash_verify_checksum:
 ;=========================================================================
 ; flash_save - Save configuration to Flash ROM
 ; Input:
-;	CH - CPU Clock type for fe2010a
-;	     0 - 4.77Mhz
-;	     1 - 7.16Mhz
-;	     2 - 9.55Mhz
+;	CH - CPU Clock speed
+;	     0 - 4.77 Mhz / Normal
+;	     1 - 7.16 Mhz / Turbo
+;	     2 - 9.55 Mhz (FE2010A only)
 ;
 ;	CL - CMOS floppy drive type
 ;	     7-4 - first floppy drive type
@@ -150,7 +149,7 @@ flash_save:
 
 	pop	cx			; load the original CX value
 	push	cx
-    es  mov	byte [flash_cpu_clk],ch	; set new cpu clock type
+    es  mov	byte [flash_config_a],ch ; set new BIOS configuration byte A
     es  mov	byte [flash_floppy],cl	; set new floppy drive type    
     
 	mov	al,00h			; zero the rest of

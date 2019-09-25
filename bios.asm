@@ -338,16 +338,17 @@ boot_os:
 	test	byte [post_flags],post_setup
 	jz	.no_setup
 
-%ifndef MACHINE_XT
+%ifdef BIOS_SETUP
 	call	nvram_setup
-%endif ; MACHINE_XT
+%endif ; BIOS_SETUP
 
 .no_setup:
 
-%ifdef MACHINE_FE2010A
-	call	flash_get_cpu_clk	; read CPU clock from configuration
+%ifdef TURBO_MODE
+	call	get_config_a		; read BIOS configuration byte A
+	and	al,nvram_trbo_mask
 	call	set_cpu_clk		; set CPU clock
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 
 	mov	al,e_boot		; boot the OS POST code
 	out	post_reg,al

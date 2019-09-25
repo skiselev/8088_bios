@@ -327,65 +327,41 @@ int_09:
 	cmp	bl,kbd_alt_bit|kbd_ctrl_bit
 	jne	.6
 	cmp	al,kbd_del_code		; <Ctrl>+<Alt>+<Del>?
-	jne	.check_minus
+	jne	.check_turbo_off
 	mov	word [warm_boot],1234h ; warm boot flag
 	jmp	0F000h:warm_start	; reboot
 
 ; handle turbo mode switch combinations
+.check_turbo_off:
 
-%ifdef MACHINE_XI8088
-.check_minus:
+%ifdef TURBO_MODE
 	cmp	al,4Ah			; gray - scancode
-	jne	.check_plus
+	jne	.check_turbo_mid
 
-.turbo_off:
-	in	al,ppi_pb_reg
-	and	al,0FBh			; clear bit 2 (turbo enable bit)
-	out	ppi_pb_reg,al
-	jmp	keyboard_int_exit
-
-.check_plus:
-	cmp	al,4Eh			; gray + scancode
-	jne	.6
-
-.turbo_on:
-	in	al,ppi_pb_reg
-	or	al,04h			; set bit 2 (turbo enable bit)
-	out	ppi_pb_reg,al
-	jmp	keyboard_int_exit
-%endif ; MACHINE_XI8088
-
-%ifdef MACHINE_FE2010A
-.check_minus:
-	cmp	al,4Ah			; gray - scancode
-	jne	.check_asterisk
-
-.turbo_off:
 	call	set_cpu_clk_4_77mhz
 	jmp	keyboard_int_exit
 
-.check_asterisk:
+.check_turbo_mid:
+%ifdef MACHINE_FE2010A
 	cmp	al,37h			; * scancode
-	jne	.check_plus
+	jne	.check_turbo_hi
 
-.turbo_7_16mhz:
 	call	set_cpu_clk_7_16mhz
 	jmp	keyboard_int_exit
+%endif ; MACHINE_FE2010A
 
-.check_plus:
+.check_turbo_hi:
 	cmp	al,4Eh			; gray + scancode
 	jne	.6
 
-.turbo_9_55mhz:
+%ifdef MACHINE_FE2010A
 	call	set_cpu_clk_9_55mhz
+%else ; MACHINE_FE2010A
+	call	set_cpu_clk_turbo
+%endif ; MACHINE_FE2010A
 	jmp	keyboard_int_exit
 
-%endif ; MACHINE_FE2010A
-
-%ifdef MACHINE_XT
-.check_minus:
-					; do nothing for an XT
-%endif ; MACHINE_XT
+%endif ; TURBO_MODE
 
 ; Check for the INS key here. This one needs to toggle the ins bit
 ; in the keyboard flags variables.

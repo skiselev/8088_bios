@@ -1312,16 +1312,11 @@ fdc_reset:
 ;=========================================================================
 
 read_cmos_type:
-%ifdef AT_RTC_NVRAM
-	mov	al,cmos_floppy
-	call	rtc_read		; read drive type
-%else ; AT_RTC_NVRAM
-%ifdef FLASH_NVRAM
-	call	flash_get_floppy
-%else ; FLASH_NVRAM
+%ifdef BIOS_CONFIG
+	call	get_floppy
+%else ; BIOS_CONFIG
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-%endif ; FLASH_NVRAM
-%endif ; AT_RTC_NVRAM
+%endif ; BIOS_CONFIG
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
 	shr	al,1			; shift drive 0 bits 7-4 to 3-0
@@ -1685,16 +1680,11 @@ fdc_wait_ready:
 ;	AL = NVRAM floppy configuration byte
 ;-------------------------------------------------------------------------
 detect_floppy:
-%ifdef AT_RTC_NVRAM
-	mov	al,cmos_floppy
-	call	rtc_read		; floppies type to AL
-%else ; AT_RTC_NVRAM
-%ifdef FLASH_NVRAM
-	call	flash_get_floppy
+%ifdef BIOS_SETUP
+	call	get_floppy
 %else ; FLASH_NVRAM
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-%endif ; FLASH_NVRAM
-%endif ; AT_RTC_NVRAM
+%endif ; BIOS_SETUP
 	cmp	al,00h			; No floppy drives?
 	je	.exit
 	or	byte [equipment_list],equip_floppies

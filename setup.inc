@@ -25,9 +25,9 @@
 
 default_floppy	db	cmos_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
-%ifdef MACHINE_FE2010A
-default_cpu_clk	db	0		; 4.77 MHz
-%endif ; MACHINE_FE2010A
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM 
+default_config_a db	0		; 4.77 MHz
+%endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
 ;=========================================================================
 ; nvram_setup - NVRAM configuration utility
@@ -43,21 +43,23 @@ nvram_setup:
 	push	dx
 	push	si
 
+	call	get_config_a		; read BIOS configuration byte A
+%ifdef TURBO_MODE
+	and	al,nvram_trbo_mask
 %ifdef MACHINE_FE2010A
-	call	flash_get_cpu_clk	; read CPU clock from configuration
-	mov	ch, al			; save it to CH
+	cmp	al,2
 %endif ; MACHINE_FE2010A
-
-%ifdef AT_RTC_NVRAM
-	mov	al,cmos_floppy
-	call	rtc_read		; read currently configured floppies
-%endif ; AT_RTC_NVRAM
-%ifdef FLASH_NVRAM
-	call	flash_get_floppy	; read floppies from configuration
-					; section of Flash ROM
-%endif ; FLASH_NVRAM
+%ifdef MACHINE_XI8088
+	cmp	al,1
+%endif ; MACHINE_XI8088
+	jna	.config_a_valid
+%endif ; TURBO_MODE
+	and	al,0FCh			; clear turbo bits
+.config_a_valid:
+	mov	ch,al			; save it to CH
+	call	get_floppy		; read currently configured floppies
 	mov	cl,al			; save it to CL
-
+	
 	mov	si,msg_set_welcome
 	call	print
 
@@ -77,10 +79,10 @@ nvram_setup:
 	je	.set_floppy
 	cmp	al,'p'
 	je	.print_settings
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 	cmp	al,'c'
 	je	.set_cpu_clk
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 %ifdef AT_RTC
 	cmp	al,'t'
 	je	.set_time
@@ -159,7 +161,7 @@ nvram_setup:
 	call	print
 	jmp	.set_floppy_prompt
 
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 .set_cpu_clk:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
@@ -179,32 +181,49 @@ nvram_setup:
 	je	.cpu_clk_help
 	cmp	al,'4'
 	je	.cpu_clk_4_77mhz
+%ifdef MACHINE_FE2010A
 	cmp	al,'7'
 	je	.cpu_clk_7_16mhz
 	cmp	al,'9'
 	je	.cpu_clk_9_55mhz
+%else ; MACHINE_FE2010A
+	cmp	al,'t'
+	je	.cpu_clk_turbo
+%endif ; MACHINE_FE2010A
 	jmp	.cpu_clk_input
 
 .cpu_clk_4_77mhz:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	ch,0			; CH = 0 -> 4.77 MHz
+	and	ch,0FCh			; CH[1:0] = 0 -> 4.77 MHz
 	jmp	.menu_loop
 
+%ifdef MACHINE_FE2010A
 .cpu_clk_7_16mhz:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	ch,1			; CH = 1 -> 7.16 MHz
+	and	ch,0FCh			; clear turbo bits
+	or	ch,1			; CH[1:0] = 1 -> 7.16 MHz
 	jmp	.menu_loop
 
 .cpu_clk_9_55mhz:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	ch,2			; CH = 2 -> 9.55 MHz
+	and	ch,0FCh			; clear turbo bits
+	or	ch,2			; CH[1:0] = 2 -> 9.55 MHz
 	jmp	.menu_loop
+%else ; MACHINE_FE2010A
+.cpu_clk_turbo:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,0FCh			; clear turbo bits
+	or	ch,1			; CH[1:0] = 1 -> Turbo
+	jmp	.menu_loop
+%endif ; MACHINE_FE2010A
 
 .cpu_clk_exit:
 	mov	ah,0Eh			; echo
@@ -221,7 +240,7 @@ nvram_setup:
 	mov	si,msg_set_sub_help
 	call	print
 	jmp	.set_cpu_clk_prompt
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 
 .print_settings:
 	mov	ah,0Eh			; echo
@@ -230,30 +249,14 @@ nvram_setup:
 	mov	si,msg_crlf
 	call	print
 
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 	mov	si,msg_cpu_clk
 	call	print
 	mov	al,ch
-	cmp	al,1
-	je	.print_cpu_clk_7_16mhz
-	cmp	al,2
-	je	.print_cpu_clk_9_55mhz
-	mov	si,msg_clk_4_77mhz
-	jmp	.print_cpu_clk_done
-
-.print_cpu_clk_7_16mhz:
-	mov	si,msg_clk_7_16mhz
-	jmp	.print_cpu_clk_done
-
-.print_cpu_clk_9_55mhz:
-	mov	si,msg_clk_9_55mhz
-	jmp	.print_cpu_clk_done
-
-.print_cpu_clk_done:
-	call	print
+	call	print_cpu_clk
 	mov	si,msg_crlf
 	call	print
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 
 %ifdef AT_RTC
 	call	print_rtc		; print current RTC time

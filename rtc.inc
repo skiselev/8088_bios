@@ -41,6 +41,7 @@ cmos_month	equ	08h	; month location in RTC
 cmos_year	equ	09h	; year location in RTC
 cmos_floppy	equ	10h	; floppy type byte
 cmos_equip	equ	14h	; equipment byte
+cmos_config_a	equ	2Dh	; BIOS configuration byte A
 cmos_sum_hi	equ	2Eh	; checksum of bytes 10h - 20h - high byte
 cmos_sum_lo	equ	2Fh	; checksum of bytes 10h - 20h - low byte 
 cmos_century	equ	32h	; centry location in RTC (DS12C887 only)
@@ -331,6 +332,11 @@ nvram_checksum:
 ;=========================================================================
 ; nvram_save - Save configuration to CMOS memory
 ; Input:
+;	CH - CPU Clock speed
+;	     0 - 4.77 Mhz / Normal
+;	     1 - 7.16 Mhz / Turbo
+;	     2 - 9.55 Mhz (FE2010A only)
+;
 ;	CL - CMOS floppy drive type
 ;	     7-4 - first floppy drive type
 ;	     3-0 - second floppy drive type
@@ -338,6 +344,10 @@ nvram_checksum:
 nvram_save:
 	push	ax
 	push	bx
+
+	mov	al,cmos_config_a
+	mov	ah,ch
+	call	rtc_write
 
 	mov	al,cmos_floppy
 	mov	ah,cl
@@ -374,6 +384,34 @@ nvram_save:
 	pop	bx
 	pop	ax
 	ret
+
+;=========================================================================
+; get_config_a - Return BIOS configuration byte A from NVRAM
+; Input:
+;	none
+; Output:
+;	AL - NVRAM CPU clock frequency configuration setting
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010 only)
+;-------------------------------------------------------------------------
+get_config_a:
+	mov	al,cmos_config_a	; read BIOS configuration byte A
+	call	rtc_read
+	ret
+  
+;=========================================================================
+; get_floppy - Return floppy drive type from NVRAM
+; Input:
+;	none
+; Output:
+;	AL = floppy drive type
+;-------------------------------------------------------------------------
+get_floppy:
+	mov     al,cmos_floppy
+	call    rtc_read		; read currently configured floppies
+	ret
+
 %endif ; AT_RTC_NVRAM
 
 ;=========================================================================

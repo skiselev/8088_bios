@@ -23,6 +23,8 @@
 ;=========================================================================
 
 flags_tf	equ	0100h		; TF flag - enables single-step
+nvram_trbo_mask	equ	03h		; BIOS configuration byte A -
+					; turbo mask
 
 ;=========================================================================
 ; detect_cpu - detect and print CPU type
@@ -106,18 +108,19 @@ detect_cpu:
 
 .cpu_freq:
 
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 ; print CPU clock frequency
 
 	mov	si,msg_at
 	call	print
 
 	push	ax
-	call	flash_get_cpu_clk	; read cpu clock type from configuration
+	call	get_config_a		; read BIOS configuration byte A
+	and	al,nvram_trbo_mask	; get turbo bits
 	call	print_cpu_clk
 	pop	ax
 
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 
 	mov	si,msg_crlf
 	call	print
@@ -199,14 +202,14 @@ detect_fpu:
 	pop	ax
 	ret
 
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 ;=========================================================================
 ; print_cpu_clk - Print CPU clock frequency
 ; Input:
 ;	AL - NVRAM CPU clock frequency configuration
-;		0 - 4.77 MHz
-;		1 - 7.16 MHz
-;		2 - 9.55 MHz
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010A)
 ; Output:
 ;	none
 ;-------------------------------------------------------------------------
@@ -221,32 +224,41 @@ print_cpu_clk:
 	ret
 
 ;=========================================================================
-; set_cpu_clk         - Set CPU clock frequency
+; set_cpu_clk - Set CPU clock frequency
 ; Input:
 ;	AL - NVRAM CPU clock frequency configuration
-;		0 - 4.77 MHz
-;		1 - 7.16 MHz
-;		2 - 9.55 MHz
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010A)
 ; Output:
 ;	none
 ;-------------------------------------------------------------------------
 set_cpu_clk:
+%ifdef MACHINE_FE2010A
 	cmp	al, 1 
 	je	set_cpu_clk_7_16mhz
 	cmp	al, 2
-	je	set_cpu_clk_9_55mhz   
+	je	set_cpu_clk_9_55mhz
 	jmp	set_cpu_clk_4_77mhz   
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+	cmp	al,1
+	je	set_cpu_clk_turbo
+	jmp	set_cpu_clk_4_77mhz   
+%endif ; MACHINE_XI8088
 	ret
 
 ;=========================================================================
 ; set_cpu_clk_4_77mhz - Set CPU clock at 4.77 MHz
 ; set_cpu_clk_7_16mhz - Set CPU clock at 7.16 MHz
 ; set_cpu_clk_9_55mhz - Set CPU clock at 9.55 MHz
+; set_cpu_clk_turbo - Set CPU clock at turbo frequency (system dependent)
 ; Input:
 ;	none
 ; Output:
 ;	none
 ;-------------------------------------------------------------------------
+%ifdef MACHINE_FE2010A
 set_cpu_clk_4_77mhz:
 	push ax
 	mov	al,byte [equipment_list] ; get lower byte of the equipment list
@@ -275,5 +287,23 @@ set_cpu_clk_9_55mhz:
 	out	fe_config_reg,al
 	pop ax
 	ret
-
 %endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+set_cpu_clk_4_77mhz:
+	push	ax
+	in	al,ppi_pb_reg
+	and	al,0FBh			; clear bit 2 (turbo enable bit)
+	out	ppi_pb_reg,al
+	pop	ax
+	ret
+
+set_cpu_clk_turbo:
+	push	ax
+	in	al,ppi_pb_reg
+	or	al,04h			; set bit 2 (turbo enable bit)
+	out	ppi_pb_reg,al
+	pop	ax
+	ret
+%endif ; MACHINE_XI8088
+
+%endif ; TURBO_MODE

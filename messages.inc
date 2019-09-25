@@ -42,16 +42,24 @@ msg_crlf	db      0Dh, 0Ah, 00h
 msg_none	db	'none', 00h
 msg_colon	db	': ', 00h
 msg_semicolon	db	'; ', 00h
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 msg_cpu_clk	db	'CPU clock frequency:        ', 00h
 msg_at		db	' @ ', 00h
 msg_clk_4_77mhz	db	'4.77 MHz ', 00h
+%ifdef MACHINE_FE2010A
 msg_clk_7_16mhz	db	'7.16 MHz ', 00h
 msg_clk_9_55mhz	db	'9.55 MHz ', 00h
+%else ; MACHINE_FE2010A
+msg_clk_turbo	db	'Turbo ', 00h
+%endif ; MACHINE_FE2010A
 tbl_cpu_clk	dw	msg_clk_4_77mhz
+%ifdef MACHINE_FE2010A
 		dw	msg_clk_7_16mhz
 		dw	msg_clk_9_55mhz
+%else ; MACHINE_FE2010A
+		dw	msg_clk_turbo
 %endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 msg_cpu		db      'Main Processor:             ', 00h
 msg_fpu		db      'Mathematics Co-processor:   ', 00h
 msg_cpu_8088_78	db      "Intel 8088 '78", 00h
@@ -107,9 +115,9 @@ msg_setup	db	'Press F1 to run BIOS setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
 msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the BIOS setup utility', 00h
 msg_set_help	db	0Dh, 0Ah
 		db	'BIOS setup commands:', 0Dh, 0Ah
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 		db	'c - Set default CPU clock frequency', 0Dh, 0Ah
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 %ifdef AT_RTC
 		db	't - Set time', 0Dh, 0Ah
 		db	'd - Set date', 0Dh, 0Ah
@@ -121,15 +129,19 @@ msg_set_help	db	0Dh, 0Ah
 		db	'q - Exit without saving changes', 0Dh, 0Ah
 		db	'h - Show this help', 0Dh, 0Ah, 00h
 msg_set_prompt	db	0Dh, 0Ah, 'Enter command (h for help): ', 00h
-%ifdef MACHINE_FE2010A
+%ifdef TURBO_MODE
 msg_set_clk_help db 	0Dh, 0Ah
 		db	'CPU clock frequency options:', 0Dh, 0Ah
 		db	'4 - 4.77 MHz', 0Dh, 0Ah
+%ifdef MACHINE_FE2010A
 		db	'7 - 7.16 MHz', 0Dh, 0Ah
 		db	'9 - 9.55 MHz', 0Dh, 0Ah, 00h
+%else ; MACHINE_FE2010A
+		db	't - Turbo', 0Dh, 0Ah, 00h
+%endif ; MACHINE_FE2010A
 msg_set_clk_prmt db	0Dh, 0Ah, 'Enter CPU clock frequency (h for help): '
 		db	00h
-%endif ; MACHINE_FE2010A
+%endif ; TURBO_MODE
 %ifdef AT_RTC
 msg_set_time	db	'Enter time (hh:mm:ss): ', 00h
 msg_set_date	db	'Enter date (YYYY-MM-DD): ', 00h

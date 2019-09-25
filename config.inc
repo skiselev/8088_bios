@@ -77,3 +77,6 @@
 %define BIOS_SETUP			; Include BIOS setup utility
 %endif ; AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
 
+%ifdef MACHINE_XI8088 or MACHINE_FE2010A
+%define TURBO_MODE			; Has turbo mode
+%endif ; MACHINE_XI8088 or MACHINE_FE2010A
