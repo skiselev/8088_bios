@@ -502,14 +502,13 @@ print_rtc:
 	cmp	dl,0
 	je	.dse_disabled
 	mov	si,msg_enabled		; DSE enabled
-	call	print
-	jmp	.dse_done
+	jmp	.dse_print
 
 .dse_disabled:
 	mov	si,msg_disabled		; DSE disabled
-	call	print
 
-.dse_done:
+.dse_print:
+	call	print
 	mov	si,msg_crlf
 	call	print
 
