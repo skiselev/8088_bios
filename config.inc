@@ -2,10 +2,10 @@
 ; config.inc - Compilation time settings and settings
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -22,11 +22,25 @@
 ;
 ;=========================================================================
 
-%define DATE		'05/28/14'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.0'		; BIOS version
-%define	START		8000h		; BIOS starts at offset 8000h
+%define DATE		'09/25/19'	; BIOS release date MM/DD/YY
+%define VERSION		'0.9.7'		; BIOS version
 
-%define AT_COMPAT			; AT-compatible system, two PICs
+; Machine type is defined in the Makefile
+;%define MACHINE_XI8088			; Xi 8088
+;%define MACHINE_FE2010A 		; Faraday FE2010A
+;%define MACHINE_XT			; IBM PC/XT or highly compatible board
+					; FIXME: not implemented yet
+
+; Settings for Xi 8088
+%ifdef MACHINE_XI8088
+%define	START		8000h		; BIOS starts at offset 8000h
+%define MODEL_BYTE	0FCh		; Pretend it is an IBM PC/AT
+%define AT_RTC				; Has AT-compatible RTC
+%define AT_RTC_NVRAM			; Use AT RTC for BIOS configuration
+%define AT_NMI				; Use port 70h for NMI enable/disable
+%define AT_DELAY			; Use refresh bit of port 61h for delays
+%define SECOND_PIC			; Has two PICs (AT-style)
+%define AT_KEYBOARD			; Has AT-compatible keyboard controller
 %define PS2_MOUSE			; Enable PS/2 auxiliary device support
 %define DISABLE_KBD_DURING_INTERRUPTS	; Don't disable keyboard in INT1
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
@@ -34,4 +48,40 @@
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %define EBDA_SIZE	1		; 1KB reserved for EBDA
 					; EBDA is required for PS/2 aux support
-%define SLOW_FLOPPY			; turn off turbo during floppy I/O
+%endif ; MACHINE_XI8088
+
+; Settings for FE2010A
+%ifdef MACHINE_FE2010A
+%define	START		0A000h		; BIOS starts at offset 0A000h
+%define MODEL_BYTE	0FEh		; IBM PC/XT
+%define AT_RTC				; Has AT-compatible RTC
+%define AT_RTC_AUTODETECT		; Autodetect RTC presence
+%define FLASH_NVRAM			; Use Flash ROM for BIOS configuration
+%define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
+%define MAX_RAM_SIZE	640		; Scan this much memory during POST
+%define RAM_TEST_BLOCK	16384		; block size for RAM test
+%endif ; MACHINE_FE2010A
+
+; Settings for IBM PC/XT
+%ifdef MACHINE_XT
+;%define	START		0E000h		; BIOS starts at offset 0E000h
+%define	START		0C000h		; FIXME: more ROM for development
+%define MODEL_BYTE	0FEh		; IBM PC/XT
+%define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
+%define MAX_RAM_SIZE	640		; Scan this much memory during POST
+%define RAM_TEST_BLOCK	16384		; block size for RAM test
+%endif ; MACHINE_XT
+
+%ifdef AT_RTC
+%define CMOS_CONTROL_B_CONFIG	000000010b	; RTC 24 hours format (0xxxxxx1xb = 24 hours, 0xxxxxx0xb = 12)
+                                            ; DSE (0xxxxxxx1b = Enabled, 0xxxxxxx0b = Disabled)
+%endif ; AT_RTC
+
+; Automatic settings based on the machine settings above
+%ifdef AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
+%define BIOS_SETUP			; Include BIOS setup utility
+%endif ; AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
+
+%ifdef MACHINE_XI8088 or MACHINE_FE2010A
+%define TURBO_MODE			; Has turbo mode
+%endif ; MACHINE_XI8088 or MACHINE_FE2010A
