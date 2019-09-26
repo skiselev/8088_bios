@@ -263,13 +263,10 @@ nvram_setup:
 	call	print
 	mov	si,msg_colon
 	call	print
+	mov	si,msg_enabled		; assume F0000-F7FFF ROM scan enabled
 	test	dh,nvram_ext_scan
-	jz	.ext_scan_enabled
-	mov	si,msg_disabled
-	jmp	.print_ext_scan
-
-.ext_scan_enabled:
-	mov	si,msg_enabled
+	jz	.print_ext_scan
+	mov	si,msg_disabled		; F0000-F7FFF ROM scan disabled
 
 .print_ext_scan:
 	call	print

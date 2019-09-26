@@ -499,13 +499,10 @@ print_rtc:
 
 	mov	si,msg_rtc_dse
 	call	print
+	mov	si,msg_disabled		; assume DSE disabled
 	cmp	dl,0
-	je	.dse_disabled
+	je	.dse_print
 	mov	si,msg_enabled		; DSE enabled
-	jmp	.dse_print
-
-.dse_disabled:
-	mov	si,msg_disabled		; DSE disabled
 
 .dse_print:
 	call	print
