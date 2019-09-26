@@ -1269,6 +1269,12 @@ detect_rom_ext:
 
 	mov	dx,0C800h
 	mov	bx,0F800h
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+	call	get_config_a
+	test	al,nvram_ext_scan
+	jz	.ext_scan_loop		; ext_scan clear - scan till F8000
+	mov	bx,0F000h		; ext_scan set - scan till F0000
+%endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
 .ext_scan_loop:
 	call	extension_scan

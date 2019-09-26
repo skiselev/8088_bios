@@ -23,8 +23,6 @@
 ;=========================================================================
 
 flags_tf	equ	0100h		; TF flag - enables single-step
-nvram_trbo_mask	equ	03h		; BIOS configuration byte A -
-					; turbo mask
 
 ;=========================================================================
 ; detect_cpu - detect and print CPU type

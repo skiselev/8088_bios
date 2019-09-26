@@ -25,8 +25,12 @@
 
 default_floppy	db	cmos_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
-%ifdef AT_RTC_NVRAM or FLASH_NVRAM 
-default_config_a db	0		; 4.77 MHz
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+; NVRAM BIOS configuration byte A
+default_config_a db	0		; 4.77 MHz, F0000-F7FFF scan enabled
+nvram_trbo_mask equ	03h		; turbo mask
+nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
+					; (0 - enabled, 1 - disabled)
 %endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
 ;=========================================================================
@@ -54,7 +58,7 @@ nvram_setup:
 %endif ; MACHINE_XI8088
 	jna	.config_a_valid
 %endif ; TURBO_MODE
-	and	al,0FCh			; clear turbo bits
+	and	al,0FCh                 ; clear turbo bits
 .config_a_valid:
 	mov	ch,al			; save it to CH
 	call	get_floppy		; read currently configured floppies
@@ -90,6 +94,8 @@ nvram_setup:
 	je	.set_date
 	cmp	al,'s'
 	je	.set_daylight_saving
+	cmp	al,'e'
+	je	.set_ext_scan
 %endif ; AT_RTC
 	cmp	al,'w'
 	je	.save
@@ -265,6 +271,22 @@ nvram_setup:
 %endif ; AT_RTC
 	mov	al,cl			; floppy bytes to AL
 	call	print_floppy
+	mov	si,msg_set_ext
+	call	print
+	mov	si,msg_colon
+	call	print
+	test	dh,nvram_ext_scan
+	jz	.ext_scan_enabled
+	mov	si,msg_disabled
+	jmp	.print_ext_scan
+
+.ext_scan_enabled:
+	mov	si,msg_enabled
+
+.print_ext_scan:
+	call	print
+	mov	si,msg_crlf
+	call	print
 	jmp	.menu_loop
 
 %ifdef AT_RTC
@@ -533,6 +555,54 @@ nvram_setup:
 	jmp	.menu_loop
 
 %endif ; AT_RTC
+
+.set_ext_scan:
+	push	cx
+	push	di
+	push	es
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_crlf
+	call	print
+	mov	si,msg_set_ext
+	call	print
+	mov	si,msg_yes_no
+	call	print
+
+.set_ext_input:
+	mov	ah,00h
+	int	16h
+	cmp	al,0Dh
+	je	.set_ext_exit
+	or	al,20h			; convert to lower case
+	cmp	al,'n'
+	je	.set_ext_disable
+	cmp	al,'y'
+	je	.set_ext_enable
+	jmp	.set_ext_input
+
+.set_ext_disable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	or	ch,nvram_ext_scan	; bit set = disable scan
+	jmp	.set_ext_exit
+
+.set_ext_enable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_ext_scan	; bit clear = enable scan
+	jmp	.set_ext_exit
+
+.set_ext_exit:
+	mov	si,msg_crlf
+	call	print
+	pop	es
+	pop	di
+	pop	cx
+	jmp	.menu_loop
 
 .save:
 	mov	ah,0Eh			; echo
