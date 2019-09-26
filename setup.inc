@@ -26,8 +26,10 @@
 default_floppy	db	cmos_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
 %ifdef AT_RTC_NVRAM or FLASH_NVRAM
-; NVRAM BIOS configuration byte A
-default_config_a db	0		; 4.77 MHz, F0000-F7FFF scan enabled
+default_config_a db	00000000b	; NVRAM BIOS configuration byte A
+			||||||`---------; 00 = 4.77 MHz / Turbo off
+			|||||`----------; 0 = F0000-F7FFF ROM scan enabled
+			`---------------; reserved
 nvram_trbo_mask equ	03h		; turbo mask
 nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
 					; (0 - enabled, 1 - disabled)
