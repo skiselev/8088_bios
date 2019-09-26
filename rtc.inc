@@ -52,7 +52,6 @@ cmos_control_a	equ	0Ah	; RTC control A register
 cmos_uip	equ	80h	; RTC update in progress bit
 cmos_control_b	equ	0Bh	; RTC control B register
 cmos_dse	equ	01h	; RTC daylight savings enable bit
-cmos_24hours	equ	02h	; RTC 24 hours format (1 = 24 hours, 0 = 12)
 cmos_uie	equ	10h	; RTC update ended interrupt enable bit
 cmos_aie	equ	20h	; RTC alarm interrupt enable bit
 cmos_pie	equ	40h	; RTC periodic interrupt enable bit
@@ -131,7 +130,7 @@ rtc_init:
 %endif ; AT_RTC_AUTODETECT
 
 	mov	al,cmos_control_b
-	mov	ah,cmos_24hours		; 24 hours, BCD format, DSE disabled
+	mov	ah,CMOS_CONTROL_B_CONFIG		; 24 or 12 hours, BCD format, DSE enabled or disabled
 					; interrupts disabled
 	call	rtc_write		; write control register B
 

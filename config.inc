@@ -72,6 +72,11 @@
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %endif ; MACHINE_XT
 
+%ifdef AT_RTC
+%define CMOS_CONTROL_B_CONFIG	000000010b	; RTC 24 hours format (0xxxxxx1xb = 24 hours, 0xxxxxx0xb = 12)
+                                            ; DSE (0xxxxxxx1b = Enabled, 0xxxxxxx0b = Disabled)
+%endif ; AT_RTC
+
 ; Automatic settings based on the machine settings above
 %ifdef AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
 %define BIOS_SETUP			; Include BIOS setup utility
