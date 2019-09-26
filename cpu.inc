@@ -114,16 +114,6 @@ detect_cpu:
 
 	push	ax
 	call	get_config_a		; read BIOS configuration byte A
-	and	al,nvram_trbo_mask	; get turbo bits
-%ifdef MACHINE_FE2010A
-	cmp	al,2
-%endif ; MACHINE_FE2010A
-%ifdef MACHINE_XI8088
-	cmp	al,1
-%endif ; MACHINE_XI8088
-	jna	.cpu_clk_valid
-	mov	al,0			; clear turbo bits
-.cpu_clk_valid:
 	call	print_cpu_clk
 	pop	ax
 
@@ -213,7 +203,7 @@ detect_fpu:
 ;=========================================================================
 ; print_cpu_clk - Print CPU clock frequency
 ; Input:
-;	AL - NVRAM CPU clock frequency configuration
+;	AL - NVRAM CPU clock frequency configuration (bits 1:0)
 ;		0 - 4.77 MHz / Normal
 ;		1 - 7.16 MHz / Turbo
 ;		2 - 9.55 MHz (FE2010A)
@@ -221,13 +211,28 @@ detect_fpu:
 ;	none
 ;-------------------------------------------------------------------------
 print_cpu_clk:
+	push	ax
 	push	si
-	mov	si,ax
-	and     si,0003h
-	shl	si,1
-    cs	mov	si,word [tbl_cpu_clk+si]
+	and	al,nvram_trbo_mask	; get turbo bits
+%ifdef MACHINE_FE2010
+	mov	si,msg_clk_7_16mhz
+	cmp	al,1
+	je	.print
+	mov	si,msg_clk_9_55mhz
+	cmp	al,2
+	je	.print
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+	mov	si,msg_clk_turbo
+	cmp	al,1
+	je	.print
+%endif ; MACHINE_XI8088
+	mov	si,msg_clk_4_77mhz
+
+.print:
 	call    print
 	pop	si
+	pop	ax
 	ret
 
 ;=========================================================================

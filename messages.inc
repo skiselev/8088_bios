@@ -52,13 +52,6 @@ msg_clk_9_55mhz	db	'9.55 MHz ', 00h
 %else ; MACHINE_FE2010A
 msg_clk_turbo	db	'Turbo ', 00h
 %endif ; MACHINE_FE2010A
-tbl_cpu_clk	dw	msg_clk_4_77mhz
-%ifdef MACHINE_FE2010A
-		dw	msg_clk_7_16mhz
-		dw	msg_clk_9_55mhz
-%else ; MACHINE_FE2010A
-		dw	msg_clk_turbo
-%endif ; MACHINE_FE2010A
 %endif ; TURBO_MODE
 msg_cpu		db      'Main Processor:             ', 00h
 msg_fpu		db      'Mathematics Co-processor:   ', 00h

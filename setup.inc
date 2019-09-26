@@ -48,18 +48,6 @@ nvram_setup:
 	push	si
 
 	call	get_config_a		; read BIOS configuration byte A
-%ifdef TURBO_MODE
-	and	al,nvram_trbo_mask
-%ifdef MACHINE_FE2010A
-	cmp	al,2
-%endif ; MACHINE_FE2010A
-%ifdef MACHINE_XI8088
-	cmp	al,1
-%endif ; MACHINE_XI8088
-	jna	.config_a_valid
-%endif ; TURBO_MODE
-	and	al,0FCh                 ; clear turbo bits
-.config_a_valid:
 	mov	ch,al			; save it to CH
 	call	get_floppy		; read currently configured floppies
 	mov	cl,al			; save it to CL
