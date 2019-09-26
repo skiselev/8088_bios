@@ -88,6 +88,8 @@ nvram_setup:
 	je	.set_time
 	cmp	al,'d'
 	je	.set_date
+	cmp	al,'s'
+	je	.set_daylight_saving
 %endif ; AT_RTC
 	cmp	al,'w'
 	je	.save
@@ -473,6 +475,62 @@ nvram_setup:
 	mov	si,msg_date_inval
 	call	print
 	jmp	.set_date_exit
+
+.set_daylight_saving:
+	push	cx
+	push	di
+	push	es
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_crlf
+	call	print
+	mov	si,msg_set_dse
+	call	print
+
+.set_dse_input:
+	mov	ah,00h
+	int	16h
+	cmp	al,0Dh
+	je	.set_dse_exit
+	or	al,20h			; convert to lower case
+	cmp	al,'n'
+	je	.set_dse_disable
+	cmp	al,'y'
+	je	.set_dse_enable
+	jmp	.set_dse_input
+
+.set_dse_disable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	al,cmos_control_b
+	call	rtc_read
+	mov	ah,al
+	and	ah,~cmos_dse		; clear DSE bit
+	mov	al,cmos_control_b
+	call	rtc_write
+	jmp	.set_dse_exit
+
+.set_dse_enable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	al,cmos_control_b
+	call	rtc_read
+	mov	ah,al
+	or	ah,cmos_dse		; set DSE bit
+	mov	al,cmos_control_b
+	call	rtc_write
+	jmp	.set_dse_exit
+
+.set_dse_exit:
+	mov	si,msg_crlf
+	call	print
+	pop	es
+	pop	di
+	pop	cx
+	jmp	.menu_loop
 
 %endif ; AT_RTC
 

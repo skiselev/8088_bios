@@ -131,8 +131,12 @@ rtc_init:
 %endif ; AT_RTC_AUTODETECT
 
 	mov	al,cmos_control_b
-	mov	ah,cmos_24hours		; 24 hours, BCD format, DSE disabled
+	call	rtc_read
+	mov	ah,al
+	and	ah,cmos_dse		; clear all bits except of DSE
+	or	ah,cmos_24hours		; set 24 hours bit, keep BCD format and
 					; interrupts disabled
+	mov	al,cmos_control_b
 	call	rtc_write		; write control register B
 
 	mov	al,cmos_control_c
@@ -475,7 +479,7 @@ print_rtc:
 					; CH = BCD hours
 					; CL = BCD minutes
 					; DH = BCD seconds
-					; DL = daylight saving flag (ignored)
+					; DL = daylight saving flag
 	mov	al,ch
 	call	print_byte		; print 2-digit hours
 	
@@ -493,6 +497,19 @@ print_rtc:
 	mov	al,dh
 	call	print_byte		; print 2-digit seconds
 
+	mov	si,msg_rtc_dse
+	call	print
+	cmp	dl,0
+	je	.dse_disabled
+	mov	si,msg_enabled		; DSE enabled
+	call	print
+	jmp	.dse_done
+
+.dse_disabled:
+	mov	si,msg_disabled		; DSE disabled
+	call	print
+
+.dse_done:
 	mov	si,msg_crlf
 	call	print
 
