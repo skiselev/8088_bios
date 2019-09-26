@@ -117,6 +117,15 @@ detect_cpu:
 	push	ax
 	call	get_config_a		; read BIOS configuration byte A
 	and	al,nvram_trbo_mask	; get turbo bits
+%ifdef MACHINE_FE2010A
+	cmp	al,2
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+	cmp	al,1
+%endif ; MACHINE_XI8088
+	jna	.cpu_clk_valid
+	mov	al,0			; clear turbo bits
+.cpu_clk_valid:
 	call	print_cpu_clk
 	pop	ax
 
