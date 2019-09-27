@@ -194,7 +194,7 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	and	ch,0FCh			; CH[1:0] = 0 -> 4.77 MHz
+	and	ch,~nvram_trbo_mask	; CH[1:0] = 0 -> 4.77 MHz
 	jmp	.menu_loop
 
 %ifdef MACHINE_FE2010A
@@ -202,7 +202,7 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	and	ch,0FCh			; clear turbo bits
+	and	ch,~nvram_trbo_mask	; clear turbo bits
 	or	ch,1			; CH[1:0] = 1 -> 7.16 MHz
 	jmp	.menu_loop
 
@@ -210,7 +210,7 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	and	ch,0FCh			; clear turbo bits
+	and	ch,~nvram_trbo_mask	; clear turbo bits
 	or	ch,2			; CH[1:0] = 2 -> 9.55 MHz
 	jmp	.menu_loop
 %else ; MACHINE_FE2010A
@@ -218,7 +218,7 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	and	ch,0FCh			; clear turbo bits
+	and	ch,~nvram_trbo_mask	; clear turbo bits
 	or	ch,1			; CH[1:0] = 1 -> Turbo
 	jmp	.menu_loop
 %endif ; MACHINE_FE2010A
@@ -261,12 +261,10 @@ nvram_setup:
 %endif ; AT_RTC
 	mov	al,cl			; floppy bytes to AL
 	call	print_floppy
-	mov	si,msg_set_ext
-	call	print
-	mov	si,msg_colon
+	mov	si,msg_ext_scan
 	call	print
 	mov	si,msg_enabled		; assume F0000-F7FFF ROM scan enabled
-	test	dh,nvram_ext_scan
+	test	ch,nvram_ext_scan
 	jz	.print_ext_scan
 	mov	si,msg_disabled		; F0000-F7FFF ROM scan disabled
 
@@ -544,17 +542,12 @@ nvram_setup:
 %endif ; AT_RTC
 
 .set_ext_scan:
-	push	cx
-	push	di
-	push	es
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
 	mov	si,msg_crlf
 	call	print
 	mov	si,msg_set_ext
-	call	print
-	mov	si,msg_yes_no
 	call	print
 
 .set_ext_input:
@@ -586,9 +579,6 @@ nvram_setup:
 .set_ext_exit:
 	mov	si,msg_crlf
 	call	print
-	pop	es
-	pop	di
-	pop	cx
 	jmp	.menu_loop
 
 .save:

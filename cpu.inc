@@ -214,7 +214,7 @@ print_cpu_clk:
 	push	ax
 	push	si
 	and	al,nvram_trbo_mask	; get turbo bits
-%ifdef MACHINE_FE2010
+%ifdef MACHINE_FE2010A
 	mov	si,msg_clk_7_16mhz
 	cmp	al,1
 	je	.print

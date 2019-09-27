@@ -100,7 +100,7 @@ msg_rom_init	db	'0, initializing...', 0Dh, 0Ah, 0
 msg_boot	db      'Booting OS...', 0Dh, 0Ah, 0
 %ifdef AT_RTC
 msg_rtc_bad	db	'ERROR: RTC battery is bad', 0Dh, 0Ah, 00h
-msg_rtc_dse	db	'Daylight saving ', 00h
+msg_rtc_dse	db	' Daylight saving ', 00h
 %endif ; AT_RTC
 %ifdef AT_RTC_NVRAM
 msg_rtc_sum	db	'ERROR: NVRAM checksum is invalid, '
@@ -157,8 +157,9 @@ msg_set_sub_help db	'Setup commands:', 0Dh, 0Ah
 		db	'h - Show this help', 0Dh, 0Ah, 00h
 msg_set_fd_prmt	db	0Dh, 0Ah, 'Enter floppy drive type (h for help): '
 		db	00h
-msg_set_ext	db	'Scan F0000-F7FFF area for BIOS extension ROMs', 00h
-msg_yes_no	db	' (y/n): ', 00h
+msg_set_ext	db	'Scan F0000-F7FFF area for BIOS extension ROMs (y/n): '
+		db	00h
+msg_ext_scan	db	'F0000-F7FFF BIOS ext. scan: ', 00h
 msg_enabled	db	'enabled', 00h
 msg_disabled	db	'disabled', 00h
 %ifdef FLASH_NVRAM
