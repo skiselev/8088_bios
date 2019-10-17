@@ -100,7 +100,6 @@ msg_rom_init	db	'0, initializing...', 0Dh, 0Ah, 0
 msg_boot	db      'Booting OS...', 0Dh, 0Ah, 0
 %ifdef AT_RTC
 msg_rtc_bad	db	'ERROR: RTC battery is bad', 0Dh, 0Ah, 00h
-msg_rtc_dse	db	' Daylight saving ', 00h
 %endif ; AT_RTC
 %ifdef AT_RTC_NVRAM
 msg_rtc_sum	db	'ERROR: NVRAM checksum is invalid, '
@@ -117,7 +116,6 @@ msg_set_help	db	0Dh, 0Ah
 %ifdef AT_RTC
 		db	't - Set time', 0Dh, 0Ah
 		db	'd - Set date', 0Dh, 0Ah
-		db	's - Change daylight saving', 0Dh, 0Ah
 %endif ; AT_RTC
 		db	'f - Change first floppy drive type', 0Dh, 0Ah
 		db	'g - Change second floppy drive type', 0Dh, 0Ah
@@ -143,7 +141,6 @@ msg_set_clk_prmt db	0Dh, 0Ah, 'Enter CPU clock frequency (h for help): '
 %ifdef AT_RTC
 msg_set_time	db	'Enter time (hh:mm:ss): ', 00h
 msg_set_date	db	'Enter date (YYYY-MM-DD): ', 00h
-msg_set_dse	db	'Enable daylight saving (y/n): ',00h
 msg_time_inval	db	'ERROR: Invalid time.', 0Dh, 0Ah, 00h
 msg_date_inval	db	'ERROR: Invalid date.', 0Dh, 0Ah, 00h
 %endif ; AT_RTC

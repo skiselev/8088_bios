@@ -106,61 +106,16 @@ rtc_write:
 	ret
 
 ;=========================================================================
-; rtc_init - Initialize RTC
-; Notes:
-;	- makes sure RTC battery is OK, resets time if not
-;	- disables RTC interrupts
-;	- validates NVRAM checksum, loads default values if invalid
+; set_system_timer - set timer variables to RTC time
 ;-------------------------------------------------------------------------
-rtc_init:
+set_system_timer:
 	push	ax
 	push	bx
 	push	cx
 	push	dx
 	push	si
 	push	di
-	mov	al,cmos_control_a	; select control A register
-	mov	ah,26h			; turn on oscillator and time keeping
-					; set SQW frequency to 1.024 KHz
-	call	rtc_write		; write control register A
 
-%ifdef AT_RTC_AUTODETECT
-	call	rtc_read		; read back control A register
-	cmp	al,26h
-	jne	.exit			; RTC is not responding, exit
-%endif ; AT_RTC_AUTODETECT
-
-	mov	al,cmos_control_b
-	call	rtc_read
-	mov	ah,al
-	and	ah,cmos_dse		; clear all bits except of DSE
-	or	ah,cmos_24hours		; set 24 hours bit, keep BCD format and
-					; interrupts disabled
-	mov	al,cmos_control_b
-	call	rtc_write		; write control register B
-
-	mov	al,cmos_control_c
-	call	rtc_read		; read control register C - reset
-					; interrupt flags
-
-	mov	al,cmos_control_d
-	call	rtc_read		; read control register D
-	test	al,cmos_vrt
-	jnz	.1			; RTC battery is OK
-	mov	si,msg_rtc_bad
-	call	print
-; RTC is bad, set initial time
-	mov	ah,03h			; int 1Ah, function 03h - set RTC time
-	xor	cx,cx
-	xor	dx,dx
-	int	1Ah
-	mov	ah,05h			; int 1Ah, function 05h - set RTC date
-	mov	cx,2010h		; year 2010
-	mov	dx,0101h		; January 1st
-	int	1Ah
-
-.1:
-; set timer variables to RTC time
 	mov	ah,02h			; int 1Ah, function 02h - get RTC time
 	int	1Ah
 
@@ -227,7 +182,70 @@ rtc_init:
 	
 	mov	ah,01h			; int 1Ah, function 01h - set time
 	int	1Ah
+	pop	di
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
 
+;=========================================================================
+; rtc_init - Initialize RTC
+; Notes:
+;	- makes sure RTC battery is OK, resets time if not
+;	- disables RTC interrupts
+;	- validates NVRAM checksum, loads default values if invalid
+;-------------------------------------------------------------------------
+rtc_init:
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	si
+	mov	al,cmos_control_a	; select control A register
+	mov	ah,26h			; turn on oscillator and time keeping
+					; set SQW frequency to 1.024 KHz
+	call	rtc_write		; write control register A
+
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_read		; read back control A register
+	cmp	al,26h
+	jne	.exit			; RTC is not responding, exit
+%endif ; AT_RTC_AUTODETECT
+
+	mov	al,cmos_control_b
+	call	rtc_read
+	mov	ah,al
+	and	ah,cmos_dse		; clear all bits except of DSE
+	or	ah,cmos_24hours		; set 24 hours bit, keep BCD format and
+					; interrupts disabled
+	mov	al,cmos_control_b
+	call	rtc_write		; write control register B
+
+	mov	al,cmos_control_c
+	call	rtc_read		; read control register C - reset
+					; interrupt flags
+
+	mov	al,cmos_control_d
+	call	rtc_read		; read control register D
+	test	al,cmos_vrt
+	jnz	.1			; RTC battery is OK
+	mov	si,msg_rtc_bad
+	call	print
+; RTC is bad, set initial time
+	mov	ah,03h			; int 1Ah, function 03h - set RTC time
+	xor	cx,cx
+	xor	dx,dx
+	int	1Ah
+	mov	ah,05h			; int 1Ah, function 05h - set RTC date
+	mov	cx,2010h		; year 2010
+	mov	dx,0101h		; January 1st
+	int	1Ah
+
+.1:
+
+	call	set_system_timer		; set timer variables to RTC time
 
 %ifdef AT_RTC_NVRAM
 ; compare NVRAM checksum with stored value
@@ -289,7 +307,6 @@ rtc_init:
 %endif ; AT_RTC_NVRAM
 
 .exit:
-	pop	di
 	pop	si
 	pop	dx
 	pop	cx
@@ -497,19 +514,9 @@ print_rtc:
 	mov	al,dh
 	call	print_byte		; print 2-digit seconds
 
-	mov	si,msg_rtc_dse
-	call	print
-	mov	si,msg_disabled		; assume DSE disabled
-	cmp	dl,0
-	je	.dse_print
-	mov	si,msg_enabled		; DSE enabled
-
-.dse_print:
-	call	print
+.exit:
 	mov	si,msg_crlf
 	call	print
-
-.exit:
 	pop	si
 	pop	dx
 	pop	cx
