@@ -513,10 +513,10 @@ print_rtc:
 
 	mov	al,dh
 	call	print_byte		; print 2-digit seconds
-
-.exit:
 	mov	si,msg_crlf
 	call	print
+
+.exit:
 	pop	si
 	pop	dx
 	pop	cx
