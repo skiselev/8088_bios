@@ -113,11 +113,10 @@ msg_set_help	db	0Dh, 0Ah
 %ifdef TURBO_MODE
 		db	'c - Set default CPU clock frequency', 0Dh, 0Ah
 %endif ; TURBO_MODE
-%ifdef AT_RTC
-		db	't - Set time', 0Dh, 0Ah
-		db	'd - Set date', 0Dh, 0Ah
-%endif ; AT_RTC
-		db	'f - Change first floppy drive type', 0Dh, 0Ah
+		db 00h
+msg_set_help_rtc	db	't - Set time', 0Dh, 0Ah
+		db	'd - Set date', 0Dh, 0Ah, 00h
+msg_set_help_2	db	'f - Change first floppy drive type', 0Dh, 0Ah
 		db	'g - Change second floppy drive type', 0Dh, 0Ah
 		db	'e - Change BIOS extension ROM scan settings', 0Dh, 0Ah
 		db	'p - Print current settings', 0Dh, 0Ah

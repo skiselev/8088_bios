@@ -302,7 +302,7 @@ rtc_init:
 	and	byte [equipment_list],equip_video|equip_mouse
 	or	byte [equipment_list],al
 
-	mov	al,e_rtc_init_ok	; RTC initialzied successfully
+	mov	al,e_rtc_init_ok	; RTC initialized successfully
 	out	post_reg,al
 %endif ; AT_RTC_NVRAM
 
@@ -462,7 +462,7 @@ print_rtc:
 	call	print
 	jmp	.exit
 .rtc_present:
-%endif ; AT_RTC_AUTODETCT
+%endif ; AT_RTC_AUTODETECT
 
 ; print date
 	mov	ah,04h
