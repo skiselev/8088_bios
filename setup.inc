@@ -35,6 +35,27 @@ nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
 					; (0 - enabled, 1 - disabled)
 %endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
+help_msg_fn:
+	mov	si,msg_set_help
+	call	print
+
+%ifdef AT_RTC
+	
+	%ifdef AT_RTC_AUTODETECT
+		call	rtc_detect
+		jc	.rtc_absent
+	%endif ; AT_RTC_AUTODETECT
+
+	mov	si,msg_set_help_rtc
+	call	print
+
+.rtc_absent:
+%endif ; AT_RTC
+
+	mov	si,msg_set_help_2
+	call	print
+	ret
+
 ;=========================================================================
 ; nvram_setup - NVRAM configuration utility
 ; Input:
@@ -78,15 +99,19 @@ nvram_setup:
 	je	.set_cpu_clk
 %endif ; TURBO_MODE
 %ifdef AT_RTC
+	%ifdef AT_RTC_AUTODETECT
+		call	rtc_detect
+		jc	.rtc_absent_2
+	%endif ; AT_RTC_AUTODETECT
 	cmp	al,'t'
 	je	.set_time
 	cmp	al,'d'
 	je	.set_date
-	cmp	al,'s'
-	je	.set_daylight_saving
+	
+.rtc_absent_2:
+%endif ; AT_RTC
 	cmp	al,'e'
 	je	.set_ext_scan
-%endif ; AT_RTC
 	cmp	al,'w'
 	je	.save
 	cmp	al,'q'
@@ -99,8 +124,7 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	mov	si,msg_set_help
-	call	print
+	call help_msg_fn
 	jmp	.menu_loop
 
 .set_floppy:
@@ -343,6 +367,7 @@ nvram_setup:
 
 	mov	ah,03h			; set RTC time
 	int	1Ah
+	call	set_system_timer		; set timer variables to RTC time
 
 .set_time_exit:
 	pop	es
@@ -482,62 +507,6 @@ nvram_setup:
 	mov	si,msg_date_inval
 	call	print
 	jmp	.set_date_exit
-
-.set_daylight_saving:
-	push	cx
-	push	di
-	push	es
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_crlf
-	call	print
-	mov	si,msg_set_dse
-	call	print
-
-.set_dse_input:
-	mov	ah,00h
-	int	16h
-	cmp	al,0Dh
-	je	.set_dse_exit
-	or	al,20h			; convert to lower case
-	cmp	al,'n'
-	je	.set_dse_disable
-	cmp	al,'y'
-	je	.set_dse_enable
-	jmp	.set_dse_input
-
-.set_dse_disable:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	al,cmos_control_b
-	call	rtc_read
-	mov	ah,al
-	and	ah,~cmos_dse		; clear DSE bit
-	mov	al,cmos_control_b
-	call	rtc_write
-	jmp	.set_dse_exit
-
-.set_dse_enable:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	al,cmos_control_b
-	call	rtc_read
-	mov	ah,al
-	or	ah,cmos_dse		; set DSE bit
-	mov	al,cmos_control_b
-	call	rtc_write
-	jmp	.set_dse_exit
-
-.set_dse_exit:
-	mov	si,msg_crlf
-	call	print
-	pop	es
-	pop	di
-	pop	cx
-	jmp	.menu_loop
 
 %endif ; AT_RTC
 
