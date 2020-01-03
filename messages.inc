@@ -110,16 +110,18 @@ msg_setup	db	'Press F1 to run BIOS setup...',0Dh, 0Ah, 0Dh, 0Ah, 00h
 msg_set_welcome	db	0Dh, 0Ah, 'Welcome to the BIOS setup utility', 00h
 msg_set_help	db	0Dh, 0Ah
 		db	'BIOS setup commands:', 0Dh, 0Ah
+		db	'f - Change first floppy drive type', 0Dh, 0Ah
+		db	'g - Change second floppy drive type', 0Dh, 0Ah
+		db	'e - Change BIOS extension ROM scan settings', 0Dh, 0Ah
 %ifdef TURBO_MODE
 		db	'c - Set default CPU clock frequency', 0Dh, 0Ah
 %endif ; TURBO_MODE
-		db 00h
-msg_set_help_rtc	db	't - Set time', 0Dh, 0Ah
+		db	00h
+%ifdef AT_RTC
+msg_set_rtc_help db	't - Set time', 0Dh, 0Ah
 		db	'd - Set date', 0Dh, 0Ah, 00h
-msg_set_help_2	db	'f - Change first floppy drive type', 0Dh, 0Ah
-		db	'g - Change second floppy drive type', 0Dh, 0Ah
-		db	'e - Change BIOS extension ROM scan settings', 0Dh, 0Ah
-		db	'p - Print current settings', 0Dh, 0Ah
+%endif ; AT_RTC
+msg_set_def_help db	'p - Print current settings', 0Dh, 0Ah
 		db	'w - Save changes and exit', 0Dh, 0Ah
 		db	'q - Exit without saving changes', 0Dh, 0Ah
 		db	'h - Show this help', 0Dh, 0Ah, 00h

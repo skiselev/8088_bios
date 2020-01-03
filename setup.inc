@@ -35,27 +35,6 @@ nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
 					; (0 - enabled, 1 - disabled)
 %endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
-help_msg_fn:
-	mov	si,msg_set_help
-	call	print
-
-%ifdef AT_RTC
-	
-	%ifdef AT_RTC_AUTODETECT
-		call	rtc_detect
-		jc	.rtc_absent
-	%endif ; AT_RTC_AUTODETECT
-
-	mov	si,msg_set_help_rtc
-	call	print
-
-.rtc_absent:
-%endif ; AT_RTC
-
-	mov	si,msg_set_help_2
-	call	print
-	ret
-
 ;=========================================================================
 ; nvram_setup - NVRAM configuration utility
 ; Input:
@@ -124,7 +103,24 @@ nvram_setup:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
-	call help_msg_fn
+	mov	si,msg_set_help
+	call	print
+
+%ifdef AT_RTC
+	
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect
+	jc	.rtc_absent
+%endif ; AT_RTC_AUTODETECT
+
+	mov	si,msg_set_rtc_help
+	call	print
+
+.rtc_absent:
+%endif ; AT_RTC
+
+	mov	si,msg_set_def_help
+	call	print
 	jmp	.menu_loop
 
 .set_floppy:
