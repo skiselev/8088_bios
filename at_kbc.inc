@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -296,56 +296,50 @@ kbc_aux_send:
 	ret
 
 ;=========================================================================
-; kbc_enable_irqs - enable KBC interrupts
+; kbc_aux_enable - enable auxiliary device
 ; Input:
 ;	none
 ; Output:
-;	CF = 0 - no error
-;	CF = 1 - timeout
+;	ZF = 1 - success
+;	ZF = 0 - error
 ;-------------------------------------------------------------------------
-kbc_enable_irqs:
+kbc_aux_enable:
 	push	ax
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
-	mov	ah,01000111b
+	mov	ah,01001111b
 ;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
-;		   ||||||`-- 1 == enable OBF interrupt for aux port (IRQ12)
+;                  ||||||`-- 1 == enable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 1 == POST complete
-;		   ||||`-- 0 == reserved, must be 0
-;		   |||`-- 0 == enable keyboard interface
-;		   ||`-- 0 == enable auxiliary interface
-;		   |`-- 1 == enable scan code translation to IBM PC scan codes
+;                  ||||`-- 1 == disable the keyboard inhibit
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 0 == enable mouse interface
+;		   |`-- 1 == enable scancode translation
 ;		   `-- 0 == reserved, must be 0
-	pushf
-	cli
 	call	kbc_send_cmd
-	popf
 	pop	ax
 	ret
 
 ;=========================================================================
-; kbc_disable_irqs - disable KBC interrupts
+; kbc_aux_disable - disable auxiliary device
 ; Input:
 ;	none
 ; Output:
-;	CF = 0 - no error
-;	CF = 1 - timeout
+;	ZF = 1 - success
+;	ZF = 0 - error
 ;-------------------------------------------------------------------------
-kbc_disable_irqs:
+kbc_aux_disable:
 	push	ax
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
-	mov	ah,01000100b
-;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
-;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+	mov	ah,01101101b
+;		   |||||||`-- 1 == enable OBF interrupt for keyboard (IRQ1)
+;                  ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
 ;		   |||||`-- 1 == POST complete
-;		   ||||`-- 0 == reserved, must be 0
-;		   |||`-- 0 == enable keyboard interface
-;		   ||`-- 0 == enable auxiliary interface
-;		   |`-- 1 == enable scan code translation to IBM PC scan codes
+;                  ||||`-- 1 == disable the keyboard inhibit
+;                  |||`-- 0 == enable keyboard interface
+;		   ||`-- 1 == disable mouse interface
+;		   |`-- 1 == enable scancode translation
 ;		   `-- 0 == reserved, must be 0
-	pushf
-	cli
 	call	kbc_send_cmd
-	popf
 	pop	ax
 	ret
 
@@ -475,7 +469,7 @@ kbc_init:
 	or	word [equipment_list],equip_mono
 	jmp	.get_disp_done
 .get_disp_color:
-	or	word [equipment_list],equip_color
+	or	word [equipment_list],equip_color_80
 .get_disp_done:
 
 ;-------------------------------------------------------------------------

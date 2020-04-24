@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,7 @@ cmos_month	equ	08h	; month location in RTC
 cmos_year	equ	09h	; year location in RTC
 cmos_floppy	equ	10h	; floppy type byte
 cmos_equip	equ	14h	; equipment byte
+cmos_config_a	equ	2Dh	; BIOS configuration byte A
 cmos_sum_hi	equ	2Eh	; checksum of bytes 10h - 20h - high byte
 cmos_sum_lo	equ	2Fh	; checksum of bytes 10h - 20h - low byte 
 cmos_century	equ	32h	; centry location in RTC (DS12C887 only)
@@ -105,51 +106,16 @@ rtc_write:
 	ret
 
 ;=========================================================================
-; rtc_init - Initialize RTC
-; Notes:
-;	- makes sure RTC battery is OK, resets time if not
-;	- disables RTC interrupts
-;	- validates NVRAM checksum, loads default values if invalid
+; set_system_timer - set timer variables to RTC time
 ;-------------------------------------------------------------------------
-rtc_init:
+set_system_timer:
 	push	ax
 	push	bx
 	push	cx
 	push	dx
 	push	si
 	push	di
-	mov	al,cmos_control_a	; select control A register
-	mov	ah,26h			; turn on oscillator and time keeping
-					; set SQW frequency to 1.024 KHz
-	call	rtc_write		; write control register A
 
-	mov	al,cmos_control_b
-	mov	ah,cmos_24hours		; 24 hours, BCD format, DSE disabled
-					; interrupts disabled
-	call	rtc_write		; write control register B
-
-	mov	al,cmos_control_c
-	call	rtc_read		; read control register C - reset
-					; interrupt flags
-
-	mov	al,cmos_control_d
-	call	rtc_read		; read control register D
-	test	al,cmos_vrt
-	jnz	.1			; RTC battery is OK
-	mov	si,msg_rtc_bad
-	call	print
-; RTC is bad, set initial time
-	mov	ah,03h			; int 1Ah, function 03h - set RTC time
-	xor	cx,cx
-	xor	dx,dx
-	int	1Ah
-	mov	ah,05h			; int 1Ah, function 05h - set RTC date
-	mov	cx,2010h		; year 2010
-	mov	dx,0101h		; January 1st
-	int	1Ah
-
-.1:
-; set timer variables to RTC time
 	mov	ah,02h			; int 1Ah, function 02h - get RTC time
 	int	1Ah
 
@@ -215,12 +181,76 @@ rtc_init:
 					; DX = low word of tick count
 	
 	mov	ah,01h			; int 1Ah, function 01h - set time
-	int	1Ah	
+	int	1Ah
+	pop	di
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
 
+;=========================================================================
+; rtc_init - Initialize RTC
+; Notes:
+;	- makes sure RTC battery is OK, resets time if not
+;	- disables RTC interrupts
+;	- validates NVRAM checksum, loads default values if invalid
+;-------------------------------------------------------------------------
+rtc_init:
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	si
+	mov	al,cmos_control_a	; select control A register
+	mov	ah,26h			; turn on oscillator and time keeping
+					; set SQW frequency to 1.024 KHz
+	call	rtc_write		; write control register A
 
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_read		; read back control A register
+	cmp	al,26h
+	jne	.exit			; RTC is not responding, exit
+%endif ; AT_RTC_AUTODETECT
+
+	mov	al,cmos_control_b
+	call	rtc_read
+	mov	ah,al
+	and	ah,cmos_dse		; clear all bits except of DSE
+	or	ah,cmos_24hours		; set 24 hours bit, keep BCD format and
+					; interrupts disabled
+	mov	al,cmos_control_b
+	call	rtc_write		; write control register B
+
+	mov	al,cmos_control_c
+	call	rtc_read		; read control register C - reset
+					; interrupt flags
+
+	mov	al,cmos_control_d
+	call	rtc_read		; read control register D
+	test	al,cmos_vrt
+	jnz	.1			; RTC battery is OK
+	mov	si,msg_rtc_bad
+	call	print
+; RTC is bad, set initial time
+	mov	ah,03h			; int 1Ah, function 03h - set RTC time
+	xor	cx,cx
+	xor	dx,dx
+	int	1Ah
+	mov	ah,05h			; int 1Ah, function 05h - set RTC date
+	mov	cx,2010h		; year 2010
+	mov	dx,0101h		; January 1st
+	int	1Ah
+
+.1:
+
+	call	set_system_timer		; set timer variables to RTC time
+
+%ifdef AT_RTC_NVRAM
 ; compare NVRAM checksum with stored value
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	call	rtc_read
@@ -253,7 +283,7 @@ rtc_init:
 
 ; update checksum
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	mov	ah,bh
@@ -272,10 +302,11 @@ rtc_init:
 	and	byte [equipment_list],equip_video|equip_mouse
 	or	byte [equipment_list],al
 
-	mov	al,e_rtc_init_ok	; RTC initialzied successfully
+	mov	al,e_rtc_init_ok	; RTC initialized successfully
 	out	post_reg,al
+%endif ; AT_RTC_NVRAM
 
-	pop	di
+.exit:
 	pop	si
 	pop	dx
 	pop	cx
@@ -295,14 +326,15 @@ bcd_to_binary:
 	pop	cx
 	ret
 
+%ifdef AT_RTC_NVRAM
 ;=========================================================================
-; rtc_checksum - calculate NVRAM checksum
+; nvram_checksum - calculate NVRAM checksum
 ; Input:
 ;	none
 ; Output:
 ;	BX = NVRAM checksum
 ;-------------------------------------------------------------------------
-rtc_checksum:
+nvram_checksum:
 	push	ax
 	xor	bx,bx
 	mov	ah,10h			; start from 10h
@@ -319,15 +351,24 @@ rtc_checksum:
 	ret
 
 ;=========================================================================
-; rtc_save - Save configuration to CMOS memory
+; nvram_save - Save configuration to CMOS memory
 ; Input:
+;	CH - CPU Clock speed
+;	     0 - 4.77 Mhz / Normal
+;	     1 - 7.16 Mhz / Turbo
+;	     2 - 9.55 Mhz (FE2010A only)
+;
 ;	CL - CMOS floppy drive type
 ;	     7-4 - first floppy drive type
 ;	     3-0 - second floppy drive type
 ;-------------------------------------------------------------------------
-rtc_save:
+nvram_save:
 	push	ax
 	push	bx
+
+	mov	al,cmos_config_a
+	mov	ah,ch
+	call	rtc_write
 
 	mov	al,cmos_floppy
 	mov	ah,cl
@@ -351,7 +392,7 @@ rtc_save:
 	mov	al,cmos_equip
 	call	rtc_write
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	mov	ah,bh
@@ -364,6 +405,35 @@ rtc_save:
 	pop	bx
 	pop	ax
 	ret
+
+;=========================================================================
+; get_config_a - Return BIOS configuration byte A from NVRAM
+; Input:
+;	none
+; Output:
+;	AL - NVRAM CPU clock frequency configuration setting
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010 only)
+;-------------------------------------------------------------------------
+get_config_a:
+	mov	al,cmos_config_a	; read BIOS configuration byte A
+	call	rtc_read
+	ret
+  
+;=========================================================================
+; get_floppy - Return floppy drive type from NVRAM
+; Input:
+;	none
+; Output:
+;	AL = floppy drive type
+;-------------------------------------------------------------------------
+get_floppy:
+	mov     al,cmos_floppy
+	call    rtc_read		; read currently configured floppies
+	ret
+
+%endif ; AT_RTC_NVRAM
 
 ;=========================================================================
 ; print_rtc - print current RTC date and time
@@ -384,6 +454,15 @@ print_rtc:
 	push	si
 	mov	si,msg_rtc
 	call	print
+
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect
+	jnc	.rtc_present
+	mov	si,msg_absent
+	call	print
+	jmp	.exit
+.rtc_present:
+%endif ; AT_RTC_AUTODETECT
 
 ; print date
 	mov	ah,04h
@@ -417,7 +496,7 @@ print_rtc:
 					; CH = BCD hours
 					; CL = BCD minutes
 					; DH = BCD seconds
-					; DL = daylight saving flag (ignored)
+					; DL = daylight saving flag
 	mov	al,ch
 	call	print_byte		; print 2-digit hours
 	
@@ -434,12 +513,39 @@ print_rtc:
 
 	mov	al,dh
 	call	print_byte		; print 2-digit seconds
-
 	mov	si,msg_crlf
 	call	print
+
+.exit:
 	pop	si
 	pop	dx
 	pop	cx
 	pop	bx
 	pop	ax
 	ret
+
+%ifdef AT_RTC_AUTODETECT
+;=========================================================================
+; rtc_detect - Check RTC is present at 0x70 port
+; Input:
+;	none
+; Output:
+;	CF == 0 - RTC is present
+;	CF == 1 - RTC is not detected
+;-------------------------------------------------------------------------
+rtc_detect:
+	push ax
+	mov	al,cmos_control_a	; select control A register
+	call    rtc_read		; check if RTC is present
+	cmp     al,26h
+	je	.rtc_present
+	stc				; no RTC - set CF
+	jmp	.exit
+
+.rtc_present:
+	clc				; RTC detected - clear CF
+
+.exit:
+	pop ax
+	ret
+%endif ; AT_RTC_AUTODETECT

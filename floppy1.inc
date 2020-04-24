@@ -13,7 +13,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -1312,16 +1312,11 @@ fdc_reset:
 ;=========================================================================
 
 read_cmos_type:
-%ifdef AT_RTC
-	mov	al,cmos_floppy
-	call	rtc_read		; read drive type
-%else ; AT_RTC
-%ifdef MACHINE_FE2010A
-	call	flash_get_floppy
-%else ; MACHINE_FE2010A
+%ifdef BIOS_CONFIG
+	call	get_floppy
+%else ; BIOS_CONFIG
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-%endif ; MACHINE_FE2010A
-%endif ; AT_RTC
+%endif ; BIOS_CONFIG
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
 	shr	al,1			; shift drive 0 bits 7-4 to 3-0
@@ -1685,16 +1680,11 @@ fdc_wait_ready:
 ;	AL = NVRAM floppy configuration byte
 ;-------------------------------------------------------------------------
 detect_floppy:
-%ifdef AT_RTC
-	mov	al,cmos_floppy
-	call	rtc_read		; floppies type to AL
-%else ; AT_RTC
-%ifdef MACHINE_FE2010A
-	call	flash_get_floppy
-%else ; MACHINE_FE2010A
+%ifdef BIOS_SETUP
+	call	get_floppy
+%else ; FLASH_NVRAM
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-%endif ; MACHINE_FE2010A
-%endif ; AT_RTC
+%endif ; BIOS_SETUP
 	cmp	al,00h			; No floppy drives?
 	je	.exit
 	or	byte [equipment_list],equip_floppies

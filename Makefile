@@ -1,6 +1,6 @@
 # Makefile - GNU Makefile
 # 
-# Copyright (C) 2011 - 2018 Sergey Kiselev.
+# Copyright (C) 2010 - 2019 Sergey Kiselev.
 # Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -51,13 +51,13 @@ bios.bin: $(SOURCES)
 	nasm -D$(MACHINE) -O9 -f bin -o bios.bin -l bios.lst bios.asm
 
 bios-micro8088.bin: bios.bin
-	dd if=/dev/zero ibs=1k count=48 | tr "\000" "\377" > bios-micro8088.bin
+	dd if=/dev/zero ibs=1k count=40 | tr "\000" "\377" > bios-micro8088.bin
 	cat bios.bin >> bios-micro8088.bin
 	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088.bin
 
 bios-micro8088-xtide.bin: bios.bin ide_xt.bin
 	cat ide_xt.bin > bios-micro8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=40 | tr "\000" "\377" >> bios-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=32 | tr "\000" "\377" >> bios-micro8088-xtide.bin
 	cat bios.bin >> bios-micro8088-xtide.bin
 	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088-xtide.bin
 

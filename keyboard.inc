@@ -12,7 +12,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -327,76 +327,41 @@ int_09:
 	cmp	bl,kbd_alt_bit|kbd_ctrl_bit
 	jne	.6
 	cmp	al,kbd_del_code		; <Ctrl>+<Alt>+<Del>?
-	jne	.check_minus
+	jne	.check_turbo_off
 	mov	word [warm_boot],1234h ; warm boot flag
 	jmp	0F000h:warm_start	; reboot
 
 ; handle turbo mode switch combinations
+.check_turbo_off:
 
-%ifdef MACHINE_XI8088
-.check_minus:
+%ifdef TURBO_MODE
 	cmp	al,4Ah			; gray - scancode
-	jne	.check_plus
+	jne	.check_turbo_mid
 
-.turbo_off:
-	in	al,ppi_pb_reg
-	and	al,0FBh			; clear bit 2 (turbo enable bit)
-	out	ppi_pb_reg,al
+	call	set_cpu_clk_4_77mhz
 	jmp	keyboard_int_exit
 
-.check_plus:
-	cmp	al,4Eh			; gray + scancode
-	jne	.6
-
-.turbo_on:
-	in	al,ppi_pb_reg
-	or	al,04h			; set bit 2 (turbo enable bit)
-	out	ppi_pb_reg,al
-	jmp	keyboard_int_exit
-%endif ; MACHINE_XI8088
-
+.check_turbo_mid:
 %ifdef MACHINE_FE2010A
-.check_minus:
-	cmp	al,4Ah			; gray - scancode
-	jne	.check_asterisk
-
-.turbo_off:
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
-	jmp	keyboard_int_exit
-
-.check_asterisk:
 	cmp	al,37h			; * scancode
-	jne	.check_plus
+	jne	.check_turbo_hi
 
-.turbo_7_16mhz:
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
-	out	fe_config_reg,al
+	call	set_cpu_clk_7_16mhz
 	jmp	keyboard_int_exit
-
-.check_plus:
-	cmp	al,4Eh			; gray + scancode
-	jne	.6
-
-.turbo_9_55mhz:
-	mov	al,byte [equipment_list] ; get lower byte of the equipment list
-	and	al,equip_fpu		; isolate FPU installed bit
-	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
-	out	fe_config_reg,al
-	jmp	keyboard_int_exit
-
 %endif ; MACHINE_FE2010A
 
-%ifdef MACHINE_XT
-.check_minus:
-					; do nothing for an XT
-%endif ; MACHINE_XT
+.check_turbo_hi:
+	cmp	al,4Eh			; gray + scancode
+	jne	.6
+
+%ifdef MACHINE_FE2010A
+	call	set_cpu_clk_9_55mhz
+%else ; MACHINE_FE2010A
+	call	set_cpu_clk_turbo
+%endif ; MACHINE_FE2010A
+	jmp	keyboard_int_exit
+
+%endif ; TURBO_MODE
 
 ; Check for the INS key here. This one needs to toggle the ins bit
 ; in the keyboard flags variables.

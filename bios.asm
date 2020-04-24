@@ -9,7 +9,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -171,7 +171,8 @@ equip_floppies	equ	0000000000000001b	; floppy drivers installed
 equip_fpu	equ	0000000000000010b	; FPU installed
 equip_mouse	equ	0000000000000100b
 equip_video	equ	0000000000110000b	; video type bit mask
-equip_color	equ	0000000000100000b	; color 80x25 (mode 3)
+equip_color_40	equ	0000000000010000b	; color 40x24 (mode 1)
+equip_color_80	equ	0000000000100000b	; color 80x25 (mode 3)
 equip_mono	equ	0000000000110000b	; mono 80x25 (mode 7)
 equip_floppy2	equ	0000000001000000b	; 2nd floppy drive installed
 ;			|||||||||||||||`-- floppy drives installed
@@ -254,9 +255,9 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
 %endif ; AT_RTC
-%ifdef MACHINE_FE2010A
+%ifdef FLASH_NVRAM
 %include	"flash.inc"		; Flash ROM configuration functions
-%endif ; MACHINE_FE2010A
+%endif ; FLASH_NVRAM
 %ifdef BIOS_SETUP
 %include	"setup.inc"		; NVRAM setup functions
 %endif ; BIOS_SETUP
@@ -315,6 +316,46 @@ int_75:
 	iret
 
 %endif ; SECOND_PIC
+
+;=========================================================================
+; boot_os -Boot the OS
+;-------------------------------------------------------------------------
+boot_os:
+
+;-------------------------------------------------------------------------
+; Check for F1 (setup key), run setup utility if pressed
+
+	mov	ah,01h
+	int	16h
+	jz	.no_key
+	mov	ah,00h
+	int	16h			; read the keystroke
+	cmp	ax,3B00h		; F1?
+	jne	.no_key
+	or	byte [post_flags],post_setup
+.no_key:
+
+	test	byte [post_flags],post_setup
+	jz	.no_setup
+
+%ifdef BIOS_SETUP
+	call	nvram_setup
+%endif ; BIOS_SETUP
+
+.no_setup:
+
+%ifdef TURBO_MODE
+	call	get_config_a		; read BIOS configuration byte A
+	and	al,nvram_trbo_mask
+	call	set_cpu_clk		; set CPU clock
+%endif ; TURBO_MODE
+
+	mov	al,e_boot		; boot the OS POST code
+	out	post_reg,al
+
+	mov	si,msg_boot
+	call	print
+	int	19h			; boot the OS
 
 ;=========================================================================
 ; print - print ASCIIZ string to the console
@@ -485,8 +526,11 @@ print_display:
 	mov	si,msg_disp_mda
 	cmp	al,equip_mono		; monochrome?
 	jz	.print_disp
-	mov	si,msg_disp_cga
-	cmp	al,equip_color		; CGA?
+	mov	si,msg_disp_cga_80
+	cmp	al,equip_color_80	; CGA 80x25?
+	jz	.print_disp
+	mov	si,msg_disp_cga_40
+	cmp	al,equip_color_40	; CGA 40x25?
 	jz	.print_disp
 	mov	si,msg_disp_ega		; otherwise EGA or later
 .print_disp:
@@ -661,7 +705,7 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; disable NMI, turbo mode, and video output on CGA and MDA
 
-%ifdef AT_RTC
+%ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
 	out	rtc_addr_reg,al		; disable NMI
 	jmp	$+2
@@ -669,7 +713,7 @@ cpu_ok:
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al		; disable NMI
-%endif ; AT_RTC
+%endif ; AT_NMI
 
 %ifdef MACHINE_XI8088
 	mov	al,iochk_disable	; clear and disable ~IOCHK
@@ -984,6 +1028,9 @@ low_ram_ok:
 	cmp	ah,equip_mono		; monochrome?
 	jz	.set_mode
 	mov	al,03h			; color 80x25 mode
+	cmp	ah,equip_color_80	; 80x25 color?
+	jz	.set_mode
+	mov	al,01h			; color 40x24 mode
 
 .set_mode:
 	mov	ah,00h			; INT 10, AH=00 - Set video mode
@@ -1006,10 +1053,10 @@ low_ram_ok:
 
 %endif ; AT_RTC
 
-%ifndef MACHINE_XT
+%ifdef BIOS_SETUP
 	mov	si,msg_setup		; print setup prompt
 	call	print
-%endif ; MACHINE_XT
+%endif ; BIOS_SETUP
 
 
 ;-------------------------------------------------------------------------
@@ -1063,37 +1110,7 @@ low_ram_ok:
 
 	call	detect_rom_ext		; detect and initialize extension ROMs
 
-;-------------------------------------------------------------------------
-; Check for F1 (setup key), run setup utility if pressed
-
-	mov	ah,01h
-	int	16h
-	jz	.no_key
-	mov	ah,00h
-	int	16h			; read the keystroke
-	cmp	ax,3B00h		; F1?
-	jne	.no_key
-	or	byte [post_flags],post_setup
-.no_key:
-
-	test	byte [post_flags],post_setup
-	jz	.no_setup
-
-%ifndef MACHINE_XT
-	call	nvram_setup
-%endif ; MACHINE_XT
-
-.no_setup:
-
-;-------------------------------------------------------------------------
-; boot the OS
-
-	mov	al,e_boot		; boot the OS POST code
-	out	post_reg,al
-
-	mov	si,msg_boot
-	call	print
-	int	19h			; boot the OS
+	jmp boot_os
 
 ;=========================================================================
 ; int_02 - NMI
@@ -1103,13 +1120,13 @@ low_ram_ok:
 	setloc	0E2C3h			; NMI Entry Point
 int_02:
 	push	ax
-%ifdef AT_RTC
+%ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
 	call	rtc_read		; disable NMI
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
-%endif
+%endif ; AT_NMI
 	in	al,ppi_pb_reg		; read Port B
 	mov	ah,al
 	or	al,iochk_disable	; clear and disable ~IOCHK
@@ -1137,13 +1154,13 @@ int_02:
 	je	cold_start
 	jmp	.1
 .ignore:
-%ifdef AT_RTC
+%ifdef AT_NMI
 	mov	al,0Dh | nmi_enable
 	call	rtc_read		; enable NMI
 %else
 	mov	al,nmi_enable
 	out	nmi_mask_reg,al
-%endif ; AT_RTC
+%endif ; AT_NMI
 .exit:
 	pop	ax
 	iret
@@ -1204,6 +1221,17 @@ config_table:
 ;		`-- DMA channel 3 used by hard disk BIOS
 %endif ; AT_RTC
 %else ; SECOND_PIC
+%ifdef AT_RTC
+	db	00100000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%else ; AT_RTC
 	db	00000000b		; byte 5: feature byte 1
 ;		|||||||`-- system has dual bus (ISA and MCA)
 ;		||||||`-- bus is Micro Channel instead of ISA
@@ -1213,6 +1241,7 @@ config_table:
 ;		||`-- real time clock installed
 ;		|`-- 2nd interrupt controller installed
 ;		`-- DMA channel 3 used by hard disk BIOS
+%endif ; AT_RTC
 %endif ; SECOND_PIC
 	db	00h			; byte 6: feature byte 2
 	db	00h			; byte 7: feature byte 3
@@ -1240,6 +1269,12 @@ detect_rom_ext:
 
 	mov	dx,0C800h
 	mov	bx,0F800h
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+	call	get_config_a
+	test	al,nvram_ext_scan
+	jz	.ext_scan_loop		; ext_scan clear - scan till F8000
+	mov	bx,0F000h		; ext_scan set - scan till F0000
+%endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
 .ext_scan_loop:
 	call	extension_scan

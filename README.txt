@@ -16,6 +16,20 @@ TODO:
 - Xi 8088: Debug mouse issue with Intel 8242
 - Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
 
+Changes - Version 0.9.7
+-----------------------
+- Micro 8088: Implement RTC support and autodetect (based on the code
+  contributed by Aitor Gomez)
+- Micro 8088: Implement setting 40x25 CGA mode using DIP switches
+- Xi 8088: Implement CPU clock frequency configuration in the BIOS setup
+
+Changes - Version 0.9.6
+-----------------------
+- Micro 8088: Implement CPU clock frequency configuration in the BIOS setup
+  utility (contributed by Aitor Gomez)
+- Fix the issue where BIOS would activate RTS when sending a character
+- Fix the issue with 24 hours clock rollover
+
 Changes - Version 0.9.5
 -----------------------
 - Micro 8088: Fix reading serial port status

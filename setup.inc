@@ -5,7 +5,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -25,6 +25,15 @@
 
 default_floppy	db	cmos_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+default_config_a db	00000000b	; NVRAM BIOS configuration byte A
+;			||||||`---------; 00 = 4.77 MHz / Turbo off
+;			|||||`----------; 0 = F0000-F7FFF ROM scan enabled
+;			`---------------; reserved
+nvram_trbo_mask equ	03h		; turbo mask
+nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
+					; (0 - enabled, 1 - disabled)
+%endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
 ;=========================================================================
 ; nvram_setup - NVRAM configuration utility
@@ -40,15 +49,11 @@ nvram_setup:
 	push	dx
 	push	si
 
-%ifdef AT_RTC
-	mov	al,cmos_floppy
-	call	rtc_read		; read currently configured floppies
-%else ; AT_RTC
-	call	flash_get_floppy	; read floppies from configuration
-					; section of Flash ROM
-%endif ; AT_RTC
+	call	get_config_a		; read BIOS configuration byte A
+	mov	ch,al			; save it to CH
+	call	get_floppy		; read currently configured floppies
 	mov	cl,al			; save it to CL
-
+	
 	mov	si,msg_set_welcome
 	call	print
 
@@ -68,12 +73,24 @@ nvram_setup:
 	je	.set_floppy
 	cmp	al,'p'
 	je	.print_settings
+%ifdef TURBO_MODE
+	cmp	al,'c'
+	je	.set_cpu_clk
+%endif ; TURBO_MODE
 %ifdef AT_RTC
+	%ifdef AT_RTC_AUTODETECT
+		call	rtc_detect
+		jc	.rtc_absent_2
+	%endif ; AT_RTC_AUTODETECT
 	cmp	al,'t'
 	je	.set_time
 	cmp	al,'d'
 	je	.set_date
+	
+.rtc_absent_2:
 %endif ; AT_RTC
+	cmp	al,'e'
+	je	.set_ext_scan
 	cmp	al,'w'
 	je	.save
 	cmp	al,'q'
@@ -87,6 +104,22 @@ nvram_setup:
 	mov	bx,0007h
 	int	10h
 	mov	si,msg_set_help
+	call	print
+
+%ifdef AT_RTC
+	
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect
+	jc	.rtc_absent
+%endif ; AT_RTC_AUTODETECT
+
+	mov	si,msg_set_rtc_help
+	call	print
+
+.rtc_absent:
+%endif ; AT_RTC
+
+	mov	si,msg_set_def_help
 	call	print
 	jmp	.menu_loop
 
@@ -142,7 +175,90 @@ nvram_setup:
 	int	10h
 	mov	si,msg_set_fd_help
 	call	print
+	mov	si,msg_set_sub_help
+	call	print
 	jmp	.set_floppy_prompt
+
+%ifdef TURBO_MODE
+.set_cpu_clk:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+
+.set_cpu_clk_prompt:
+	mov	si,msg_set_clk_prmt
+	call	print
+
+.cpu_clk_input:
+	mov	ah,00h
+	int	16h
+	or	al,20h			; convert to lower case
+	cmp	al,'r'
+	je	.cpu_clk_exit
+	cmp	al,'h'
+	je	.cpu_clk_help
+	cmp	al,'4'
+	je	.cpu_clk_4_77mhz
+%ifdef MACHINE_FE2010A
+	cmp	al,'7'
+	je	.cpu_clk_7_16mhz
+	cmp	al,'9'
+	je	.cpu_clk_9_55mhz
+%else ; MACHINE_FE2010A
+	cmp	al,'t'
+	je	.cpu_clk_turbo
+%endif ; MACHINE_FE2010A
+	jmp	.cpu_clk_input
+
+.cpu_clk_4_77mhz:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_trbo_mask	; CH[1:0] = 0 -> 4.77 MHz
+	jmp	.menu_loop
+
+%ifdef MACHINE_FE2010A
+.cpu_clk_7_16mhz:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_trbo_mask	; clear turbo bits
+	or	ch,1			; CH[1:0] = 1 -> 7.16 MHz
+	jmp	.menu_loop
+
+.cpu_clk_9_55mhz:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_trbo_mask	; clear turbo bits
+	or	ch,2			; CH[1:0] = 2 -> 9.55 MHz
+	jmp	.menu_loop
+%else ; MACHINE_FE2010A
+.cpu_clk_turbo:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_trbo_mask	; clear turbo bits
+	or	ch,1			; CH[1:0] = 1 -> Turbo
+	jmp	.menu_loop
+%endif ; MACHINE_FE2010A
+
+.cpu_clk_exit:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	jmp	.menu_loop
+
+.cpu_clk_help:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_set_clk_help
+	call	print
+	mov	si,msg_set_sub_help
+	call	print
+	jmp	.set_cpu_clk_prompt
+%endif ; TURBO_MODE
 
 .print_settings:
 	mov	ah,0Eh			; echo
@@ -150,11 +266,32 @@ nvram_setup:
 	int	10h
 	mov	si,msg_crlf
 	call	print
+
+%ifdef TURBO_MODE
+	mov	si,msg_cpu_clk
+	call	print
+	mov	al,ch
+	call	print_cpu_clk
+	mov	si,msg_crlf
+	call	print
+%endif ; TURBO_MODE
+
 %ifdef AT_RTC
 	call	print_rtc		; print current RTC time
 %endif ; AT_RTC
 	mov	al,cl			; floppy bytes to AL
 	call	print_floppy
+	mov	si,msg_ext_scan
+	call	print
+	mov	si,msg_enabled		; assume F0000-F7FFF ROM scan enabled
+	test	ch,nvram_ext_scan
+	jz	.print_ext_scan
+	mov	si,msg_disabled		; F0000-F7FFF ROM scan disabled
+
+.print_ext_scan:
+	call	print
+	mov	si,msg_crlf
+	call	print
 	jmp	.menu_loop
 
 %ifdef AT_RTC
@@ -226,6 +363,7 @@ nvram_setup:
 
 	mov	ah,03h			; set RTC time
 	int	1Ah
+	call	set_system_timer		; set timer variables to RTC time
 
 .set_time_exit:
 	pop	es
@@ -368,16 +506,57 @@ nvram_setup:
 
 %endif ; AT_RTC
 
+.set_ext_scan:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_crlf
+	call	print
+	mov	si,msg_set_ext
+	call	print
+
+.set_ext_input:
+	mov	ah,00h
+	int	16h
+	cmp	al,0Dh
+	je	.set_ext_exit
+	or	al,20h			; convert to lower case
+	cmp	al,'n'
+	je	.set_ext_disable
+	cmp	al,'y'
+	je	.set_ext_enable
+	jmp	.set_ext_input
+
+.set_ext_disable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	or	ch,nvram_ext_scan	; bit set = disable scan
+	jmp	.set_ext_exit
+
+.set_ext_enable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_ext_scan	; bit clear = enable scan
+	jmp	.set_ext_exit
+
+.set_ext_exit:
+	mov	si,msg_crlf
+	call	print
+	jmp	.menu_loop
+
 .save:
 	mov	ah,0Eh			; echo
 	mov	bx,0007h
 	int	10h
 
-%ifdef AT_RTC
-	call	rtc_save
-%else ; AT_RTC
+%ifdef AT_RTC_NVRAM
+	call	nvram_save
+%endif ; AT_RTC_NVRAM
+%ifdef FLASH_NVRAM
 	call	flash_save
-%endif ; AT_RTC
+%endif ; FLASH_NVRAM
 	jmp	.exit
 
 .no_save:

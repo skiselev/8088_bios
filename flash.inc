@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2018 Sergey Kiselev.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -25,23 +25,66 @@
 config_segment	equ	0000h
 config_space	equ	8000h		; offset of the configuration
 flash_floppy	equ	config_space
+flash_config_a	equ	config_space+01h ; BIOS configuration byte A
 flash_checksum	equ	config_space+0Eh ; 16-bit checksum
 temp_segment	equ	07C0h		; segment for flash writing code
 flash_write	equ	0		; offset for flash writing code
-
 ;=========================================================================
-; flash_get_floppy - Returns floppy drive type from Flash ROM configuration
-;                    area
+; get_config_a - Return BIOS configuration byte A from Flash ROM
+;		 configuration area
+; Input:
+;	none
+; Output:
+;	AL - NVRAM CPU clock frequency configuration setting
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010A only)
+;-------------------------------------------------------------------------
+get_config_a:
+	call	flash_verify_checksum
+	jnz	.checksum_error		; ZF == 1 - checksum is invalid
+
+    cs	mov	al,byte [flash_config_a] ; return CPU clock configuration
+	jmp	.exit
+
+.checksum_error:
+    cs	mov	al,byte [default_config_a] ; load the default configuration
+
+.exit:
+	ret
+  
+;=========================================================================
+; get_floppy - Return floppy drive type from Flash ROM configuration area
 ; Input:
 ;	none
 ; Output:
 ;	AL = floppy drive type
 ;-------------------------------------------------------------------------
-flash_get_floppy:
+get_floppy:
+	call	flash_verify_checksum
+	jnz	.checksum_error		; ZF == 0 - checksum is invalid
+
+    cs	mov	al,byte [flash_floppy]	; return floppy type
+	jmp	.exit
+
+.checksum_error:
+    cs  mov	al,byte [default_floppy] ; load the default configuration
+
+.exit:
+	ret
+
+;=========================================================================
+; flash_verify_checksum - Verify that checksum is correct
+; Input:
+;	none
+; Output:
+;	ZF == 1 - checksum is valid
+;	ZF == 0 - checksum is invalid
+;-------------------------------------------------------------------------
+flash_verify_checksum:
 	push	cx
 	push	dx
 	push	di
-
 	xor	dx,dx
 	mov	di,config_space
 	mov	cx,000Eh
@@ -53,15 +96,6 @@ flash_get_floppy:
 	loop	.checksum_loop
 
     cs	cmp	word [flash_checksum],dx ; compare checksum to the stored value
-	jne	.checksum_error
-
-    cs	mov	al,byte [flash_floppy]	; checksum is ok, return floppy type
-	jmp	.exit
-
-.checksum_error:
-    cs  mov	al,byte [default_floppy] ; load the default configuration
-
-.exit:
 	pop	di
 	pop	dx
 	pop	cx
@@ -70,6 +104,11 @@ flash_get_floppy:
 ;=========================================================================
 ; flash_save - Save configuration to Flash ROM
 ; Input:
+;	CH - CPU Clock speed
+;	     0 - 4.77 Mhz / Normal
+;	     1 - 7.16 Mhz / Turbo
+;	     2 - 9.55 Mhz (FE2010A only)
+;
 ;	CL - CMOS floppy drive type
 ;	     7-4 - first floppy drive type
 ;	     3-0 - second floppy drive type
@@ -110,11 +149,12 @@ flash_save:
 
 	pop	cx			; load the original CX value
 	push	cx
-    es  mov	byte [flash_floppy],cl	; set new floppy drive type
-
+    es  mov	byte [flash_config_a],ch ; set new BIOS configuration byte A
+    es  mov	byte [flash_floppy],cl	; set new floppy drive type    
+    
 	mov	al,00h			; zero the rest of
-	mov	di,config_space+1	; the configuration space
-	mov	cx,000Dh
+	mov	di,config_space+2	; the configuration space
+	mov	cx,000Ch
 
 	cld
     rep	stosb
