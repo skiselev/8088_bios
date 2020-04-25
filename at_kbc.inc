@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Copyright (C) 2010 - 2020 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -300,8 +300,8 @@ kbc_aux_send:
 ; Input:
 ;	none
 ; Output:
-;	ZF = 1 - success
-;	ZF = 0 - error
+;	CF = 0 - no error
+;	CF = 1 - KBC timeout
 ;-------------------------------------------------------------------------
 kbc_aux_enable:
 	push	ax
@@ -324,8 +324,8 @@ kbc_aux_enable:
 ; Input:
 ;	none
 ; Output:
-;	ZF = 1 - success
-;	ZF = 0 - error
+;	CF = 0 - no error
+;	CF = 1 - KBC timeout
 ;-------------------------------------------------------------------------
 kbc_aux_disable:
 	push	ax
