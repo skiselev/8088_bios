@@ -2,10 +2,10 @@
 ; inttrace.asm -- Interrupt tracing
 ;------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2010 Sergey Kiselev.
-; Provided for hobbyist use on the N8VEM SBC-188 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;  
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by

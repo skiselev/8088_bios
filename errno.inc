@@ -2,10 +2,10 @@
 ; errno.inc - POST checkpoint codes (sent to port 80h during POST)
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -47,8 +47,9 @@ e_ext_init_ok	equ	42h		; BIOS extension ROM initialized
 e_ext_complete	equ	43h		; BIOS extension scan complete
 e_cpu_fail	equ	52h		; CPU test failed
 e_low_ram_fail	equ	54h		; low RAM test failed
-e_kbd_ctrl_fail	equ	60h		; KBD test - controller selftest failed
-e_kbd_key_fail	equ	61h		; KBD test - echo test failed
-e_kbd_timeout	equ	62h		; KBD timeout
-e_kbd_int_fail	equ	63h		; KBD test - interface test failed
+e_kbc_flsh_fail	equ	60h		; unable to flush KBC output buffer
+e_kbc_test_fail	equ	61h		; keyboard controller self test failed
+e_kbd_key_fail	equ	62h		; KBD test - echo test failed
+e_kbd_timeout	equ	63h		; KBD timeout
+e_kbd_init_fail	equ	64h		; KBD test - interface test failed
 e_ram_fail	equ	80h		; RAM test failed

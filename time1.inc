@@ -5,10 +5,10 @@
 ;	INT 70h - IRQ8 interrupt handler (RTC alarm)
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -56,6 +56,8 @@ int_1A_fn01:
 	mov	byte [new_day],00h
 	jmp	int_1A_exit
 
+%ifdef AT_RTC
+
 ;=========================================================================
 ; int_1A_fn02 - Read real time clock (RTC)
 ; Input:
@@ -68,6 +70,10 @@ int_1A_fn01:
 ;	DL - daylight savings flag: 00h = standard time, 01h = daylight time
 ;-------------------------------------------------------------------------
 int_1A_fn02:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_a
 	call	rtc_read		; read control A register
@@ -106,6 +112,10 @@ int_1A_fn02:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn03:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -151,6 +161,10 @@ int_1A_fn03:
 ;	DL = BCD date
 ;-------------------------------------------------------------------------
 int_1A_fn04:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_a
 	call	rtc_read		; read control A register
@@ -188,6 +202,10 @@ int_1A_fn04:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn05:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -230,6 +248,10 @@ int_1A_fn05:
 ;	CF = 1 - alarm already set
 ;-------------------------------------------------------------------------
 int_1A_fn06:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 	mov	al,cmos_control_b
 	call	rtc_read		; read control B register
@@ -280,6 +302,10 @@ int_1A_fn06:
 ;	None
 ;-------------------------------------------------------------------------
 int_1A_fn07:
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect		; check that RTC is present
+	jc	int_1A_exitf		; error - no RTC
+%endif ; AT_RTC_AUTODETECT
 	push	ax
 
 	mov	al,cmos_control_b
@@ -292,6 +318,7 @@ int_1A_fn07:
 	pop	ax
 	jmp	int_1A_exit
 	
+%ifdef SECOND_PIC
 ;=========================================================================
 ; int_70 - RTC interrupt service routine (IRQ8)
 ; Notes:
@@ -310,3 +337,6 @@ int_70:
 .1:
 	pop	ax
 	iret
+%endif ; SECOND_PIC
+
+%endif ; AT_RTC

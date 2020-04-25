@@ -11,10 +11,10 @@
 ;	- see floppy2.inc for other INT 13h functions
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -1209,8 +1209,8 @@ fdc_read:
 	in	al,dx
 	test	al,40h			; FDC is ready to send a byte? 
 	jz	.failure		; jump if not ready
-	jmp	short $+2		; I/O delay
-	jmp	short $+2
+	jmp	$+2			; I/O delay
+	jmp	$+2
 	mov	dx,fdc_data_reg
 	in	al,dx			; read the byte
 
@@ -1312,8 +1312,11 @@ fdc_reset:
 ;=========================================================================
 
 read_cmos_type:
-	mov	al,cmos_floppy
-	call	rtc_read		; read drive type
+%ifdef BIOS_CONFIG
+	call	get_floppy
+%else ; BIOS_CONFIG
+	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+%endif ; BIOS_CONFIG
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
 	shr	al,1			; shift drive 0 bits 7-4 to 3-0
@@ -1546,6 +1549,7 @@ fdc_set_rate:
 ;	AL,CX - trashed
 ;-------------------------------------------------------------------------
 fdc_wait_irq:
+
 	sti
 	clc
 	mov	ax,9001h
@@ -1554,12 +1558,14 @@ fdc_wait_irq:
 	mov	bx,fdc_calib_state	; contains IRQ flag
 	xor	cx,cx
 
+%ifdef AT_DELAY
+
 .zero:
 	test	byte [bx],fdc_irq_flag	; test IRQ flag
 	jnz	.exit			; exit loop if interrupt had occurred
 
 .zero_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
 	loop	.one			; DEC CX; JNZ .one
@@ -1570,10 +1576,26 @@ fdc_wait_irq:
 	jnz	.exit			; exit loop if interrupt had occurred
 
 .one_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
 	loop	.zero			; DEC CX; JNZ .one
+
+%else ; AT_DELAY
+
+.1:
+	test	byte [bx],fdc_irq_flag	; test IRQ flag
+	jnz	.exit			; exit loop if interrupt had occurred
+
+	; wait 38.13 us (Intel 8088 CPU running on 4.77 MHz)
+	mov	al,10
+
+.2:
+	dec	al
+	jnz	.2
+	loop	.1
+
+%endif ; AT_DELAY
 
 .timeout:
 	mov	ah,fdc_e_timeout
@@ -1603,13 +1625,15 @@ fdc_wait_ready:
 	mov	dx,fdc_status_reg
 	xor	cx,cx
 
+%ifdef AT_DELAY
+
 .zero:
 	in	al,dx			; read I/O port
 	test	al,fdc_stat_ready
 	jnz	.exit			; exit loop if bit(s) set to 1
 
 .zero_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
 	dec	cx
@@ -1619,16 +1643,55 @@ fdc_wait_ready:
 	jnz	.exit			; exit loop of bit(s) set to 1
 
 .one_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
 	loop	.zero
+
+%else ; AT_DELAY
+
+.1:
+	in	al,dx			; read I/O port
+	test	al,fdc_stat_ready
+	jnz	.exit			; exit loop if bit(s) set to 1
+
+	; wait 38.13 us (Intel 8088 CPU running on 4.77 MHz)
+	mov	al,10
+
+.2:
+	dec	al
+	jnz	.2
+	loop	.1
+
+%endif ; AT_DELAY
 
 .timeout:
 	stc
 
 .exit:
 	pop	cx
+	ret
+;=========================================================================
+; detect_floppy - Detect floppy configuration
+;                 set equipment bits accordingly
+; Input:
+;	none
+; Ouput:
+;	AL = NVRAM floppy configuration byte
+;-------------------------------------------------------------------------
+detect_floppy:
+%ifdef BIOS_SETUP
+	call	get_floppy
+%else ; FLASH_NVRAM
+	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+%endif ; BIOS_SETUP
+	cmp	al,00h			; No floppy drives?
+	je	.exit
+	or	byte [equipment_list],equip_floppies
+	test	al,0Fh			; Second floppy drive installed?
+	jz	.exit
+	or	byte [equipment_list],equip_floppy2
+.exit:
 	ret
 
 ;=========================================================================

@@ -7,10 +7,10 @@
 ;       INT 12h - Get memory size
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -78,17 +78,83 @@ pit_ch0_reg	equ	40h
 pit_ch1_reg	equ	41h
 pit_ch2_reg	equ	42h
 pit_ctl_reg	equ	43h
-port_b_reg	equ	61h
+
+; 8255 PPI port A I/O register - Read - keyboard data
+ppi_pa_reg	equ	60h	; 8255 PPI port A I/O register
+
+; Port 61h - 8255 PPI Port B - Write only
+ppi_pb_reg	equ	61h	; 8255 PPI port B I/O register
 iochk_disable	equ	08h	; clear and disable ~IOCHK NMI
 refresh_flag	equ	10h	; refresh flag, toggles every 15us
 iochk_enable	equ	0F7h	; enable ~IOCHK NMI
 iochk_status	equ	40h	; ~IOCHK status - 1 = ~IOCHK NMI signalled
+
+%ifdef MACHINE_XT or MACHINE_FE2010A
+; Port 62h - 8255 PPI Port C - Read only
+ppi_pc_reg	equ	62h	; 8255 PPI port C I/O registerA
+; XT DIP switches 1-4 (read when bit 3 of PPI Port B is 1)
+sw_post_loop	equ	01h	; XT DIP switch 1 - 1 = Loop on POST
+sw_fpu_present	equ	02h	; XT DIP switch 2 - 1 = FPU present
+sw_ram_256k	equ	00h	; XT DIP switches 3-4 - 256 KiB
+sw_ram_512k	equ	04h	; XT DIP switches 3-4 - 512 KiB
+sw_ram_576k	equ	08h	; XT DIP switches 3-4 - 576 KiB
+sw_ram_640k	equ	0Ch	; XT DIP switches 3-4 - 640 KiB
+; XT DIP switches 5-8 (read when bit 3 of PPI Port B is 0)
+sw_vid_none	equ	00h	; XT DIP switches 5-6 - No video, EGA, or VGA
+sw_vid_color_40	equ	01h	; XT DIP switches 5-6 - CGA, 80x25
+sw_vid_color_80	equ	02h	; XT DIP switches 5-6 - CGA, 40x25
+sw_vid_mono	equ	03h	; XT DIP switches 5-6 - Monochome, 80x25
+sw_one_floppy	equ	00h	; XT DIP switches 7-8 - One floppy
+sw_two_floppies	equ	01h	; XT DIP switches 7-8 - Two floppies
+sw_three_floppies equ	02h	; XT DIP switches 7-8 - Three floppies
+sw_four_floppies  equ	03h	; XT DIP switches 7-8 - Four floppies
+%endif ; MACHINE_XT or MACHINE_FE2010A
+
+; FE2010/FE2010 - Ports 62h-63h
+%ifdef MACHINE_FE2010A
+; Port 62h - Chipset Control Register - Write
+fe_control_reg	equ	62h
+fe_fpu_present	equ	02h	; FPU present
+fe_ram_256k	equ	00h	; XT DIP switches 3-4 - 256 KiB
+fe_ram_512k	equ	04h	; XT DIP switches 3-4 - 512 KiB
+fe_ram_576k	equ	08h	; XT DIP switches 3-4 - 576 KiB
+fe_ram_640k	equ	0Ch	; XT DIP switches 3-4 - 640 KiB
+fe_one_floppy	equ	00h	; XT DIP switches 7-8 - One floppy
+fe_two_floppies	equ	40h	; XT DIP switches 7-8 - Two floppies
+
+; Port 63h - Chipset Configuration Register - Write only
+fe_config_reg	equ	63h	; Chipset configuration register
+fe_par_disable	equ	01h	; Disable memory parity checking
+fe_fpu_nma_ena 	equ	02h	; Enable FPU NMI
+fe_config_lock	equ	08h	; Write lock of control register and
+				; bits 0-4 of configuration register
+fe_clk_7_16mhz	equ	40h	; FE2010A 7.16 MHz CPU clock frequency
+fe_clk_9_55mhz	equ	80h	; FE2010A 9.55 MHz CPU clock frequency
+%endif ; MACHINE_FE2010A
+
+; IBM PC/XT - Port 63h - 8255 PPI Control Word
+%ifdef MACHINE_XT
+ppi_cwd_reg	equ	63h	; 8255 PPI control word register
+ppi_cwd_value	equ	99h	; 8255 PPI control word value for IBM XT:
+				; Port A - mode 0 (simple I/O), input
+				; Port B - mode 0 (simple I/O), output
+				; Port C - output
+%endif ; MACHINE_XT
+
 post_reg	equ	80h	; POST status output port
+nmi_mask_reg	equ	0A0h
+%ifdef SECOND_PIC
 pic2_reg0	equ	0A0h
 pic2_reg1	equ	0A1h
+%endif ; SECOND_PIC
 unused_reg	equ	0C0h	; used for hardware detection and I/O delays
 cga_mode_reg	equ	3D8h
 mda_mode_reg	equ	3B8h
+
+; NMI mask (written to 0A0h)
+nmi_disable	equ	00h	; disable NMI
+nmi_disa_mask	equ	7Fh	; disable NMI AND mask (bit 7 = 0)
+nmi_enable	equ	80h	; enable NMI OR mask (bit 7 = 1)
 
 pic_freq	equ	1193182	; PIC input frequency - 14318180 MHz / 12
 
@@ -105,7 +171,8 @@ equip_floppies	equ	0000000000000001b	; floppy drivers installed
 equip_fpu	equ	0000000000000010b	; FPU installed
 equip_mouse	equ	0000000000000100b
 equip_video	equ	0000000000110000b	; video type bit mask
-equip_color	equ	0000000000100000b	; color 80x25 (mode 3)
+equip_color_40	equ	0000000000010000b	; color 40x24 (mode 1)
+equip_color_80	equ	0000000000100000b	; color 80x25 (mode 3)
 equip_mono	equ	0000000000110000b	; mono 80x25 (mode 7)
 equip_floppy2	equ	0000000001000000b	; 2nd floppy drive installed
 ;			|||||||||||||||`-- floppy drives installed
@@ -181,25 +248,38 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 ; Includes
 ;-------------------------------------------------------------------------
 %include	"messages.inc"		; POST messages
+%ifndef MACHINE_XT			; No space in XT ROM for font
 %include	"fnt80-FF.inc"		; font for graphics modes
+%endif ; MACHINE_XT
 ;%include	"inttrace.inc"		; XXX
+%ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
+%endif ; AT_RTC
+%ifdef FLASH_NVRAM
+%include	"flash.inc"		; Flash ROM configuration functions
+%endif ; FLASH_NVRAM
+%ifdef BIOS_SETUP
+%include	"setup.inc"		; NVRAM setup functions
+%endif ; BIOS_SETUP
+%include	"delay.inc"		; delay function
 %include	"time1.inc"		; time services
 %include	"floppy1.inc"		; floppy services
-%include	"kbc.inc"		; keyboard controller functions
+%ifdef AT_KEYBOARD
+%include	"at_kbc.inc"		; keyboard controller functions
+%endif ; AT_KEYBOARD
 %include	"scancode.inc"		; keyboard scancodes translation func.
 %include	"serial1.inc"		; serial port services & detection
 %include	"printer1.inc"		; parallel printer services & detection
 %ifdef PS2_MOUSE
-%ifndef AT_COMPAT
-%error "PS2_MOUSE depends on AT_COMPAT. Please fix config.inc."
-%endif ; AT_COMPAT
+%ifndef SECOND_PIC
+%error "PS2_MOUSE depends on SECOND_PIC. Please fix config.inc."
+%endif ; SECOND_PIC
 %include	"ps2aux.inc"
 %endif
 %include	"sound.inc"		; sound test
 %include	"cpu.inc"		; CPU and FPU detection
 
-%ifdef AT_COMPAT
+%ifdef SECOND_PIC
 
 ;=========================================================================
 ; int_ignore2 - signal end of interrupt to PIC if hardware interrupt, return
@@ -235,292 +315,47 @@ int_75:
 	int	02h		; call NMI ISR
 	iret
 
-%endif ; AT_COMPAT
+%endif ; SECOND_PIC
 
 ;=========================================================================
-; extension_scan - scan for BIOS extensions
-; Input:
-;	DX - start segment
-;	BX - end segment
-; Returns:
-;	DX - address for the continuation of the scan
-;	biosdseg:67h - address of the extension, 0000:0000 if not found
+; boot_os -Boot the OS
 ;-------------------------------------------------------------------------
-extension_scan:
-	mov	word [67h],0
-	mov	word [69h],0
-.scan:
-	mov	es,dx
-    es	cmp	word [0],0AA55h		; check for signature
-	jnz	.next			; no signature, check next 2 KiB
-    es	mov	al,byte [2]		; AL = rom size in 512 byte blocks
-	mov	ah,0
-	mov	cl,5
-	shl	ax,cl			; convert size to paragraphs
-	add	dx,ax
-	add	dx,007Fh		; round DX to the nearest 2 KiB
-	and	dx,0FF80h		; (2 KiB = 128 x 16 bytes)
-	mov	cl,4
-	shl	ax,cl			; convert size to bytes
-	mov	cx,ax
-	mov	al,0
-	xor	si,si
-.checksum:
-    es	add	al,byte [si]
-	inc	si
-	loop	.checksum
-	or	al,al			; AL == 0?
-	jnz	.next			; AL not zero - bad checksum
-	mov	word [67h],3		; extension initialization offset
-	mov	word [69h],es		; extension segment
-	jmp	.exit
-.next:
-	add	dx,80h			; add 2 KiB
-	cmp	dx,bx
-	jb	.scan
-.exit:
-	ret
+boot_os:
 
-;=========================================================================
-; ipl - Initial Program Load - try to read and execute boot sector
 ;-------------------------------------------------------------------------
-ipl:
-	sti
-	xor	ax,ax
-	mov	ds,ax
-	mov	word [78h],int_1E
-	mov	word [7Ah],cs
+; Check for F1 (setup key), run setup utility if pressed
 
-.retry:
-	mov	al,4			; try booting from floppy 4 times
-
-.fd_loop:
-	push	ax
-	mov	ah,00h			; reset disk system
-	mov	dl,00h			; drive 0
-	int	13h
-	jb	.fd_failed
-	mov	ah,08h			; get drive parameters
-	mov	dl,00h			; drive 0
-	int	13h
-	jc	.fd_failed
-	cmp	dl,00h
-	jz	.fd_failed		; jump if zero drives
-	mov	ax,0201h		; read one sector
-	xor	dx,dx			; head 0, drive 0
-	mov	es,dx			; to 0000:7C00
-	mov	bx,7C00h
-	mov	cx,0001h		; track 0, sector 1
-	int	13h
-	jc	.fd_failed
-    es	cmp	word [7DFEh],0AA55h
-	jnz	.fd_failed
-	jmp	0000h:7C00h
-
-.fd_failed:
-	pop	ax
-	dec	al
-	jnz	.fd_loop
-
-; try booting from HDD
-
-	mov	ah,0Dh			; reset hard disks
-	mov	dl,80h			; drive 80h
-	int	13h
-	jc	.hd_failed
-	mov	ax,0201h		; read one sector
-	mov	dx,0080h		; head 0, drive 80h
-	xor	bx,bx
-	mov	es,bx			; to 0000:7C00
-	mov	bx,7C00h
-	mov	cx,0001h		; track 0, sector 1
-	int	13h
-	jc	.hd_failed
-    es	cmp	word [7DFEh],0AA55h
-	jnz	.hd_failed
-	jmp	0000h:7C00h
-
-.hd_failed:
-	mov	si,msg_boot_failed
-	call	print
+	mov	ah,01h
+	int	16h
+	jz	.no_key
 	mov	ah,00h
-	int	16h
-	jmp	.retry
+	int	16h			; read the keystroke
+	cmp	ax,3B00h		; F1?
+	jne	.no_key
+	or	byte [post_flags],post_setup
+.no_key:
 
-;=========================================================================
-; get_line - read an ASCIIZ string from the console
-; Input:
-;	ES:DI - pointer to the buffer
-;	AX - max string length
-; Output:
-;	AX - string length
-; Notes:
-;	Buffer must have size of max string length + 1 to accomodate 00h
-;-------------------------------------------------------------------------
-get_line:
-	push	bx
-	push	dx
-	push	si
-	push	di
+	test	byte [post_flags],post_setup
+	jz	.no_setup
 
-	cld
-	mov	si,di
-	add	si,ax			; SI = last character position
-	xor	dx,dx			; DX = 0 - string length
+%ifdef BIOS_SETUP
+	call	nvram_setup
+%endif ; BIOS_SETUP
 
-.read_char_loop:
-	mov	ah,00h			; read character from keyboard
-	int	16h
+.no_setup:
 
-	cmp	al,08h			; <Backspace> key
-	jz	.backspace
+%ifdef TURBO_MODE
+	call	get_config_a		; read BIOS configuration byte A
+	and	al,nvram_trbo_mask
+	call	set_cpu_clk		; set CPU clock
+%endif ; TURBO_MODE
 
-	cmp	al,0Dh			; <Enter> key
-	jz	.enter
+	mov	al,e_boot		; boot the OS POST code
+	out	post_reg,al
 
-	cmp	al,20h			; below printable ASCII code?
-	jb	.error_input
-
-	cmp	al,7Eh			; above printable ASCII code?
-	ja	.error_input
-
-	cmp	di,si			; end of buffer reached?
-	jae	.error_input
-
-	stosb				; store character in the buffer
-	inc	dx			; increment strng length
-
-	mov	ah,0Eh			; teletype output (echo)
-	mov	bx,0007h
-	int	10h
-
-	jmp	.read_char_loop
-
-.backspace:
-	or	dx,dx			; empty string?
-	jz	.error_input
-
-	dec	di			; move pointer back
-	dec	dx			; decrement string size
-
-	mov	ax,0E08h		; move the cursor back
-	mov	bx,0007h
-	int	10h
-
-	mov	ax,0E20h		; erase the character under the cursor
-	mov	bx,0007h
-	int	10h
-
-	mov	ax,0E08h		; move the cursor back again
-	mov	bx,0007h
-	int	10h
-
-	jmp	.read_char_loop
-
-.error_input:
-	mov	ax,0E07h		; beep
-	mov	bx,0007h
-	int	10h
-
-	jmp	.read_char_loop
-
-.enter:
-	mov	al,00h			; store 00h at the end of the string
-	stosb
-
-	mov	ax,0E0Dh		; CR
-	mov	bx,0007h
-	int	10h
-
-	mov	ax,0E0Ah		; LF
-	mov	bx,0007h
-	int	10h
-
-	mov	ax,dx			; string length to AX
-
-	pop	di
-	pop	si
-	pop	dx
-	pop	bx
-	ret
-
-;=========================================================================
-; atoi - convert ASCIIZ string to an 16-bit integer number
-; Input:
-;	ES:DI - pointer to string
-; Output:
-;	AX - number
-; 	ES:DI - pointer moved to the position following the number
-;-------------------------------------------------------------------------
-atoi:
-	push	bx
-	push	cx
-	push	dx
-
-	xor	ax,ax			; zero the result
-	mov	bx,10			; multiplier
-
-.atoi_loop:
-    es	mov	cl,byte [di]
-
-	cmp	cl,'0'			; ASCII code below '0'
-	jb	.exit
-
-	cmp	cl,'9'			; ASCII code above '9'
-	ja	.exit
-
-	inc	di			; move to the next character
-
-	sub	cl,'0'			; convert to ASCII to binary
-
-	mul	bx			; DX:AX = AX * 10
-	mov	ch,0
-	add	ax,cx			; AX = AX + CX
-	
-	jmp	.atoi_loop
-
-.exit:
-	pop	dx
-	pop	cx
-	pop	bx
-	ret
-
-;=========================================================================
-; bin_to_bcd - convert binary number to a packed BCD
-; Input:
-;	AX - binary number
-; Output:
-;	AX - packed BCD number
-;-------------------------------------------------------------------------
-bin_to_bcd:
-	push	bx
-	push	cx
-	push	dx
-	push	si
-
-	mov	cl,0			; shift amount
-	xor	si,si			; zero result
-	mov	bx,10			; BX - divisor
-
-.bin_to_bcd_loop:
-	xor	dx,dx			; DX - zero for 32-bit div operand
-	div	bx
-
-	shl	dx,cl			; shift digit to the required position
-	add	cl,4			; calculate next position
-
-	add	si,dx			; add reminder to the result
-	or	ax,ax			; quotient is zero?
-	jnz	.bin_to_bcd_loop
-
-	mov	ax,si			; result to AX
-
-	pop	si
-	pop	dx
-	pop	cx
-	pop	bx
-	ret
-
+	mov	si,msg_boot
+	call	print
+	int	19h			; boot the OS
 
 ;=========================================================================
 ; print - print ASCIIZ string to the console
@@ -642,6 +477,7 @@ print_digit:
 	pop	ax
 	ret
 
+%ifdef EBDA_SIZE
 ;=========================================================================
 ; reserve_ebda - reserve EBDA (Extended BIOS Data Area) if using PS2_MOUSE
 ; Input:
@@ -651,7 +487,6 @@ print_digit:
 ;	- Does not reserve EBDA if PS/2 auxiliary device is not detected
 ;-------------------------------------------------------------------------
 reserve_ebda:
-%ifdef PS2_MOUSE
 	push	ax
 	push	cx
 	test	word [equipment_list],equip_mouse
@@ -677,8 +512,947 @@ reserve_ebda:
 .no_mouse:
 	pop	cx
 	pop	ax
-%endif ; PS2_MOUSE
 	ret
+%endif ; EBDA_SIZE
+
+;=========================================================================
+; print display type
+;-------------------------------------------------------------------------
+print_display:
+	mov	si,msg_disp
+	call	print
+	mov	al,byte [equipment_list] ; get equipment - low byte
+	and	al,equip_video		; get video adapter type
+	mov	si,msg_disp_mda
+	cmp	al,equip_mono		; monochrome?
+	jz	.print_disp
+	mov	si,msg_disp_cga_80
+	cmp	al,equip_color_80	; CGA 80x25?
+	jz	.print_disp
+	mov	si,msg_disp_cga_40
+	cmp	al,equip_color_40	; CGA 40x25?
+	jz	.print_disp
+	mov	si,msg_disp_ega		; otherwise EGA or later
+.print_disp:
+	call	print
+	ret
+
+%ifdef PS2_MOUSE
+
+;=========================================================================
+; print PS/2 mouse presence
+;-------------------------------------------------------------------------
+
+print_mouse:
+	mov	si,msg_mouse
+	call	print
+	mov	si,msg_absent
+	test	byte [equipment_list],equip_mouse
+	jz	.print_mouse
+	mov	si,msg_present
+.print_mouse:
+	call	print
+	ret
+
+%endif ; PS2_MOUSE
+
+;=========================================================================	
+; interrupt_table - offsets only (BIOS segment is always 0F000h)
+;-------------------------------------------------------------------------
+interrupt_table:
+	dw	int_dummy		; INT 00 - Divide by zero
+	dw	int_dummy		; INT 01 - Single step
+	dw	int_02			; INT 02 - Non-maskable interrupt
+	dw	int_dummy		; INT 03 - Debugger breakpoint
+	dw	int_dummy		; INT 04 - Integer overlow (into)
+	dw	int_05			; INT 05 - BIOS Print Screen
+	dw	int_dummy		; INT 06
+	dw	int_dummy		; INT 07
+	dw	int_08			; INT 08 - IRQ0 - Timer Channel 0
+	dw	int_09			; INT 09 - IRQ1 - Keyboard
+	dw	int_ignore		; INT 0A - IRQ2
+	dw	int_ignore		; INT 0B - IRQ3
+	dw	int_ignore		; INT 0C - IRQ4
+	dw	int_ignore		; INT 0D - IRQ5
+	dw	int_0E			; INT 0E - IRQ6 - Floppy
+	dw	int_ignore		; INT 0F - IRQ7
+	dw	int_10			; INT 10 - BIOS Video Services
+	dw	int_11			; INT 11 - BIOS Get Equipment List
+	dw	int_12			; INT 12 - BIOS Get Memory Size
+	dw	int_13			; INT 13 - BIOS Floppy Disk Services
+	dw	int_14			; INT 14 - BIOS Serial Communications
+	dw	int_15			; INT 15 - BIOS Misc. System Services
+	dw	int_16			; INT 16 - BIOS Keyboard Services
+	dw	int_17			; INT 17 - BIOS Parallel Printer svc.
+	dw	int_18			; INT 18 - BIOS Start ROM BASIC
+	dw	int_19			; INT 19 - BIOS Boot the OS
+	dw	int_1A			; INT 1A - BIOS Time Services
+	dw	int_dummy		; INT 1B - DOS Keyboard Break
+	dw	int_dummy		; INT 1C - User Timer Tick
+	dw	int_1D			; INT 1D - Video Parameters Table
+	dw	int_1E			; INT 1E - Floppy Parameters Table
+%ifndef MACHINE_XT
+	dw	int_1F			; INT 1F - Font For Graphics Mode
+%else ; MACHINE_XT
+	dw	int_ignore
+%endif ; MACHINE_XT
+
+%ifdef SECOND_PIC
+interrupt_table2:
+	dw	int_70			; INT 70 - IRQ8 - RTC
+	dw	int_71			; INT 71 - IRQ9 - redirection
+	dw	int_ignore2		; INT 72 - IRQ10
+	dw	int_ignore2		; INT 73 - IRQ11
+%ifndef PS2_MOUSE
+	dw	int_ignore2		; INT 74 - IRQ12 - PS/2 mouse
+%else
+	dw	int_74			; INT 74 - IRQ12 - PS/2 mouse
+%endif
+	dw	int_75			; INT 75 - IRQ13 - FPU
+	dw	int_ignore2		; INT 76 - IRQ14
+	dw	int_ignore2		; INT 77 - IRQ15
+%endif ; SECOND_PIC
+
+;=========================================================================
+; cold_start, warm_start - BIOS POST (Power on Self Test) starts here
+;-------------------------------------------------------------------------	
+	setloc	0E05Bh		; POST Entry Point
+cold_start:
+	mov	ax,biosdseg
+	mov	ds,ax
+	mov	word [warm_boot],0	; indicate cold boot
+
+warm_start:
+	cli				; disable interrupts
+	cld				; clear direction flag
+	mov	al,e_start
+	out	post_reg,al		; POST start code
+
+;-------------------------------------------------------------------------
+; test CPU's FLAG register
+
+	xor	ax,ax			; AX = 0
+	jb	cpu_fail
+	jo	cpu_fail
+	js	cpu_fail
+	jnz	cpu_fail
+	jpo	cpu_fail
+	add	ax,1			; AX = 1
+	jz	cpu_fail
+	jpe	cpu_fail
+	sub	ax,8002h
+	js	cpu_fail
+	inc	ax
+	jno	cpu_fail
+	shl	ax,1
+	jnb	cpu_fail
+	jnz	cpu_fail
+	shl	ax,1
+	jb	cpu_fail
+
+;-------------------------------------------------------------------------
+; Test CPU registers
+
+	mov	ax,0AAAAh
+.1:
+	mov	ds,ax
+	mov	bx,ds
+	mov	es,bx
+	mov	cx,es
+	mov	ss,cx
+	mov	dx,ss
+	mov	bp,dx
+	mov	sp,bp
+	mov	si,sp
+	mov	di,si
+	cmp	di,0AAAAh
+	jnz	.2
+	mov	ax,di
+	not	ax
+	jmp	.1
+.2:
+	cmp	di,5555h
+	jz	cpu_ok
+
+cpu_fail:
+	mov	al,e_cpu_fail
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; CPU error: continious beep - 400 Hz
+
+	mov	al,0B6h
+	out	pit_ctl_reg,al		; PIT - channel 2 mode 3
+	mov	ax,pic_freq/400		; 400 Hz signal
+	out	pit_ch2_reg,al
+	mov	al,ah
+	out	pit_ch2_reg,al
+	in	al,ppi_pb_reg
+	or	al,3			; turn speaker on and enable
+	out	ppi_pb_reg,al		; PIT channel 2 to speaker
+
+.1:
+	hlt
+	jmp	.1
+
+;-------------------------------------------------------------------------
+; CPU test passed
+
+cpu_ok:
+	mov	al,e_cpu_ok
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; disable NMI, turbo mode, and video output on CGA and MDA
+
+%ifdef AT_NMI
+	mov	al,0Dh & nmi_disa_mask
+	out	rtc_addr_reg,al		; disable NMI
+	jmp	$+2
+	in	al,rtc_data_reg		; dummy read to keep RTC happy
+%else
+	mov	al,nmi_disable
+	out	nmi_mask_reg,al		; disable NMI
+%endif ; AT_NMI
+
+%ifdef MACHINE_XI8088
+	mov	al,iochk_disable	; clear and disable ~IOCHK
+	out	ppi_pb_reg,al
+	mov	al,00h			; clear turbo bit
+	out	ppi_pb_reg,al		; and also turn off the speaker
+%endif ; MACHINE_XI8088
+
+%ifdef MACHINE_FE2010A
+	mov	al,fe_par_disable	; Disable parity checking
+	out	fe_config_reg,al	; FE2010A chipset configuration register
+	mov	al,10110000b		; Clear keyboard, disable keyb clock
+	out	ppi_pb_reg,al		; Disable parity and IOCHK
+%endif ; MACHINE_FE2010A
+
+%ifdef MACHINE_XT
+	mov	al,ppi_cwd_value	; PPI port A and port C inputs
+	out	ppi_cwd_reg,al		; PPI control word register
+	mov	al,10100101b		; FIXME: Add documentation
+	out	ppi_pb_reg,al
+%endif ; MACHINE_XT
+
+	mov	al,00h
+	mov	dx,cga_mode_reg
+	out	dx,al			; disable video output on CGA
+	inc	al
+	mov	dx,mda_mode_reg		; disable video output on MDA
+	out	dx,al			; and set MDA high-resolution mode bit
+
+;-------------------------------------------------------------------------
+; Initialize DMAC (8237)
+ 
+ 	out	0Dh,al			; DMA Master Clear register - reset DMA
+ 	mov	al,40h			; single mode, verify, channel 0
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,41h			; single mode, verify, channel 1
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,42h			; single mode, verify, channel 2
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,43h			; single mode, verify, channel 3
+ 	out	dmac_mode_reg,al	; DMA Mode register
+ 	mov	al,0			; DMA Command register bits:
+ 					; DACK active low, DREQ active high,
+ 					; late write, fixed priority,
+ 					; normal timing, controller enable
+ 					; channel 0 addr hold disable
+ 					; memory to memory disable
+ 	out	08h,al			; DMA Command register
+ 	out	81h,al			; DMA Page, channel 2
+ 	out	82h,al			; DMA Page, channel 3
+ 	out	83h,al			; DMA Page, channels 0,1
+	mov	al,e_dmac_ok
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; Test first 32 KiB (MIN_RAM_SIZE) of RAM
+
+low_ram_test:
+	xor	si,si
+	xor	di,di
+	mov	ds,di
+	mov	es,di
+	mov	dx,word [warm_boot+biosdseg*16] ; save soft reset flag to DX
+	mov	ax,55AAh		; first test pattern
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
+    rep	stosw				; store test pattern
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
+.1:
+	lodsw
+	cmp	ax,55AAh		; compare to the test pattern
+	jne	low_ram_fail
+	loop	.1
+	xor	si,si
+	xor	di,di
+	mov	ax,0AA55h		; second test pattern
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
+    rep stosw				; store test pattern
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
+.2:
+	lodsw
+	cmp	ax,0AA55h		; compare to the test pattern
+	jne	low_ram_fail
+	loop	.2
+	xor	di,di
+	xor	ax,ax			; zero
+	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
+    rep stosw				; zero the memory
+	jmp	low_ram_ok		; test passed
+
+low_ram_fail:
+	mov	al,e_low_ram_fail	; test failed
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+;  Low memory error: beep - pause - beep - pause ... - 400 Hz
+
+	mov	al,0B6h
+	out	pit_ctl_reg,al		; PIT - channel 2 mode 3
+	mov	ax,pic_freq/400		; 400 Hz signal
+	out	pit_ch2_reg,al
+	mov	al,ah
+	out	pit_ch2_reg,al
+	in	al,ppi_pb_reg
+.1:
+	or	al,3			; turn speaker on and enable
+	out	ppi_pb_reg,al		; PIT channel 2 to speaker
+	mov	cx,0
+.2:
+	nop
+	loop	.2
+	and	al,0FCh			; turn of speaker
+	out	ppi_pb_reg,al
+	mov	cx,0
+.3:
+	nop
+	loop	.3
+	jmp	.1
+
+;-------------------------------------------------------------------------
+; Low memory test passed
+
+low_ram_ok:
+	mov	word [warm_boot+biosdseg*16],dx ; restore soft reset flag
+	mov	al,e_low_ram_ok
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; Set up stack - using upper 256 bytes of interrupt table
+
+	mov	ax,0030h
+	mov	ss,ax
+	mov	sp,0100h
+
+;-------------------------------------------------------------------------
+; Initialize interrupt table
+
+	push	cs
+	pop	ds
+	xor	di,di
+	mov	es,di
+	mov	si,interrupt_table
+	mov	cx,0020h		; 32 Interrupt vectors
+	mov	ax,bioscseg
+.1:
+	movsw				; copy ISR address (offset part)
+	stosw				; store segment part
+	loop	.1
+%ifdef SECOND_PIC
+	mov	di,70h*4		; starting from IRQ 70
+	mov	si,interrupt_table2
+	mov	cx,8			; 8 Interrupt vectors
+.2:
+	movsw				; copy ISR address (offset part)
+	stosw				; store segment part
+	loop	.2
+%endif ; SECOND_PIC
+	mov     al,e_int_ok
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; set DS to BIOS data area
+
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
+
+;-------------------------------------------------------------------------
+; Initialize PIT (8254 timer)
+
+	mov	al,36h			; channel 0, LSB & MSB, mode 3, binary
+	out	pit_ctl_reg,al
+	mov	al,0
+	out	pit_ch0_reg,al
+	out	pit_ch0_reg,al
+	mov	al,54h			; channel 1, LSB only, mode 2, binary
+	out	pit_ctl_reg,al		; used for DRAM refresh on IBM PC/XT/AT
+	mov	al,12h			; or for delays (using port_b, bit 4)
+	out	pit_ch1_reg,al		; pulse every 15ms
+	mov	al,40h			; XXX timer latch
+	out	pit_ctl_reg,al
+
+;-------------------------------------------------------------------------
+; Play "power on" sound - also tests PIT functionality
+	call	sound
+
+	mov     al,e_pit_ok		; PIT initialization successful
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; Initialize PIC (8259)
+
+%ifdef SECOND_PIC
+	mov	al,11h			; ICW1 - edge triggered, cascade, ICW4
+	out	pic1_reg0,al
+	out	pic2_reg0,al
+	mov	al,8			; ICW2 - interrupt vector offset = 8
+	out	pic1_reg1,al
+	mov	al,70h			; ICW2 - interrupt vector offset = 70h
+	out	pic2_reg1,al
+	mov	al,4			; ICW3 - slave is connected to IR2
+	out	pic1_reg1,al
+	mov	al,2			; ICW3 - slave ID = 2 (IR2)
+	out	pic2_reg1,al
+	mov	al,1			; ICW4 - 8086/8088
+	out	pic1_reg1,al
+	out	pic2_reg1,al
+%else
+	mov	al,13h			; ICW1 - edge triggered, single, ICW4
+	out	pic1_reg0,al
+	mov	al,8			; ICW2 - interrupt vector offset = 8
+	out	pic1_reg1,al
+	mov	al,9			; ICW4 - buffered mode, 8086/8088
+	out	pic1_reg1,al
+	mov	al,e_pic_ok
+	out	post_reg,al
+%endif ; SECOND_PIC
+
+;-------------------------------------------------------------------------
+; initialize keyboard controller (8242), keyboard and PS/2 auxiliary device
+
+%ifdef AT_KEYBOARD
+	call	kbc_init
+%else ; AT_KEYBOARD
+	in	al,ppi_pb_reg
+	and	al,00111111b		; set keyboard clock low
+	out	ppi_pb_reg,al
+	mov	cx,10582		; hold clock low for 20 ms
+.kbd_reset_wait:
+	loop	.kbd_reset_wait
+	or	al,11000000b		; set keyboard clear bit, enable clock
+	out	ppi_pb_reg,al
+	and	al,01111111b		; unset keyboard clear bit
+	out	ppi_pb_reg,al
+	mov	cx,1000
+.kbd_flush:
+	mov 	ah,01h
+	int	16h
+	jz	.kbd_no_key
+	mov	ah,00h
+	int	16h
+.kbd_no_key:
+	loop	.kbd_flush
+
+%endif ; AT_KEYBOARD
+
+	call	kbd_buffer_init		; setup keyboard buffer
+
+	mov	al,e_kbd_ok
+	out	post_reg,al
+
+;-------------------------------------------------------------------------
+; enable interrupts
+
+%ifdef SECOND_PIC
+	mov	al,0B8h		; OSW1: unmask timer, keyboard, IRQ2 and FDC
+	out	pic1_reg1,al
+%ifndef PS2_MOUSE
+	mov	al,0FDh		; OSW1: unmask IRQ9
+%else
+	mov	al,0EDh		; OSW1: unmask IRQ9 and IRQ12
+%endif ; PS2_MOUSE
+	out	pic2_reg1,al
+%else
+	mov	al,0BCh		; OSW1: unmask timer, keyboard and FDC
+	out	pic1_reg1,al
+%endif ; SECOND_PIC
+	sti
+
+	mov	al,nmi_enable
+	out	nmi_mask_reg,al	; enable NMIs
+
+%ifdef MACHINE_FE2010A or MACHINE_XT
+;-------------------------------------------------------------------------
+; Read video mode switches into equipment_list
+	in	al,ppi_pb_reg
+%ifdef MACHINE_FE2010A
+	and	al,0FDh		; clear switch select bit - select SW5-SW8
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XT
+	and	al,0F7h		; clear switch select bit - select SW5-SW8
+%endif ; MACHINE_XT
+	out	ppi_pb_reg,al
+	in	al,ppi_pc_reg	; read switches SW5-SW8
+	and	al,03h		; video mode is in SW5 and SW6
+	mov	cl,4
+	shl	al,cl		; move video mode to bits 5-4
+	or	[equipment_list],al
+%endif ; MACHINE_FE2010A or MACHINE_XT
+; 
+;-------------------------------------------------------------------------
+; look for video BIOS, initialize it if present
+
+	mov	dx,0C000h
+	mov	bx,0C800h
+	call	extension_scan
+	cmp	word [67h],0
+	jz	.no_video_bios
+	mov	al,e_video_bios_ok
+	out	post_reg,al
+	call	far [67h]
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
+	mov	al,e_video_init_ok
+	out	post_reg,al
+; set video bits to 00 - EGA or later (Video adapter with BIOS)		
+	and	word [equipment_list],~equip_video
+	jmp	.video_initialized
+
+.no_video_bios:
+	mov	ah,byte [equipment_list] ; get equipment - low byte
+	and	ah,equip_video		; get video adapter type
+	mov	al,07h			; monochrome 80x25 mode
+	cmp	ah,equip_mono		; monochrome?
+	jz	.set_mode
+	mov	al,03h			; color 80x25 mode
+	cmp	ah,equip_color_80	; 80x25 color?
+	jz	.set_mode
+	mov	al,01h			; color 40x24 mode
+
+.set_mode:
+	mov	ah,00h			; INT 10, AH=00 - Set video mode
+	int	10h
+
+.video_initialized:
+
+;-------------------------------------------------------------------------
+; print the copyright message
+
+	mov	si,msg_copyright
+	call	print
+
+%ifdef AT_RTC
+
+;-------------------------------------------------------------------------
+; Initialize RTC / NVRAM
+; Read equipment byte from CMOS and set it in BIOS data area
+	call	rtc_init
+
+%endif ; AT_RTC
+
+%ifdef BIOS_SETUP
+	mov	si,msg_setup		; print setup prompt
+	call	print
+%endif ; BIOS_SETUP
+
+
+;-------------------------------------------------------------------------
+; detect and print availability of various equipment
+
+	call	detect_cpu		; detect and print CPU type
+	call	detect_fpu		; detect and print FPU presence
+%ifdef AT_RTC
+	call	print_rtc		; print current RTC time
+%endif ; AT_RTC
+	call	print_display		; print display type
+%ifdef PS2_MOUSE
+	call	print_mouse		; print mouse presence
+%endif ; PS2_MOUSE
+	call	detect_serial		; detect serial ports and print findings
+	call	detect_parallel		; detect parallel ports and print
+					; findings
+	call	detect_floppy		; detect floppy drive types
+	call	print_floppy		; print floppy drive types
+
+	call	detect_ram		; test RAM, get RAM size in AX
+
+	mov	si,msg_ram_total
+	call	print
+	call	print_dec		; print RAM size
+	mov	si,msg_kib
+	call	print
+
+; FE2010A - Configure chipset according to detected equipment
+%ifdef MACHINE_FE2010A
+; Write settings for emulated DIP switches
+	mov	al,byte [equipment_list] ; switches are in low byte of equipment
+	and	al,0CEh			; keep floppy, memory size, and FPU bits
+	out	fe_control_reg,al
+; Enable FPU NMI if needed, and lock chipset configuration
+	and	al,equip_fpu		; enable NMI if the FPU is installed
+	or	al,fe_config_lock	; set lock chipset configuration bit
+	out	fe_config_reg,al
+%endif ; MACHINE_FE2010A
+
+%ifdef EBDA_SIZE
+	call	reserve_ebda		; reserve EBDA if needed
+
+	mov	si,msg_ram_avail
+	call	print
+	mov	ax,word [memory_size]
+	call	print_dec		; print remaining RAM size
+	mov	si,msg_kib
+	call	print
+%endif ; EBDA_SIZE
+
+	call	detect_rom_ext		; detect and initialize extension ROMs
+
+	jmp boot_os
+
+;=========================================================================
+; int_02 - NMI
+; Note: Xi 8088 only implements IOCHK NMI, system board parity is not
+;	implemented
+;-------------------------------------------------------------------------
+	setloc	0E2C3h			; NMI Entry Point
+int_02:
+	push	ax
+%ifdef AT_NMI
+	mov	al,0Dh & nmi_disa_mask
+	call	rtc_read		; disable NMI
+%else
+	mov	al,nmi_disable
+	out	nmi_mask_reg,al
+%endif ; AT_NMI
+	in	al,ppi_pb_reg		; read Port B
+	mov	ah,al
+	or	al,iochk_disable	; clear and disable ~IOCHK
+	out	ppi_pb_reg,al
+	test	al,iochk_status
+	jnz	.iochk_nmi
+	mov	al,ah
+	out	ppi_pb_reg,al		; restore original bits
+	jmp	.exit
+
+.iochk_nmi:
+	push	si
+	mov	si,msg_iochk_nmi
+	call	print
+	pop	si
+.1:
+	mov	ah,0h
+	int	16h
+	or	al,20h			; convert to lower case
+	cmp	al,'d'
+	je	.exit			; leave NMIs disabled and exit
+	cmp	al,'i'
+	je	.ignore			; enable NMIs and exit
+	cmp	al,'r'
+	je	cold_start
+	jmp	.1
+.ignore:
+%ifdef AT_NMI
+	mov	al,0Dh | nmi_enable
+	call	rtc_read		; enable NMI
+%else
+	mov	al,nmi_enable
+	out	nmi_mask_reg,al
+%endif ; AT_NMI
+.exit:
+	pop	ax
+	iret
+
+msg_iochk_nmi:
+	db	"IOCHK NMI detected. Type 'i' to ignore, 'd' to disable NMIs, or 'r' to reboot."
+	db	0Dh, 0Ah, 00h
+
+;=========================================================================
+; int_18 - execute ROM BASIC
+; Note:
+;	Prints an error message since we don't have ROM BASIC
+;-------------------------------------------------------------------------
+int_18:
+	mov	si,msg_no_basic
+	call	print
+.1:
+	hlt
+	jmp	.1
+
+;=========================================================================
+; int_19 - load and execute the boot sector
+;-------------------------------------------------------------------------
+	setloc	0E6F2h			; INT 19 Entry Point
+int_19:
+	jmp	ipl
+
+;=========================================================================
+; configuration data table
+;-------------------------------------------------------------------------
+	setloc	0E6F5h
+config_table:
+	dw	.size			; bytes 0 and 1: size of the table
+.bytes:
+	db	MODEL_BYTE		; byte 2: model
+	db	00h			; byte 3: submodel = 0
+	db	00h			; byte 4: release = 0
+%ifdef SECOND_PIC
+%ifdef AT_RTC
+	db	01110000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%else ; AT_RTC
+	db	01010000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%endif ; AT_RTC
+%else ; SECOND_PIC
+%ifdef AT_RTC
+	db	00100000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%else ; AT_RTC
+	db	00000000b		; byte 5: feature byte 1
+;		|||||||`-- system has dual bus (ISA and MCA)
+;		||||||`-- bus is Micro Channel instead of ISA
+;		|||||`-- extended BIOS area allocated (usually on top of RAM)
+;		||||`-- wait for external event (INT 15h/AH=41h) supported
+;		|||`-- INT 15h/AH=4Fh called upon INT 09h
+;		||`-- real time clock installed
+;		|`-- 2nd interrupt controller installed
+;		`-- DMA channel 3 used by hard disk BIOS
+%endif ; AT_RTC
+%endif ; SECOND_PIC
+	db	00h			; byte 6: feature byte 2
+	db	00h			; byte 7: feature byte 3
+	db	00h			; byte 8: feature byte 4
+	db	00h			; byte 9: feature byte 5
+.size	equ	$-.bytes
+
+;=========================================================================
+; Includes with fixed entry points (for IBM compatibility)
+;-------------------------------------------------------------------------
+
+%include	"serial2.inc"		; INT 14 - BIOS Serial Communications
+%include	"keyboard.inc"		; INT 16, INT 09
+%include	"floppy2.inc"		; INT 13
+%include	"printer2.inc"		; INT 17
+%include	"video.inc"		; INT 10
+
+;=========================================================================
+; detect_rom_ext - Look for BIOS extensions, initialize if found
+;-------------------------------------------------------------------------
+
+detect_rom_ext:
+	mov	al,e_ext_start		; ROM extension scan start
+	out	post_reg,al
+
+	mov	dx,0C800h
+	mov	bx,0F800h
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+	call	get_config_a
+	test	al,nvram_ext_scan
+	jz	.ext_scan_loop		; ext_scan clear - scan till F8000
+	mov	bx,0F000h		; ext_scan set - scan till F0000
+%endif ; AT_RTC_NVRAM or FLASH_NVRAM
+
+.ext_scan_loop:
+	call	extension_scan
+	cmp	word [67h],0
+	jz	.ext_scan_done		; No ROM extension found
+	mov	al,e_ext_detect		; ROM extension found
+	out	post_reg,al
+	mov	si,msg_rom_found
+	call	print
+	mov	ax,word [69h]		; ROM extension's segment
+	call	print_hex
+	mov	si,msg_rom_init
+	call	print
+	push	bx
+	push	dx
+	call	far [67h]
+	mov	ax,biosdseg		; DS = BIOS data area
+	mov	ds,ax
+	mov	al,e_ext_init_ok	; ROM extension initialized
+	out	post_reg,al
+	pop	dx
+	pop	bx
+	jmp	.ext_scan_loop
+
+.ext_scan_done:
+	mov	al,e_ext_complete	; ROM extension scan complete
+	out	post_reg,al
+
+	ret
+
+;=========================================================================
+; int_12 - Get memory size
+; Input:
+;	none
+; Output:
+;	AX = memory size
+;-------------------------------------------------------------------------
+	setloc	0F841h			; INT 12 Entry Point
+int_12:
+	sti
+	push	ds
+	mov	ax,biosdseg
+	mov	ds,ax
+	mov	ax,word [memory_size]
+	pop	ds
+	iret
+
+;=========================================================================
+; int_11 - Get equipment list
+; Input:
+;	none
+; Output:
+;	AX = equipment list
+;-------------------------------------------------------------------------
+	setloc	0F84Dh			; INT 11 Entry Point
+int_11:
+	sti
+	push	ds
+	mov	ax,biosdseg
+	mov	ds,ax
+	mov	ax,word [equipment_list]
+	pop	ds
+	iret
+
+;=========================================================================
+; Includes with fixed entry points (for IBM compatibility)
+;-------------------------------------------------------------------------
+
+%include	"misc.inc"
+
+;=========================================================================
+; extension_scan - scan for BIOS extensions
+; Input:
+;	DX - start segment
+;	BX - end segment
+; Returns:
+;	DX - address for the continuation of the scan
+;	biosdseg:67h - address of the extension, 0000:0000 if not found
+;-------------------------------------------------------------------------
+extension_scan:
+	mov	word [67h],0
+	mov	word [69h],0
+.scan:
+	mov	es,dx
+    es	cmp	word [0],0AA55h		; check for signature
+	jnz	.next			; no signature, check next 2 KiB
+    es	mov	al,byte [2]		; AL = rom size in 512 byte blocks
+	mov	ah,0
+	mov	cl,5
+	shl	ax,cl			; convert size to paragraphs
+	add	dx,ax
+	add	dx,007Fh		; round DX to the nearest 2 KiB
+	and	dx,0FF80h		; (2 KiB = 128 x 16 bytes)
+	mov	cl,4
+	shl	ax,cl			; convert size to bytes
+	mov	cx,ax
+	mov	al,0
+	xor	si,si
+.checksum:
+    es	add	al,byte [si]
+	inc	si
+	loop	.checksum
+	or	al,al			; AL == 0?
+	jnz	.next			; AL not zero - bad checksum
+	mov	word [67h],3		; extension initialization offset
+	mov	word [69h],es		; extension segment
+	jmp	.exit
+.next:
+	add	dx,80h			; add 2 KiB
+	cmp	dx,bx
+	jb	.scan
+.exit:
+	ret
+
+;=========================================================================
+; ipl - Initial Program Load - try to read and execute boot sector
+;-------------------------------------------------------------------------
+ipl:
+	sti
+	xor	ax,ax
+	mov	ds,ax
+	mov	word [78h],int_1E	; set Floppy Parameters Table location
+	mov	word [7Ah],cs
+
+.boot_retry:
+	mov	cx,4			; retry booting from floppy 4 times
+
+.fd_read_retry:
+	push	cx
+	mov	ah,00h			; reset disk system
+	mov	dl,00h			; drive 0
+	int	13h
+	jb	.fd_failed
+	mov	ah,08h			; get drive parameters
+	mov	dl,00h			; drive 0
+	int	13h
+	jc	.fd_failed
+	cmp	dl,00h
+	jz	.try_hdd		; jump if zero drives
+	mov	ax,0201h		; read one sector
+	xor	dx,dx			; head 0, drive 0
+	mov	es,dx			; to 0000:7C00
+	mov	bx,7C00h
+	mov	cx,0001h		; track 0, sector 1
+	int	13h
+	jc	.fd_failed
+	jmp	.check_signature	; read successful, check for boot sector
+
+.fd_failed:
+	pop	cx
+	loop	.fd_read_retry
+
+; try booting from HDD
+.try_hdd:
+	mov	ah,0Dh			; reset hard disks
+	mov	dl,80h			; drive 80h
+	int	13h
+	jc	.boot_failed
+	mov	ax,0201h		; read one sector
+	mov	dx,0080h		; head 0, drive 80h
+	xor	cx,cx
+	mov	es,cx
+	mov	bx,7C00h		; to 0000:7C00
+	inc	cx			; CX == 0001h; track 0, sector 1
+	int	13h
+	jc	.boot_failed
+
+.check_signature:
+    es	cmp	word [7DFEh],0AA55h
+	jnz	.boot_failed		; boot sector signature not found
+	jmp	0000h:7C00h		; jump to the boot sector
+
+.boot_failed:
+	mov	si,msg_boot_failed
+	call	print
+	mov	ah,00h
+	int	16h
+	jmp	.boot_retry
 
 ;=========================================================================
 ; detect_ram - Determine the size of installed RAM and test it
@@ -866,725 +1640,8 @@ ram_test_block:
 	ret
 
 ;=========================================================================
-; print display type
-;-------------------------------------------------------------------------
-print_display:
-	mov	si,msg_disp
-	call	print
-	mov	al,byte [equipment_list] ; get equipment - low byte
-	and	al,equip_video		; get video adapter type
-	mov	si,msg_disp_mda
-	cmp	al,equip_mono		; monochrome?
-	jz	.print_disp
-	mov	si,msg_disp_cga
-	cmp	al,equip_color		; CGA?
-	jz	.print_disp
-	mov	si,msg_disp_ega		; otherwise EGA or later
-.print_disp:
-	call	print
-	ret
-
-;=========================================================================
-; print PS/2 mouse presence
-;-------------------------------------------------------------------------
-
-print_mouse:
-	mov	si,msg_mouse
-	call	print
-	mov	si,msg_absent
-	test	byte [equipment_list],equip_mouse
-	jz	.print_mouse
-	mov	si,msg_present
-.print_mouse:
-	call	print
-	ret
-
-;=========================================================================
-; detect_rom_ext - Look for BIOS extensions, initialize if found
-;-------------------------------------------------------------------------
-
-detect_rom_ext:
-	mov	al,e_ext_start		; ROM extension scan start
-	out	post_reg,al
-
-	mov	dx,0C800h
-	mov	bx,0F800h
-
-.ext_scan_loop:
-	call	extension_scan
-	cmp	word [67h],0
-	jz	.ext_scan_done		; No ROM extension found
-	mov	al,e_ext_detect		; ROM extension found
-	out	post_reg,al
-	mov	si,msg_rom_found
-	call	print
-	mov	ax,word [69h]		; ROM extension's segment
-	call	print_hex
-	mov	si,msg_rom_init
-	call	print
-	push	bx
-	push	dx
-	call	far [67h]
-	mov	ax,biosdseg		; DS = BIOS data area
-	mov	ds,ax
-	mov	al,e_ext_init_ok	; ROM extension initialized
-	out	post_reg,al
-	pop	dx
-	pop	bx
-	jmp	.ext_scan_loop
-
-.ext_scan_done:
-	mov	al,e_ext_complete	; ROM extension scan complete
-	out	post_reg,al
-
-	ret
-
-;=========================================================================	
-; interrupt_table - offsets only (BIOS segment is always 0F000h)
-;-------------------------------------------------------------------------
-interrupt_table:
-	dw	int_dummy		; INT 00 - Divide by zero
-	dw	int_dummy		; INT 01 - Single step
-	dw	int_02			; INT 02 - Non-maskable interrupt
-	dw	int_dummy		; INT 03 - Debugger breakpoint
-	dw	int_dummy		; INT 04 - Integer overlow (into)
-	dw	int_05			; INT 05 - BIOS Print Screen
-	dw	int_dummy		; INT 06
-	dw	int_dummy		; INT 07
-	dw	int_08			; INT 08 - IRQ0 - Timer Channel 0
-	dw	int_09			; INT 09 - IRQ1 - Keyboard
-	dw	int_ignore		; INT 0A - IRQ2
-	dw	int_ignore		; INT 0B - IRQ3
-	dw	int_ignore		; INT 0C - IRQ4
-	dw	int_ignore		; INT 0D - IRQ5
-	dw	int_0E			; INT 0E - IRQ6 - Floppy
-	dw	int_ignore		; INT 0F - IRQ7
-	dw	int_10			; INT 10 - BIOS Video Services
-	dw	int_11			; INT 11 - BIOS Get Equipment List
-	dw	int_12			; INT 12 - BIOS Get Memory Size
-	dw	int_13			; INT 13 - BIOS Floppy Disk Services
-	dw	int_14			; INT 14 - BIOS Serial Communications
-	dw	int_15			; INT 15 - BIOS Misc. System Services
-	dw	int_16			; INT 16 - BIOS Keyboard Services
-	dw	int_17			; INT 17 - BIOS Parallel Printer svc.
-	dw	int_18			; INT 18 - BIOS Start ROM BASIC
-	dw	int_19			; INT 19 - BIOS Boot the OS
-	dw	int_1A			; INT 1A - BIOS Time Services
-	dw	int_dummy		; INT 1B - DOS Keyboard Break
-	dw	int_dummy		; INT 1C - User Timer Tick
-	dw	int_1D			; INT 1D - Video Parameters Table
-	dw	int_1E			; INT 1E - Floppy Paameters Table
-	dw	int_1F			; INT 1F - Font For Graphics Mode
-
-%ifdef AT_COMPAT
-interrupt_table2:
-	dw	int_70			; INT 70 - IRQ8 - RTC
-	dw	int_71			; INT 71 - IRQ9 - redirection
-	dw	int_ignore2		; INT 72 - IRQ10
-	dw	int_ignore2		; INT 73 - IRQ11
-%ifndef PS2_MOUSE
-	dw	int_ignore2		; INT 74 - IRQ12 - PS/2 mouse
-%else
-	dw	int_74			; INT 74 - IRQ12 - PS/2 mouse
-%endif
-	dw	int_75			; INT 75 - IRQ13 - FPU
-	dw	int_ignore2		; INT 76 - IRQ14
-	dw	int_ignore2		; INT 77 - IRQ15
-%endif ; AT_COMPAT
-
-;=========================================================================
-; cold_start, warm_start - BIOS POST (Power on Self Test) starts here
-;-------------------------------------------------------------------------	
-	setloc	0E05Bh		; POST Entry Point
-cold_start:
-	mov	ax,biosdseg
-	mov	ds,ax
-	mov	word [warm_boot],0	; indicate cold boot
-
-warm_start:
-	cli				; disable interrupts
-	cld				; clear direction flag
-	mov	al,e_start
-	out	post_reg,al		; POST start code
-
-;-------------------------------------------------------------------------
-; test CPU's FLAG register
-
-	xor	ax,ax			; AX = 0
-	jb	cpu_fail
-	jo	cpu_fail
-	js	cpu_fail
-	jnz	cpu_fail
-	jpo	cpu_fail
-	add	ax,1			; AX = 1
-	jz	cpu_fail
-	jpe	cpu_fail
-	sub	ax,8002h
-	js	cpu_fail
-	inc	ax
-	jno	cpu_fail
-	shl	ax,1
-	jnb	cpu_fail
-	jnz	cpu_fail
-	shl	ax,1
-	jb	cpu_fail
-
-;-------------------------------------------------------------------------
-; Test CPU registers
-
-	mov	ax,0AAAAh
-.1:
-	mov	ds,ax
-	mov	bx,ds
-	mov	es,bx
-	mov	cx,es
-	mov	ss,cx
-	mov	dx,ss
-	mov	bp,dx
-	mov	sp,bp
-	mov	si,sp
-	mov	di,si
-	cmp	di,0AAAAh
-	jnz	.2
-	mov	ax,di
-	not	ax
-	jmp	.1
-.2:
-	cmp	di,5555h
-	jz	cpu_ok
-
-cpu_fail:
-	mov	al,e_cpu_fail
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-; CPU error: continious beep - 400 Hz
-
-	mov	al,0B6h
-	out	pit_ctl_reg,al		; PIT - channel 2 mode 3
-	mov	ax,pic_freq/400		; 400 Hz signal
-	out	pit_ch2_reg,al
-	mov	al,ah
-	out	pit_ch2_reg,al
-	in	al,port_b_reg
-	or	al,3			; turn speaker on and enable
-	out	port_b_reg,al		; PIT channel 2 to speaker
-
-.1:
-	hlt
-	jmp	.1
-
-;-------------------------------------------------------------------------
-; CPU test passed
-
-cpu_ok:
-	mov	al,e_cpu_ok
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-; disable NMI, turbo mode, and video output on CGA and MDA
-
-	mov	al,0Dh & nmi_disable
-	out	rtc_addr_reg,al		; disable NMI
-	jmp	$+2
-	in	al,rtc_data_reg		; dummy read to keep RTC happy
-
-	mov	al,iochk_disable	; clear and disable ~IOCHK
-	out	port_b_reg,al
-	mov	al,00h			; clear turbo bit
-	out	port_b_reg,al		; and also turn off the speaker
-
-	mov	dx,cga_mode_reg
-	out	dx,al			; disable video output on CGA
-	inc	al
-	mov	dx,mda_mode_reg		; disable video output on MDA
-	out	dx,al			; and set MDA high-resolution mode bit
-
-;-------------------------------------------------------------------------
-; Initialize DMAC (8237)
- 
- 	out	0Dh,al			; DMA Master Clear register - reset DMA
- 	mov	al,40h			; single mode, verify, channel 0
- 	out	dmac_mode_reg,al	; DMA Mode register
- 	mov	al,41h			; single mode, verify, channel 1
- 	out	dmac_mode_reg,al	; DMA Mode register
- 	mov	al,42h			; single mode, verify, channel 2
- 	out	dmac_mode_reg,al	; DMA Mode register
- 	mov	al,43h			; single mode, verify, channel 3
- 	out	dmac_mode_reg,al	; DMA Mode register
- 	mov	al,0			; DMA Command register bits:
- 					; DACK active low, DREQ active high,
- 					; late write, fixed priority,
- 					; normal timing, controller enable
- 					; channel 0 addr hold disable
- 					; memory to memory disable
- 	out	08h,al			; DMA Command register
- 	out	81h,al			; DMA Page, channel 2
- 	out	82h,al			; DMA Page, channel 3
- 	out	83h,al			; DMA Page, channels 0,1
-	mov	al,e_dmac_ok
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-; Test first 32 KiB (MIN_RAM_SIZE) of RAM
-
-low_ram_test:
-	xor	si,si
-	xor	di,di
-	mov	ds,di
-	mov	es,di
-	mov	dx,word [warm_boot+biosdseg*16] ; save soft reset flag to DX
-	mov	ax,55AAh		; first test pattern
-	mov	cx,4000h		; 32 KiB = 16384 words
-    rep	stosw				; store test pattern
-	mov	cx,4000h		; 32 KiB = 16384 words
-.1:
-	lodsw
-	cmp	ax,55AAh		; compare to the test pattern
-	jne	low_ram_fail
-	loop	.1
-	xor	si,si
-	xor	di,di
-	mov	ax,0AA55h		; second test pattern
-	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
-    rep stosw				; store test pattern
-	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
-.2:
-	lodsw
-	cmp	ax,0AA55h		; compare to the test pattern
-	jne	low_ram_fail
-	loop	.2
-	xor	di,di
-	xor	ax,ax			; zero
-	mov	cx,MIN_RAM_SIZE*512	; RAM size to test in words
-    rep stosw				; zero the memory
-	jmp	low_ram_ok		; test passed
-
-low_ram_fail:
-	mov	al,e_low_ram_fail	; test failed
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-;  Low memory error: beep - pause - beep - pause ... - 400 Hz
-
-	mov	al,0B6h
-	out	pit_ctl_reg,al		; PIT - channel 2 mode 3
-	mov	ax,pic_freq/400		; 400 Hz signal
-	out	pit_ch2_reg,al
-	mov	al,ah
-	out	pit_ch2_reg,al
-	in	al,port_b_reg
-.1:
-	or	al,3			; turn speaker on and enable
-	out	port_b_reg,al		; PIT channel 2 to speaker
-	mov	cx,0
-.2:
-	nop
-	loop	.2
-	and	al,0FCh			; turn of speaker
-	out	port_b_reg,al
-	mov	cx,0
-.3:
-	nop
-	loop	.3
-	jmp	.1
-
-;-------------------------------------------------------------------------
-; Low memory test passed
-
-low_ram_ok:
-	mov	word [warm_boot+biosdseg*16],dx ; restore soft reset flag
-	mov	al,e_low_ram_ok
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-; Set up stack - using upper 256 bytes of interrupt table
-
-	mov	ax,0030h
-	mov	ss,ax
-	mov	sp,0100h
-
-;-------------------------------------------------------------------------
-; Initialize interrupt table
-
-	push	cs
-	pop	ds
-	xor	di,di
-	mov	es,di
-	mov	si,interrupt_table
-	mov	cx,0020h		; 32 Interrupt vectors
-	mov	ax,bioscseg
-.1:
-	movsw				; copy ISR address (offset part)
-	stosw				; store segment part
-	loop	.1
-%ifdef AT_COMPAT
-	mov	di,70h*4		; starting from IRQ 70
-	mov	si,interrupt_table2
-	mov	cx,8			; 8 Interrupt vectors
-.2:
-	movsw				; copy ISR address (offset part)
-	stosw				; store segment part
-	loop	.2
-%endif ; AT_COMPAT
-	mov     al,e_int_ok
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-; set DS to BIOS data area
-
-	mov	ax,biosdseg		; DS = BIOS data area
-	mov	ds,ax
-
-;-------------------------------------------------------------------------
-; Initialize PIT (8254 timer)
-
-	mov	al,36h			; channel 0, LSB & MSB, mode 3, binary
-	out	pit_ctl_reg,al
-	mov	al,0
-	out	pit_ch0_reg,al
-	out	pit_ch0_reg,al
-	mov	al,54h			; channel 1, LSB only, mode 2, binary
-	out	pit_ctl_reg,al		; used for DRAM refresh on IBM PC/XT/AT
-	mov	al,12h			; or for delays (using port_b, bit 4)
-	out	pit_ch1_reg,al		; pulse every 15ms
-	mov	al,40h			; XXX timer latch
-	out	pit_ctl_reg,al
-
-;-------------------------------------------------------------------------
-; Play "power on" sound - also tests PIT functionality
-	call	sound
-
-	mov     al,e_pit_ok		; PIT initialization successful
-	out	post_reg,al
-
-;-------------------------------------------------------------------------
-; Initialize PIC (8259)
-
-%ifdef AT_COMPAT
-	mov	al,11h			; ICW1 - edge triggered, cascade, ICW4
-	out	pic1_reg0,al
-	out	pic2_reg0,al
-	mov	al,8			; ICW2 - interrupt vector offset = 8
-	out	pic1_reg1,al
-	mov	al,70h			; ICW2 - interrupt vector offset = 70h
-	out	pic2_reg1,al
-	mov	al,4			; ICW3 - slave is connected to IR2
-	out	pic1_reg1,al
-	mov	al,2			; ICW3 - slave ID = 2 (IR2)
-	out	pic2_reg1,al
-	mov	al,1			; ICW4 - 8086/8088
-	out	pic1_reg1,al
-	out	pic2_reg1,al
-%else
-	mov	al,13h			; ICW1 - edge triggered, single, ICW4
-	out	pic1_reg0,al
-	mov	al,8			; ICW2 - interrupt vector offset = 8
-	out	pic1_reg1,al
-	mov	al,9			; ICW4 - buffered mode, 8086/8088
-	out	pic1_reg1,al
-	mov	al,e_pic_ok
-	out	post_reg,al
-%endif ; AT_COMPAT
-
-;-------------------------------------------------------------------------
-; initialize keyboard controller (8242), keyboard and PS/2 auxiliary device
-
-	call	kbc_init
-
-;-------------------------------------------------------------------------
-; enable interrupts
-
-%ifdef AT_COMPAT
-	mov	al,0B8h		; OSW1: unmask timer, keyboard, IRQ2 and FDC
-	out	pic1_reg1,al
-%ifndef PS2_MOUSE
-	mov	al,0FDh		; OSW1: unmask IRQ9
-%else
-	mov	al,0EDh		; OSW1: unmask IRQ9 and IRQ12
-%endif ; PS2_MOUSE
-	out	pic2_reg1,al
-%else
-	mov	al,0BCh		; OSW1: unmask timer, keyboard and FDC
-	out	pic1_reg1,al
-%endif ; AT_COMPAT
-	sti
-
-;-------------------------------------------------------------------------
-; look for video BIOS, initialize it if present
-
-	mov	dx,0C000h
-	mov	bx,0C800h
-	call	extension_scan
-	cmp	word [67h],0
-	jz	.no_video_bios
-	mov	al,e_video_bios_ok
-	out	post_reg,al
-	call	far [67h]
-	mov	ax,biosdseg		; DS = BIOS data area
-	mov	ds,ax
-	mov	al,e_video_init_ok
-	out	post_reg,al
-; set video bits to 00 - EGA or later (Video adapter with BIOS)		
-	and	word [equipment_list],~equip_video
-	jmp	.video_initialized
-
-.no_video_bios:
-	mov	ah,byte [equipment_list] ; get equipment - low byte
-	and	ah,equip_video		; get video adapter type
-	mov	al,07h			; monochrome 80x25 mode
-	cmp	ah,equip_mono		; monochrome?
-	jz	.set_mode
-	mov	al,03h			; color 80x25 mode
-
-.set_mode:
-	mov	ah,00h			; INT 10, AH=00 - Set video mode
-	int	10h
-
-.video_initialized:
-
-;-------------------------------------------------------------------------
-; print the copyright message
-
-	mov	si,msg_copyright
-	call	print
-
-;-------------------------------------------------------------------------
-; Initialize RTC / NVRAM
-
-	call	rtc_init
-
-; read equipment byte from CMOS and set it in BIOS data area
-
-	mov	si,msg_setup
-	call	print
-
-;-------------------------------------------------------------------------
-; detect and print availability of various equipment
-
-	call	detect_cpu		; detect and print CPU type
-	call	detect_fpu		; detect and print FPU presence
-
-	call	print_rtc		; print current RTC time
-
-	call	print_display		; print display type
-	call	print_mouse		; print mouse presence
-
-	call	detect_serial		; detect serial ports and print findings
-	call	detect_parallel		; detect parallel ports and print
-					; findings
-
-	mov	al,cmos_floppy
-	call	rtc_read		; floppies type to AL
-	call	print_floppy		; print floppy drive types
-
-	call	detect_ram		; test RAM, get RAM size in AX
-
-	mov	si,msg_ram_total
-	call	print
-	call	print_dec		; print RAM size
-	mov	si,msg_kib
-	call	print
-
-	call	reserve_ebda		; reserve EBDA if needed
-
-	mov	si,msg_ram_avail
-	call	print
-	mov	ax,word [memory_size]
-	call	print_dec		; print remaining RAM size
-	mov	si,msg_kib
-	call	print
-
-	call	detect_rom_ext		; detect and initialize extension ROMs
-
-;-------------------------------------------------------------------------
-; Check for F1 (setup key), run setup utility if pressed
-
-	mov	ah,01h
-	int	16h
-	jz	.no_key
-	mov	ah,00h
-	int	16h			; read the keystroke
-	cmp	ax,3B00h		; F1?
-	jne	.no_key
-	or	byte [post_flags],post_setup
-.no_key:
-
-	test	byte [post_flags],post_setup
-	jz	.no_setup
-	call	rtc_setup
-
-.no_setup:
-
-;-------------------------------------------------------------------------
-; boot the OS
-
-	mov	al,e_boot		; boot the OS POST code
-	out	post_reg,al
-
-	mov	si,msg_boot
-	call	print
-	int	19h			; boot the OS
-
-;=========================================================================
-; int_02 - NMI
-; Note: Xi 8088 only implements IOCHK NMI, system board parity is not
-;	implemented
-;-------------------------------------------------------------------------
-	setloc	0E2C3h			; NMI Entry Point
-int_02:
-	push	ax
-	mov	al,0Dh & nmi_disable
-	call	rtc_read		; disable NMI
-	in	al,port_b_reg		; read Port B
-	mov	ah,al
-	or	al,iochk_disable	; clear and disable ~IOCHK
-	out	port_b_reg,al
-	test	al,iochk_status
-	jnz	.iochk_nmi
-	mov	al,ah
-	out	port_b_reg,al		; restore original bits
-	jmp	.exit
-
-.iochk_nmi:
-	push	si
-	mov	si,msg_iochk_nmi
-	call	print
-	pop	si
-.1:
-	mov	ah,0h
-	int	16h
-	cmp	al,'i'			; exit from NMI
-	je	.exit			;  ~IOCHK remains disabled
-	cmp	al,'I'
-	je	.exit
-	cmp	al,'r'
-	je	cold_start
-	cmp	al,'R'
-	je	cold_start
-	jmp	.1
-.exit:
-	mov	al,0Dh | nmi_enable
-	call	rtc_read		; enable NMI
-	pop	ax
-	iret
-
-msg_iochk_nmi:
-	db	"IOCHK NMI detected. Type 'i' to ignore IOCHK NMIs, or 'r' to reboot."
-	db	0Dh, 0Ah, 00h
-
-;=========================================================================
-; int_18 - execute ROM BASIC
-; Note:
-;	Prints an error message since we don't have ROM BASIC
-;-------------------------------------------------------------------------
-int_18:
-	mov	si,msg_no_basic
-	call	print
-.1:
-	hlt
-	jmp	.1
-
-;=========================================================================
-; int_19 - load and execute the boot sector
-;-------------------------------------------------------------------------
-	setloc	0E6F2h			; INT 19 Entry Point
-int_19:
-	jmp	ipl
-
-;=========================================================================
-; configuration data table
-;-------------------------------------------------------------------------
-	setloc	0E6F5h
-config_table:
-	dw	.size			; bytes 0 and 1: size of the table
-.bytes:
-%ifdef AT_COMPAT
-	db	0FCh			; byte 2: model = AT
-	db	00h			; byte 3: submodel = 0
-	db	00h			; byte 4: release = 0
-	db	01110000b		; byte 5: feature byte 1
-;		|||||||`-- system has dual bus (ISA and MCA)
-;		||||||`-- bus is Micro Channel instead of ISA
-;		|||||`-- extended BIOS area allocated (usually on top of RAM)
-;		||||`-- wait for external event (INT 15h/AH=41h) supported
-;		|||`-- INT 15h/AH=4Fh called upon INT 09h
-;		||`-- real time clock installed
-;		|`-- 2nd interrupt controller installed
-;		`-- DMA channel 3 used by hard disk BIOS
-	db	00h			; byte 6: feature byte 2
-	db	00h			; byte 7: feature byte 3
-	db	00h			; byte 8: feature byte 4
-	db	00h			; byte 9: feature byte 5
-%else
-	db	0FEh			; byte 2: model = XT
-	db	00h			; byte 3: submodel = 0
-	db	00h			; byte 4: release = 0
-	db	00000000b		; byte 5: feature byte 1
-;		|||||||`-- system has dual bus (ISA and MCA)
-;		||||||`-- bus is Micro Channel instead of ISA
-;		|||||`-- extended BIOS area allocated (usually on top of RAM)
-;		||||`-- wait for external event (INT 15h/AH=41h) supported
-;		|||`-- INT 15h/AH=4Fh called upon INT 09h
-;		||`-- real time clock installed
-;		|`-- 2nd interrupt controller installed
-;		`-- DMA channel 3 used by hard disk BIOS
-	db	00h			; byte 6: feature byte 2
-	db	00h			; byte 7: feature byte 3
-	db	00h			; byte 8: feature byte 4
-	db	00h			; byte 9: feature byte 5
-%endif ; AT_COMPAT
-.size	equ	$-.bytes
-
-;=========================================================================
 ; Includes with fixed entry points (for IBM compatibility)
 ;-------------------------------------------------------------------------
-
-%include	"serial2.inc"		; INT 14 - BIOS Serial Communications
-%include	"atkbd.inc"		; INT 16, INT 09
-%include	"floppy2.inc"		; INT 13
-%include	"printer2.inc"		; INT 17
-%include	"video.inc"		; INT 10
-
-;=========================================================================
-; int_12 - Get memory size
-; Input:
-;	none
-; Output:
-;	AX = memory size
-;-------------------------------------------------------------------------
-	setloc	0F841h			; INT 12 Entry Point
-int_12:
-	sti
-	push	ds
-	mov	ax,biosdseg
-	mov	ds,ax
-	mov	ax,word [memory_size]
-	pop	ds
-	iret
-
-;=========================================================================
-; int_11 - Get equipment list
-; Input:
-;	none
-; Output:
-;	AX = equipment list
-;-------------------------------------------------------------------------
-	setloc	0F84Dh			; INT 11 Entry Point
-int_11:
-	sti
-	push	ds
-	mov	ax,biosdseg
-	mov	ds,ax
-	mov	ax,word [equipment_list]
-	pop	ds
-	iret
-
-;=========================================================================
-; Includes with fixed entry points (for IBM compatibility)
-;-------------------------------------------------------------------------
-
-%include	"misc.inc"
 %include	"fnt00-7F.inc"
 %include	"time2.inc"
 
@@ -1597,7 +1654,7 @@ int_ignore:
 	push	ds
 	mov	ax,biosdseg
 	mov	ds,ax
-	mov	al,0Bh			; XXX - check PIC manual?
+	mov	al,0Bh			; PIC OCW3 - read in-service register
 	out	pic1_reg0,al
 	nop
 	in	al,pic1_reg0		; get IRQ number
@@ -1748,10 +1805,6 @@ start:
 	db	DATE			; BIOS release date MM/DD/YY
 	db	20h
 
-	setloc	0FFFEh			; System Model
-%ifdef AT_COMPAT
-	db	0fch			; system is an IBM AT compatible
-%else
-	db	0feh			; system is an IBM PC/XT compatible
-%endif ; AT_COMPAT
+	setloc	0FFFEh			; System Model byte
+	db	MODEL_BYTE
 	db	0ffh

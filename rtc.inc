@@ -2,10 +2,10 @@
 ; rtc.inc - RTC/CMOS read and write functions
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ cmos_month	equ	08h	; month location in RTC
 cmos_year	equ	09h	; year location in RTC
 cmos_floppy	equ	10h	; floppy type byte
 cmos_equip	equ	14h	; equipment byte
+cmos_config_a	equ	2Dh	; BIOS configuration byte A
 cmos_sum_hi	equ	2Eh	; checksum of bytes 10h - 20h - high byte
 cmos_sum_lo	equ	2Fh	; checksum of bytes 10h - 20h - low byte 
 cmos_century	equ	32h	; centry location in RTC (DS12C887 only)
@@ -63,11 +64,6 @@ cmos_pf		equ	80h	; RTC periodic interrupt flag
 cmos_control_d	equ	0Dh	; RTC control D register
 cmos_vrt	equ	80h	; RTC vrt bit (1 = battery is OK)
 
-;-------------------------------------------------------------------------
-; NMI flag
-nmi_disable	equ	7Fh	; disable NMI AND mask (bit 7 = 0)
-nmi_enable	equ	80h	; enable NMI OR mask (bit 7 = 1)
-
 ;=========================================================================
 ; rtc_read - Read byte from RTC or CMOS memory
 ; Input:
@@ -80,6 +76,8 @@ nmi_enable	equ	80h	; enable NMI OR mask (bit 7 = 1)
 rtc_read:
 	cli
 	out	rtc_addr_reg,al
+	jmp	$+2
+	jmp	$+2
 	jmp	$+2
 	jmp	$+2
 	in	al,rtc_data_reg
@@ -99,6 +97,8 @@ rtc_write:
 	out	rtc_addr_reg,al
 	jmp	$+2
 	jmp	$+2
+	jmp	$+2
+	jmp	$+2
 	xchg	ah,al
 	out	rtc_data_reg,al
 	xchg	ah,al
@@ -106,51 +106,16 @@ rtc_write:
 	ret
 
 ;=========================================================================
-; rtc_init - Initialize RTC
-; Notes:
-;	- makes sure RTC battery is OK, resets time if not
-;	- disables RTC interrupts
-;	- validates NVRAM checksum, loads default values if invalid
+; set_system_timer - set timer variables to RTC time
 ;-------------------------------------------------------------------------
-rtc_init:
+set_system_timer:
 	push	ax
 	push	bx
 	push	cx
 	push	dx
 	push	si
 	push	di
-	mov	al,cmos_control_a	; select control A register
-	mov	ah,26h			; turn on oscillator and time keeping
-					; set SQW frequency to 1.024 KHz
-	call	rtc_write		; write control register A
 
-	mov	al,cmos_control_b
-	mov	ah,cmos_24hours		; 24 hours, BCD format, DSE disabled
-					; interrupts disabled
-	call	rtc_write		; write control register B
-
-	mov	al,cmos_control_c
-	call	rtc_read		; read control register C - reset
-					; interrupt flags
-
-	mov	al,cmos_control_d
-	call	rtc_read		; read control register D
-	test	al,cmos_vrt
-	jnz	.1			; RTC battery is OK
-	mov	si,msg_rtc_bad
-	call	print
-; RTC is bad, set initial time
-	mov	ah,03h			; int 1Ah, function 03h - set RTC time
-	xor	cx,cx
-	xor	dx,dx
-	int	1Ah
-	mov	ah,05h			; int 1Ah, function 05h - set RTC date
-	mov	cx,2010h		; year 2010
-	mov	dx,0101h		; January 1st
-	int	1Ah
-
-.1:
-; set timer variables to RTC time
 	mov	ah,02h			; int 1Ah, function 02h - get RTC time
 	int	1Ah
 
@@ -216,12 +181,76 @@ rtc_init:
 					; DX = low word of tick count
 	
 	mov	ah,01h			; int 1Ah, function 01h - set time
-	int	1Ah	
+	int	1Ah
+	pop	di
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+	ret
 
+;=========================================================================
+; rtc_init - Initialize RTC
+; Notes:
+;	- makes sure RTC battery is OK, resets time if not
+;	- disables RTC interrupts
+;	- validates NVRAM checksum, loads default values if invalid
+;-------------------------------------------------------------------------
+rtc_init:
+	push	ax
+	push	bx
+	push	cx
+	push	dx
+	push	si
+	mov	al,cmos_control_a	; select control A register
+	mov	ah,26h			; turn on oscillator and time keeping
+					; set SQW frequency to 1.024 KHz
+	call	rtc_write		; write control register A
 
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_read		; read back control A register
+	cmp	al,26h
+	jne	.exit			; RTC is not responding, exit
+%endif ; AT_RTC_AUTODETECT
+
+	mov	al,cmos_control_b
+	call	rtc_read
+	mov	ah,al
+	and	ah,cmos_dse		; clear all bits except of DSE
+	or	ah,cmos_24hours		; set 24 hours bit, keep BCD format and
+					; interrupts disabled
+	mov	al,cmos_control_b
+	call	rtc_write		; write control register B
+
+	mov	al,cmos_control_c
+	call	rtc_read		; read control register C - reset
+					; interrupt flags
+
+	mov	al,cmos_control_d
+	call	rtc_read		; read control register D
+	test	al,cmos_vrt
+	jnz	.1			; RTC battery is OK
+	mov	si,msg_rtc_bad
+	call	print
+; RTC is bad, set initial time
+	mov	ah,03h			; int 1Ah, function 03h - set RTC time
+	xor	cx,cx
+	xor	dx,dx
+	int	1Ah
+	mov	ah,05h			; int 1Ah, function 05h - set RTC date
+	mov	cx,2010h		; year 2010
+	mov	dx,0101h		; January 1st
+	int	1Ah
+
+.1:
+
+	call	set_system_timer		; set timer variables to RTC time
+
+%ifdef AT_RTC_NVRAM
 ; compare NVRAM checksum with stored value
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	call	rtc_read
@@ -244,15 +273,17 @@ rtc_init:
 	cmp	al,20h			; last address is 20h
 	jbe	.nvram_clear_loop
 
-	mov	ax,4010h		; one 1.44M floppy disk
+	mov	al,cmos_floppy		; write default floppy type
+    cs	mov	ah,byte [default_floppy]
 	call	rtc_write
 
-	mov	ax,2114h		; color 80x25, one floppy disk
+	mov	al,cmos_equip		; write default equipment byte
+    cs	mov	ah,byte [default_equip]
 	call	rtc_write
 
 ; update checksum
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	mov	ah,bh
@@ -271,10 +302,11 @@ rtc_init:
 	and	byte [equipment_list],equip_video|equip_mouse
 	or	byte [equipment_list],al
 
-	mov	al,e_rtc_init_ok	; RTC initialzied successfully
+	mov	al,e_rtc_init_ok	; RTC initialized successfully
 	out	post_reg,al
+%endif ; AT_RTC_NVRAM
 
-	pop	di
+.exit:
 	pop	si
 	pop	dx
 	pop	cx
@@ -294,14 +326,15 @@ bcd_to_binary:
 	pop	cx
 	ret
 
+%ifdef AT_RTC_NVRAM
 ;=========================================================================
-; rtc_checksum - calculate NVRAM checksum
+; nvram_checksum - calculate NVRAM checksum
 ; Input:
 ;	none
 ; Output:
 ;	BX = NVRAM checksum
 ;-------------------------------------------------------------------------
-rtc_checksum:
+nvram_checksum:
 	push	ax
 	xor	bx,bx
 	mov	ah,10h			; start from 10h
@@ -318,336 +351,24 @@ rtc_checksum:
 	ret
 
 ;=========================================================================
-; rtc_setup - NVRAM configuration utility
+; nvram_save - Save configuration to CMOS memory
 ; Input:
-;	none
-; Output:
-;	none
+;	CH - CPU Clock speed
+;	     0 - 4.77 Mhz / Normal
+;	     1 - 7.16 Mhz / Turbo
+;	     2 - 9.55 Mhz (FE2010A only)
+;
+;	CL - CMOS floppy drive type
+;	     7-4 - first floppy drive type
+;	     3-0 - second floppy drive type
 ;-------------------------------------------------------------------------
-rtc_setup:
+nvram_save:
 	push	ax
 	push	bx
-	push	cx
-	push	dx
-	push	si
 
-	mov	al,cmos_floppy
-	call	rtc_read		; read currently configured floppies
-	mov	cl,al			; save it to CL
-	mov	si,msg_set_welcome
-	call	print
-
-.menu_loop:
-	mov	si,msg_set_prompt
-	call	print
-
-.menu_input:
-	mov	ah,00h
-	int	16h
-	or	al,20h			; convert to lower case
-	mov	dl,0			; floppy 0
-	cmp	al,'f'
-	je	.set_floppy
-	inc	dl			; floppy 1
-	cmp	al,'g'
-	je	.set_floppy
-	cmp	al,'p'
-	je	.print_settings
-	cmp	al,'t'
-	je	.set_time
-	cmp	al,'d'
-	je	.set_date
-	cmp	al,'w'
-	je	.save
-	cmp	al,'q'
-	je	.exit
-	cmp	al,'h'
-	je	.help
-	jmp	.menu_input
-
-.help:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_set_help
-	call	print
-	jmp	.menu_loop
-
-.set_floppy:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-
-.set_floppy_prompt:
-	mov	si,msg_set_fd_prmt
-	call	print
-
-.floppy_input:
-	mov	ah,00h
-	int	16h
-	or	al,20h			; convert to lower case
-	cmp	al,'r'
-	je	.floppy_exit
-	cmp	al,'h'
-	je	.floppy_help
-	cmp	al,'0'
-	jb	.floppy_input
-	cmp	al,'6'
-	ja	.floppy_input
-	cmp	al,'5'
-	je	.floppy_input
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	sub	al,'0'
-	mov	dh,0F0h
-	or	dl,dl			; drive	0?
-	jnz	.drive_1
-	shl	al,1
-	shl	al,1
-	shl	al,1
-	shl	al,1
-	mov	dh,0Fh
-.drive_1:
-	and	cl,dh
-	or	cl,al
-	jmp	.menu_loop
-
-.floppy_exit:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	jmp	.menu_loop
-
-.floppy_help:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_set_fd_help
-	call	print
-	jmp	.set_floppy_prompt
-
-.print_settings:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_crlf
-	call	print
-	call	print_rtc		; print current RTC time
-	mov	al,cl			; floppy bytes to AL
-	call	print_floppy
-	jmp	.menu_loop
-
-.set_time:
-	push	cx
-	push	di
-	push	es
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_crlf
-	call	print
-
-	mov	si,msg_set_time
-	call	print
-
-	mov	ah,02h
-	int	1Ah			; get current time
-
-	mov 	ax,07C0h		; use 07C0:0000 as a buffer
-	mov	es,ax
-	xor	di,di
-	mov	ax,8			; length of the time string
-
-	call	get_line
-
-	or	ax,ax			; empty string?
-	jz	.set_time_exit
-
-	call	atoi
-
-	cmp	ax,23			; hours are greater than 23?
-	ja	.set_time_invalid
-
-	call	bin_to_bcd		; convert to BCD
-
-	mov	ch,al			; CH = hours
-
-    es	cmp	byte [di],':'		; ':' delimiter?
-	jne	.set_time_invalid
-
-	inc	di
-
-	call	atoi
-
-	cmp	ax,59			; minutes are greater than 59?
-	ja	.set_time_invalid
-
-	call	bin_to_bcd
-
-	mov	cl,al			; CL = minutes
-
-    es	cmp	byte [di],':'		; ':' delimiter?
-	jne	.set_time_invalid
-
-	inc	di
-
-	call	atoi
-
-	cmp	ax,59			; seconds are greater than 59?
-	ja	.set_time_invalid
-
-	call	bin_to_bcd
-
-	mov	dh,al			; DH = seconds
-
-    es	cmp	byte [di],00h		; end of line?
-	jne	.set_time_invalid
-
-	mov	ah,03h			; set RTC time
-	int	1Ah
-
-.set_time_exit:
-	pop	es
-	pop	di
-	pop	cx
-	jmp	.menu_loop
-
-.set_time_invalid:
-	mov	si,msg_time_inval
-	call	print
-	jmp	.set_time_exit
-
-.set_date:
-	push	cx
-	push	di
-	push	es
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_crlf
-	call	print
-	mov	si,msg_set_date
-	call	print
-
-	mov 	ax,07C0h		; use 07C0:0000 as a buffer
-	mov	es,ax
-	xor	di,di
-	mov	ax,10			; length of the date string
-
-	call	get_line
-
-	or	ax,ax			; empty string?
-	jz	.set_date_exit
-
-	call	atoi
-
-	cmp	ax,9999			; year is greater than 9999?
-	ja	.set_date_invalid
-
-	mov	bx,ax			; store binary year in BX
-
-	call	bin_to_bcd		; convert to BCD
-
-	mov	cx,ax			; CH = century, CL = year
-	
-    es	cmp	byte [di],'-'		; '-' delimiter?
-	jne	.set_date_invalid
-
-	inc	di
-
-	call	atoi
-
-	cmp	ax,1			; month is lower than 1?
-	jb	.set_date_invalid
-
-	cmp	ax,12			; month is greater than 12?
-	ja	.set_date_invalid
-
-	call	bin_to_bcd
-
-	mov	dh,al			; DH = month
-
-    es	cmp	byte [di],'-'		; '-' delimiter?
-	jne	.set_date_invalid
-
-	inc	di
-
-	call	atoi
-
-	cmp	ax,1			; day is lower than 1?
-	jb	.set_date_invalid
-
-	cmp	dh,02h			; February
-	je	.set_date_february
-
-	cmp	dh,04h			; April
-	je	.set_date_30_days
-
-	cmp	dh,06h			; July
-	je	.set_date_30_days
-
-	cmp	dh,09h			; September
-	je	.set_date_30_days
-
-	cmp	dh,11h			; November
-	je	.set_date_30_days
-
-.set_date_31_days:
-	cmp	ax,31			; day of month is greater than 31?
-	ja	.set_date_invalid
-	jmp	.set_date_set_day
-
-.set_date_30_days:
-	cmp	ax,30			; day of month is greater than 30?
-	ja	.set_date_invalid
-	jmp	.set_date_set_day
-
-.set_date_29_days:
-	cmp	ax,29			; day of month is greater than 28?
-	ja	.set_date_invalid
-	jmp	.set_date_set_day
-
-.set_date_28_days:
-	cmp	ax,28			; day of month is greater than 28?
-	ja	.set_date_invalid
-	jmp	.set_date_set_day
-
-.set_date_february:
-	test	bx,0003h		; check if years divides by 4
-	jnz	.set_date_28_days	; not a leap year
-
-	cmp	cl,00h			; year doesn't end with 00
-	jne	.set_date_29_days	; a leap year
-
-	test	ch,03h			; check if century divides by 4
-	jz	.set_date_29_days	; year divides by 400
-	jmp	.set_date_28_days	; year divides by 100 but not by 400
-
-.set_date_set_day:
-	call	bin_to_bcd
-
-	mov	dl,al			; DL = date (day of month)
-
-    es	cmp	byte [di],00h		; end of line?
-	jne	.set_date_invalid
-
-	mov	ah,05h			; set RTC date
-	int	1Ah
-
-.set_date_exit:
-	pop	es
-	pop	di
-	pop	cx
-	jmp	.menu_loop
-
-.set_date_invalid:
-	mov	si,msg_date_inval
-	call	print
-	jmp	.set_date_exit
-
-.save:
-	push	ax
+	mov	al,cmos_config_a
+	mov	ah,ch
+	call	rtc_write
 
 	mov	al,cmos_floppy
 	mov	ah,cl
@@ -671,7 +392,7 @@ rtc_setup:
 	mov	al,cmos_equip
 	call	rtc_write
 
-	call	rtc_checksum
+	call	nvram_checksum
 
 	mov	al,cmos_sum_hi
 	mov	ah,bh
@@ -680,21 +401,39 @@ rtc_setup:
 	inc	al			; AL = cmos_sum_lo
 	mov	ah,bl
 	call	rtc_write
-	
-	pop	ax
 
-.exit:
-	mov	ah,0Eh			; echo
-	mov	bx,0007h
-	int	10h
-	mov	si,msg_crlf
-	call	print
-	pop	si
-	pop	dx
-	pop	cx
 	pop	bx
 	pop	ax
 	ret
+
+;=========================================================================
+; get_config_a - Return BIOS configuration byte A from NVRAM
+; Input:
+;	none
+; Output:
+;	AL - NVRAM CPU clock frequency configuration setting
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010 only)
+;-------------------------------------------------------------------------
+get_config_a:
+	mov	al,cmos_config_a	; read BIOS configuration byte A
+	call	rtc_read
+	ret
+  
+;=========================================================================
+; get_floppy - Return floppy drive type from NVRAM
+; Input:
+;	none
+; Output:
+;	AL = floppy drive type
+;-------------------------------------------------------------------------
+get_floppy:
+	mov     al,cmos_floppy
+	call    rtc_read		; read currently configured floppies
+	ret
+
+%endif ; AT_RTC_NVRAM
 
 ;=========================================================================
 ; print_rtc - print current RTC date and time
@@ -715,6 +454,15 @@ print_rtc:
 	push	si
 	mov	si,msg_rtc
 	call	print
+
+%ifdef AT_RTC_AUTODETECT
+	call	rtc_detect
+	jnc	.rtc_present
+	mov	si,msg_absent
+	call	print
+	jmp	.exit
+.rtc_present:
+%endif ; AT_RTC_AUTODETECT
 
 ; print date
 	mov	ah,04h
@@ -748,7 +496,7 @@ print_rtc:
 					; CH = BCD hours
 					; CL = BCD minutes
 					; DH = BCD seconds
-					; DL = daylight saving flag (ignored)
+					; DL = daylight saving flag
 	mov	al,ch
 	call	print_byte		; print 2-digit hours
 	
@@ -765,9 +513,10 @@ print_rtc:
 
 	mov	al,dh
 	call	print_byte		; print 2-digit seconds
-
 	mov	si,msg_crlf
 	call	print
+
+.exit:
 	pop	si
 	pop	dx
 	pop	cx
@@ -775,60 +524,28 @@ print_rtc:
 	pop	ax
 	ret
 
+%ifdef AT_RTC_AUTODETECT
 ;=========================================================================
-; delay_15us - delay for multiplies of 15 microseconds
+; rtc_detect - Check RTC is present at 0x70 port
 ; Input:
-;	CX = time to delay (in 15 microsecond units)
-; Notes:
-;	1.  Actual delay will be between (CX - 1) * 15us and CX * 15us
-;	2.  This relies on the "refresh" bit of port 61h and therefore on
-;	    timer channel 1. Will not function properly if timer gets
-;	    reprogrammed by an application or if it was not initialized yet
-;-------------------------------------------------------------------------
-delay_15us:
-	push	ax
-	push	cx
-.zero:
-	in	al,port_b_reg
-	test	al,refresh_flag
-	jz	.zero
-	dec	cx
-	jz	.exit
-.one:
-	in	al,port_b_reg
-	test	al,refresh_flag
-	jnz	.one
-	dec	cx
-	jnz	.zero
-.exit:
-	pop	cx
-	pop	ax
-	ret
-
-%if 0
-;=========================================================================
-; divide_32 - divide 64-bit argument by 32-bit, return 64-bit result
-; Input:
-;	DX:AX	- dividend
-;	CX	- divisor
+;	none
 ; Output:
-;	DX:AX	- quotient
+;	CF == 0 - RTC is present
+;	CF == 1 - RTC is not detected
 ;-------------------------------------------------------------------------
-divide_32:
-	or	dx,dx
-	jnz	.1
-	div	cx
-	xor	dx,dx
+rtc_detect:
+	push ax
+	mov	al,cmos_control_a	; select control A register
+	call    rtc_read		; check if RTC is present
+	cmp     al,26h
+	je	.rtc_present
+	stc				; no RTC - set CF
+	jmp	.exit
+
+.rtc_present:
+	clc				; RTC detected - clear CF
+
+.exit:
+	pop ax
 	ret
-.1:
-	push	bx
-	mov	bx,ax
-	mov	ax,dx
-	xor	dx,dx
-	div	cx
-	xchg	bx,ax
-	div	cx
-	mov	dx,bx
-	pop	bx
-	ret
-%endif ; 0
+%endif ; AT_RTC_AUTODETECT

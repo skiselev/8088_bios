@@ -1,19 +1,60 @@
-README file for Xi 8088 / Sergey's XT BIOS
-==========================================
+README file for Micro 8088 / Xi 8088 / Sergey's XT BIOS
+=======================================================
 
 BIOS Images
 -----------
 
-bios.bin		- BIOS image for use with xiflash utility
-bios128k-2.0.bin	- BIOS image for Xi 8088 - Version 2.0
-bios128k-xtide-2.0.bin	- BIOS image for Xi 8088 - Version 2.0 with XT-IDE
-bios128k-1.0.bin	- BIOS image for Sergey's XT - Version 1.0
-bios128k-xtide-1.0.bin	- BIOS image for Sergey's XT - Version 1.0 with XT-IDE
+bios.bin		  - BIOS image for use with xiflash utility
+bios-micro8088.bin	  - BIOS image for Micro 8088 Version 1.1
+bios-micro8088-xtide.bin  - BIOS image for Micro 8088 Version 1.1 with XT-IDE
+bios-xi8088.bin		  - BIOS image for Xi 8088 Version 2.0
+bios-xi8088-xtide.bin	  - BIOS image for Xi 8088 Version 2.0 with XT-IDE
+bios-sergey-xt.bin	  - BIOS image for Sergey's XT Version 1.0
+bios-sergey-xt-xtide.bin  - BIOS image for Sergey's XT Version 1.0 with XT-IDE
 
 TODO:
-- Investigate 'FF' displayed in the year
-- Debug mouse issue with Intel 8242
-- Debug issues with Microsoft and Logitech mouse drivers
+- Xi 8088: Debug mouse issue with Intel 8242
+- Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
+
+Changes - Version 0.9.7
+-----------------------
+- Micro 8088: Implement RTC support and autodetect (based on the code
+  contributed by Aitor Gomez)
+- Micro 8088: Implement setting 40x25 CGA mode using DIP switches
+- Xi 8088: Implement CPU clock frequency configuration in the BIOS setup
+
+Changes - Version 0.9.6
+-----------------------
+- Micro 8088: Implement CPU clock frequency configuration in the BIOS setup
+  utility (contributed by Aitor Gomez)
+- Fix the issue where BIOS would activate RTS when sending a character
+- Fix the issue with 24 hours clock rollover
+
+Changes - Version 0.9.5
+-----------------------
+- Micro 8088: Fix reading serial port status
+- Micro 8088: Implement checksum for the Flash ROM configuration space
+- Fix booting without XTIDE Universal BIOS
+
+Changes - Version 0.9.4
+-----------------------
+- Micro 8088: Implement BIOS setup utility including saving configuration to
+  the BIOS Flash ROM
+- Improve build configurability
+
+Changes - Version 0.9.3
+-----------------------
+- Implement turbo mode switching using keyboard on Micro 8088
+- Fix the issue where the number of serial and printer ports was not
+  updated in the equipment word
+- Update XT keyboard reset and buffer flush code
+- Fix the issue where the BIOS would hang when one of the Lock keys is pressed
+- Increase I/O delay in RTC code to solve 'FF' displayed in the year issue
+
+Changes - Version 0.9.2
+-----------------------
+- Update configuration mechanism to enable support of multiple target platforms
+- Add initial support for Micro 8088 board using Faraday FE2010A chipset
 
 Changes - Version 0.9.0
 -----------------------
@@ -110,16 +151,14 @@ TODO
 - [low] Init display before keyboard, so KBD errors can be displayed
         Alternatively store non-fatal errors and display them after display
         is initialized
-- [low] Add XT-IDE to system's flash (@ 0F0000h), change ROM scan to scan
-        that area
 - [low] Check possibility of using same EBDA for XT-IDE BIOS and system
         BIOS PS/2 mouse functions
 - [low] BIOS checksum
 - [enh] Add PnP extension
 
 
-Switches and jumpers settings
------------------------------
+Switches and jumpers settings - Xi 8088
+---------------------------------------
 
 SW2-8: Display adapter type:
 	Off = CGA

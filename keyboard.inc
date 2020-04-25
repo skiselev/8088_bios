@@ -1,5 +1,5 @@
 ;=========================================================================
-; atkbd.inc - AT keyboard support
+; keyboard.inc - Keyboard support
 ;       INT 16h - BIOS Keyboard Services
 ;		- function AH=02h
 ;		- function AH=03h
@@ -10,10 +10,10 @@
 ;       INT 09h - IRQ1 interrupt handler
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2014 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -66,6 +66,7 @@ kbd_ins_bit	equ	80h
 ;-------------------------------------------------------------------------
 	setloc	0E82Eh
 int_16:
+;	call	int_trace		; DEBUG
 	push	bx
 	push	ds
 	mov	bx,biosdseg
@@ -81,7 +82,11 @@ int_16:
 	dw	int_16_fn00		; read char from buffer, wait if empty
 	dw	int_16_fn01		; check buffer, do not clear
 	dw	int_16_fn02		; get shift status
+%ifdef AT_KEYBOARD
 	dw	int_16_fn03		; set delays
+%else ; AT_KEYBOARD
+	dw	int_16_exit		; not implemented on XT
+%endif ; AT_KEYBOARD
 	dw	int_16_exit		; keyclick
 	dw	int_16_fn05		; write to keyboard buffer
 	dw	int_16_exit		; 06
@@ -129,6 +134,8 @@ int_16_exitf:
 int_16_fn02:
 	mov	al,byte [kbd_flags_1]
 	jmp	int_16_exit
+
+%ifdef AT_KEYBOARD
 
 ;=========================================================================
 ; int_16_fn03 - set keyboard typematic rate
@@ -178,6 +185,8 @@ int_16_fn03:
 	pop	bx
 .exit:
 	jmp	int_16_exit
+
+%endif ; AT_KEYBOARD
 
 ;=========================================================================
 ; int_16_fn05 - store keystroke in keyboard buffer
@@ -254,17 +263,30 @@ int_09:
 	mov	ax,biosdseg
 	mov	ds,ax
 
+%ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
 	call    kbc_send_cmd_byte
 %endif
-	in	al,kbc_input_reg	; get keyboard data
+%endif ; AT_KEYBOARD
+	in	al,ppi_pa_reg		; get keyboard data / scancode
+	mov	ah,al			; save it in AH
+	in	al,ppi_pb_reg		; read PPI port B, control
+	or	al,10000000b		; set keyboard clear bit
+	out	ppi_pb_reg,al		; write it back to PPI port B
+	and	al,01111111b		; unset keyboard clear bit
+	out	ppi_pb_reg,al		; write it back to PPI port B
+	mov	al,ah			; restore AL / scancode
 	sti
+%ifdef AT_KEYBOARD
 	mov	ah,4Fh
 	stc
 	int	15h			; keyboard intercept
 	jnc	keyboard_int_exit	; CF = 0, ignore scan code
-
+%else ; AT_KEYBOARD
+	cmp	al,0FFh			; check for overrun
+	jz	keyboard_int_exit
+%endif ; AT_KEYBOARD
 ; check for KBC response codes
 
 	cmp	al,0EEh			; echo response?
@@ -305,29 +327,41 @@ int_09:
 	cmp	bl,kbd_alt_bit|kbd_ctrl_bit
 	jne	.6
 	cmp	al,kbd_del_code		; <Ctrl>+<Alt>+<Del>?
-	jne	.check_minus
+	jne	.check_turbo_off
 	mov	word [warm_boot],1234h ; warm boot flag
 	jmp	0F000h:warm_start	; reboot
 
-.check_minus:
-	cmp	al,4Ah			; gray - scancode
-	jne	.check_plus
+; handle turbo mode switch combinations
+.check_turbo_off:
 
-.turbo_off:
-	in	al,port_b_reg
-	and	al,0FBh			; clear bit 2 (turbo enable bit)
-	out	port_b_reg,al
+%ifdef TURBO_MODE
+	cmp	al,4Ah			; gray - scancode
+	jne	.check_turbo_mid
+
+	call	set_cpu_clk_4_77mhz
 	jmp	keyboard_int_exit
 
-.check_plus:
+.check_turbo_mid:
+%ifdef MACHINE_FE2010A
+	cmp	al,37h			; * scancode
+	jne	.check_turbo_hi
+
+	call	set_cpu_clk_7_16mhz
+	jmp	keyboard_int_exit
+%endif ; MACHINE_FE2010A
+
+.check_turbo_hi:
 	cmp	al,4Eh			; gray + scancode
 	jne	.6
 
-.turbo_on:
-	in	al,port_b_reg
-	or	al,04h			; set bit 2 (turbo enable bit)
-	out	port_b_reg,al
+%ifdef MACHINE_FE2010A
+	call	set_cpu_clk_9_55mhz
+%else ; MACHINE_FE2010A
+	call	set_cpu_clk_turbo
+%endif ; MACHINE_FE2010A
 	jmp	keyboard_int_exit
+
+%endif ; TURBO_MODE
 
 ; Check for the INS key here. This one needs to toggle the ins bit
 ; in the keyboard flags variables.
@@ -503,10 +537,12 @@ int_09:
 	and     byte [kbd_flags_3],0FCh	; E0, E1 not last code
 
 keyboard_int_exit:
+%ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_send_cmd_byte
 %endif
+%endif ; AT_KEYBOARD
 	mov	al,20h			; send EOI (end of interrupt)
 	out	pic1_reg0,al		; to the 8259A PIC.
 
@@ -540,11 +576,6 @@ print_screen:
 ; 	     variable and update LEDs on the keyboard
 ;-------------------------------------------------------------------------
 set_LEDs:
-%ifndef DISABLE_KBD_DURING_INTERRUPTS
-	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
-	call	kbc_send_cmd_byte
-%endif
-
 	mov	al,20h			; send EOI (end of interrupt)
 	out	pic1_reg0,al		; to the 8259A PIC
 
@@ -556,6 +587,11 @@ set_LEDs:
 	and	al,111b
 	and	byte [kbd_flags_4],0F8h	; clear LED bits.
 	or	byte [kbd_flags_4],al	; mask in new bits.
+%ifdef AT_KEYBOARD
+%ifndef DISABLE_KBD_DURING_INTERRUPTS
+	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
+	call	kbc_send_cmd_byte
+%endif
 	mov	ah,al			; save LED bits
 
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
@@ -570,5 +606,22 @@ set_LEDs:
 	call	kbc_send_cmd_byte
 	mov	al,0F4h			; restart keyboard scanning
 	call	kbc_kb_send
+%endif ; AT_KEYBOARD
 	jmp	keyboard_int_exit1
 
+;=========================================================================
+; kbd_buffer_init - Setup keyboard buffer
+;-------------------------------------------------------------------------
+kbd_buffer_init:
+	mov	ax,kbd_buffer		; setup keyboard buffer
+	mov	word [kbd_buffer_start],ax
+	mov	word [kbd_buffer_head],ax
+	mov	word [kbd_buffer_tail],ax
+	add	ax,20h			; size of the keyboard buffer
+	mov	word [kbd_buffer_end],ax
+	xor	ax,ax			; clear keyboard flags
+	mov	word [kbd_flags_1],ax
+	mov	word [kbd_flags_2],ax
+	mov	word [kbd_flags_3],ax
+	mov	word [kbd_flags_4],ax
+	ret

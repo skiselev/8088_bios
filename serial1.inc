@@ -7,10 +7,10 @@
 ;	- see serial2.inc for other INT 14h functions
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ uart_lcr_peven	equ	10h		; LCR - parity even bit
 
 uart_mcr_reg	equ	4		; UART Modem Control Register
 uart_mcr_dtr	equ	1		; MCR - data terminal ready (DTR)
-uart_mcr_rts	equ	3		; MCR - request to send (RTS)
+uart_mcr_rts	equ	2		; MCR - request to send (RTS)
 
 uart_lsr_reg	equ	5		; UART Line Status Register
 uart_lsr_dr	equ	1		; LSR - data ready (DR)
@@ -66,9 +66,12 @@ num_serial	equ	4		; number of serial ports
 ;-------------------------------------------------------------------------
 int_14_fn01:
 	push	ax
-	mov	al,(uart_mcr_dtr | uart_mcr_rts) ; indicate DTR and RTS
-	mov	bh,(uart_msr_dsr | uart_msr_cts) ; wait for DSR and CTS in MSR
-	mov	bl,uart_lsr_thre	; and for THR empty in LSR
+	mov	al,(uart_mcr_dtr | uart_mcr_rts) ; set DTR and RTS in MCR:
+					; ready to communicate, request to send
+	mov	bh,(uart_msr_dsr | uart_msr_cts) ; wait for DSR and CTS in MSR:
+					; ready to communicate, clear to send
+	mov	bl,uart_lsr_thre	; and for THRE in LSR:
+					; UART is ready to accept new character
 	call	uart_wait_status
 	pop	cx
 	jnz	int_14_timeout		; timeout, original AL is in CL
@@ -92,9 +95,12 @@ int_14_timeout:
 ;-------------------------------------------------------------------------
 int_14_fn02:
 	push	ax
-	mov	al,(uart_mcr_dtr | uart_mcr_rts) ; indicate DTR and RTS
-	mov	bh,uart_msr_dsr		; wait for DSR in MSR
-	mov	bl,uart_lsr_dr		; and for DT in LSR
+	mov	al,uart_mcr_dtr		; set DTR in MCR:
+					; ready to communicate
+	mov	bh,uart_msr_dsr		; wait for DSR in MSR:
+					; ready to communicate
+	mov	bl,uart_lsr_dr		; and for DT in LSR:
+					; UART has received a character
 	call	uart_wait_status
 	pop	cx
 	jnz	int_14_timeout
@@ -108,7 +114,7 @@ int_14_fn02:
 ;	BH = mask to wait for in MSR (Modem Status Register)
 ;	BL = mask to wait for in LSR (Line Status Register)
 ;	DX = UART base address
-;	SI = serial port number
+;	SI = address of the timeout value (in seconds)
 ; Output:
 ;	AH = line status
 ;	ZF = 0 - timeout
@@ -148,6 +154,7 @@ uart_wait_status:
 ;	CX - trashed
 ;-------------------------------------------------------------------------
 wait_for_port:
+
 	push	bx
 	mov	bl,byte [SI]		; get the timeout value in seconds
 
@@ -161,15 +168,28 @@ wait_for_port:
 	cmp	al,bh			; required bits are set?
 	je	.exit
 
+%ifdef AT_DELAY
+
 .zero_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jz	.zero_loop		; wait 15.09 us
 
 .one_loop:
-	in	al,port_b_reg
+	in	al,ppi_pb_reg
 	test	al,refresh_flag
 	jnz	.one_loop		; wait 15.09 us
+
+%else ; AT_DELAY
+
+	; wait 30.17 us (Intel 8088 CPU running on 4.77 MHz)
+        mov     al,8
+.delay_loop:
+        dec     al
+        jnz     .delay_loop
+
+%endif ; AT_DELAY
+
 	loop	.loop_inner
 
 	dec	bl
@@ -228,6 +248,7 @@ detect_serial:
 					; uart_base = uart_ier_reg - 1
 	mov	word [equip_serial+bx],dx ; store port address to the BIOS
 					; data area
+	add	word [equipment_list],0200h ; increment number of serial ports
 	mov	ax,dx
 	call	print_hex
 	jmp	.next

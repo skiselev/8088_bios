@@ -2,10 +2,10 @@
 ; cpu.inc - Detect and print CPU type and FPU presence
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -88,20 +88,43 @@ detect_cpu:
 .harris:				; Harris / Intersil 80C88
 	mov	si,msg_cpu_harris
 	call	print
-	jmp	.exit
+	jmp	.cpu_freq
 
 .i8088_78:
 	mov	si,msg_cpu_8088_78
 	call	print
-	jmp	.exit
+	jmp	.cpu_freq
 
 .i8088_81:
 	mov	si,msg_cpu_8088_81
 	call	print
-	jmp	.exit
+	jmp	.cpu_freq
 
 .nec_v20:
 	mov	si,msg_cpu_nec_v20
+	call	print
+
+.cpu_freq:
+
+%ifdef TURBO_MODE
+; print CPU clock frequency
+
+	mov	si,msg_at
+	call	print
+
+	push	ax
+	call	get_config_a		; read BIOS configuration byte A
+	call	print_cpu_clk
+	pop	ax
+
+%endif ; TURBO_MODE
+
+	mov	si,msg_crlf
+	call	print
+
+	cmp	ax,0001h		; if AX = 0001h - we have INTEL (C) 1978
+	jnz	.exit
+	mov	si,msg_cpu_bug
 	call	print
 
 .exit:
@@ -175,3 +198,124 @@ detect_fpu:
 	pop	cx
 	pop	ax
 	ret
+
+%ifdef TURBO_MODE
+;=========================================================================
+; print_cpu_clk - Print CPU clock frequency
+; Input:
+;	AL - NVRAM CPU clock frequency configuration (bits 1:0)
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010A)
+; Output:
+;	none
+;-------------------------------------------------------------------------
+print_cpu_clk:
+	push	ax
+	push	si
+	and	al,nvram_trbo_mask	; get turbo bits
+%ifdef MACHINE_FE2010A
+	mov	si,msg_clk_7_16mhz
+	cmp	al,1
+	je	.print
+	mov	si,msg_clk_9_55mhz
+	cmp	al,2
+	je	.print
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+	mov	si,msg_clk_turbo
+	cmp	al,1
+	je	.print
+%endif ; MACHINE_XI8088
+	mov	si,msg_clk_4_77mhz
+
+.print:
+	call    print
+	pop	si
+	pop	ax
+	ret
+
+;=========================================================================
+; set_cpu_clk - Set CPU clock frequency
+; Input:
+;	AL - NVRAM CPU clock frequency configuration
+;		0 - 4.77 MHz / Normal
+;		1 - 7.16 MHz / Turbo
+;		2 - 9.55 MHz (FE2010A)
+; Output:
+;	none
+;-------------------------------------------------------------------------
+set_cpu_clk:
+%ifdef MACHINE_FE2010A
+	cmp	al, 1 
+	je	set_cpu_clk_7_16mhz
+	cmp	al, 2
+	je	set_cpu_clk_9_55mhz
+	jmp	set_cpu_clk_4_77mhz   
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+	cmp	al,1
+	je	set_cpu_clk_turbo
+	jmp	set_cpu_clk_4_77mhz   
+%endif ; MACHINE_XI8088
+	ret
+
+;=========================================================================
+; set_cpu_clk_4_77mhz - Set CPU clock at 4.77 MHz
+; set_cpu_clk_7_16mhz - Set CPU clock at 7.16 MHz
+; set_cpu_clk_9_55mhz - Set CPU clock at 9.55 MHz
+; set_cpu_clk_turbo - Set CPU clock at turbo frequency (system dependent)
+; Input:
+;	none
+; Output:
+;	none
+;-------------------------------------------------------------------------
+%ifdef MACHINE_FE2010A
+set_cpu_clk_4_77mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	out	fe_config_reg,al	; clear bits 7-5 - 4.77 MHz CPU clock
+	pop ax
+	ret
+
+set_cpu_clk_7_16mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
+	out	fe_config_reg,al
+	pop ax
+	ret
+
+set_cpu_clk_9_55mhz:
+	push ax
+	mov	al,byte [equipment_list] ; get lower byte of the equipment list
+	and	al,equip_fpu		; isolate FPU installed bit
+	or	al,fe_par_disable	; disable memory parity checking
+	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
+	out	fe_config_reg,al
+	pop ax
+	ret
+%endif ; MACHINE_FE2010A
+%ifdef MACHINE_XI8088
+set_cpu_clk_4_77mhz:
+	push	ax
+	in	al,ppi_pb_reg
+	and	al,0FBh			; clear bit 2 (turbo enable bit)
+	out	ppi_pb_reg,al
+	pop	ax
+	ret
+
+set_cpu_clk_turbo:
+	push	ax
+	in	al,ppi_pb_reg
+	or	al,04h			; set bit 2 (turbo enable bit)
+	out	ppi_pb_reg,al
+	pop	ax
+	ret
+%endif ; MACHINE_XI8088
+
+%endif ; TURBO_MODE

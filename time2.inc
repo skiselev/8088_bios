@@ -5,10 +5,10 @@
 ;       INT 08h - IRQ0 interrupt handler (timer interrupt)
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.07, might work with other versions
+; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2011 - 2012 Sergey Kiselev.
-; Provided for hobbyist use on the Xi 8088 board.
+; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -44,12 +44,14 @@ int_1A:
 .dispatch:
 	dw	int_1A_fn00
 	dw	int_1A_fn01
+%ifdef AT_RTC
 	dw	int_1A_fn02
 	dw	int_1A_fn03
 	dw	int_1A_fn04
 	dw	int_1A_fn05
 	dw	int_1A_fn06
 	dw	int_1A_fn07
+%endif ; AT_RTC
 .max	equ	$-.dispatch
 int_1A_exit:
 	pop	ds
