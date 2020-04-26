@@ -33,6 +33,8 @@ kbc_status_reg	equ	64h
 kbc_stat_obf	equ	01h	; output buffer full flag
 kbc_stat_ibf	equ	02h	; input buffer full flag
 kbc_stat_aobf	equ	20h	; auxiliary output buffer full flag
+kbc_stat_tout	equ	40h	; receive/transmit timeout
+kbc_stat_perr	equ	80h	; parity error
 ; keyboard contoller command register and commands
 kbc_command_reg	equ	64h
 kbc_cmd_wr_ctr	equ	60h	; write control register command
@@ -55,10 +57,26 @@ kbc_ctr_xlat	equ	40h	; enable keyboard scancode translation
 ; keyboard controller input port bits
 kbc_in_display	equ	40h	; input port bit 6: 0 = MDA, 1 = CGA
 ; timeout - number of retries
-kbc_ctr_timeout        equ     20000
+kbc_ctr_timeout        equ     30000; XXX 20000
 ; keyboard and auxiliary device commands
-kbd_cmd_reset	equ	0FFh	; keyboard reset and self-test command
-aux_cmd_reset	equ	0FFh	; auxiliary device reset and self-test command
+kbd_cmd_leds	equ	0EDh	; keyboard set LEDs
+kbd_cmd_rate	equ	0F3h	; keyboard set typematic rate/delay
+kbd_cmd_enable	equ	0F4h	; keyboard enable
+kbd_cmd_disable	equ	0F5h	; keyboard disable 
+kbd_cmd_reset	equ	0FFh	; keyboard reset and self-test
+aux_cmd_scale11	equ	0E6h	; auxiliary device set 1:1 scaling factor
+aux_cmd_scale21	equ	0E7h	; auxiliary device set 2:1 scaling factor
+aux_cmd_resol	equ	0E8h	; auxiliary device set resolution
+aux_cmd_status	equ	0E9h	; auxiliary device get status
+aux_cmd_dev_id	equ	0F2h	; auxiliary device read device ID
+aux_cmd_rate	equ	0F3h	; auxiliary device set sample rate
+aux_cmd_enable	equ	0F4h	; auxiliary device enable
+aux_cmd_disable	equ	0F5h	; auxiliary device disable
+aux_cmd_reset	equ	0FFh	; auxiliary device reset and self-test
+; keyboard and auxiliary device responses
+kbd_rsp_ack	equ	0FAh	; acknowledge
+kbd_rsp_bat_ok	equ	0AAh	; basic assurance test is OK
+
 
 ;=========================================================================
 ; kbc_kb_send - send command to keyboard, wait for acknowledge

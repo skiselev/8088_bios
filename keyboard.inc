@@ -173,13 +173,13 @@ int_16_fn03:
 	mov	cl,5
 	shl	bh,cl
 	and	bl,1Fh			; legal BL values from 0 to 1F
-	mov	al,0F3h
+	mov	al,kbd_cmd_rate
 	call	kbc_kb_send
 	mov	al,bh
 	call	kbc_kb_send
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_send_cmd_byte
-	mov	al,04h
+	mov	al,04h			; XXX: Should it be 0F4h/enable kbd?
 	call	kbc_kb_send
 	pop	cx
 	pop	bx
@@ -597,14 +597,14 @@ set_LEDs:
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
 	call	kbc_send_cmd_byte
 
-	mov	al,0EDh			; set LEDs cmd
+	mov	al,kbd_cmd_leds		; set LEDs command
 	call	kbc_kb_send		; send the command to the keyboard
 	mov	al,ah			; get parameter byte
 	call	kbc_kb_send		; send parameter to the keyboard
 
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_send_cmd_byte
-	mov	al,0F4h			; restart keyboard scanning
+	mov	al,kbd_cmd_enable	; restart keyboard scanning
 	call	kbc_kb_send
 %endif ; AT_KEYBOARD
 	jmp	keyboard_int_exit1

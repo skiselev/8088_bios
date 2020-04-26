@@ -147,10 +147,11 @@ int_15_fnC200:
 
 	cmp	bh,00h
 	je	.disable
-	mov	al,0F4h			; device enable command
+
+	mov	al,aux_cmd_enable	; device enable command
 	jmp	.send_it
 .disable:
-	mov	al,0F5h			; device disable command
+	mov	al,aux_cmd_disable	; device disable command
 
 .send_it:
 	call	kbc_aux_send
@@ -170,7 +171,7 @@ int_15_fnC200:
 int_15_fnC201:
 	mov	cx,10			; try the reset 10 times
 .1:
-	mov	al,0FFh			; reset auxiliary device, set defaults
+	mov	al,aux_cmd_reset	; reset auxiliary device, set defaults
 	call	kbc_aux_send
 	jnc	.2			; no error - continue
 	cmp	ah,03h			; timeout error?
@@ -205,7 +206,7 @@ int_15_fnC202:
 	mov	bl,bh
 	mov	bh,00h			; rate index in BX
 
-	mov	al,0F3h			; set sample rate
+	mov	al,aux_cmd_rate		; set sample rate
 	call	kbc_aux_send
 	jc	int_15_fnC2_err		; error
 
@@ -231,7 +232,7 @@ int_15_fnC203:
 	cmp	bh,03h
 	ja	int_15_fnC2_err2	; invalid input value
 
-	mov	al,0E8h			; set resolution
+	mov	al,aux_cmd_resol	; set resolution
 	call	kbc_aux_send
 	jc	int_15_fnC2_err		; error
 
@@ -248,7 +249,7 @@ int_15_fnC203:
 ;	BH = device type
 ;-------------------------------------------------------------------------
 int_15_fnC204:
-	mov	al,0F2h			; read device type
+	mov	al,aux_cmd_dev_id	; read device type
 	call	kbc_aux_send
 	jc	int_15_fnC2_err		; error
 	call	kbc_aux_read
@@ -279,7 +280,7 @@ int_15_fnC205:
 
 	mov	cx,5			; try the reset 5 times
 .1:
-	mov	al,0FFh			; reset auxiliary device, set defaults
+	mov	al,aux_cmd_reset	; reset auxiliary device, set defaults
 	call	kbc_aux_send
 	jnc	.2			; no error - continue
 	cmp	ah,03h			; timeout error?
@@ -333,7 +334,7 @@ int_15_fnC206:
 	cmp	bh,01h
 	je	.scale_1x1
 					; BH == 0, return status
-	mov	al,0E9h			; request status command
+	mov	al,aux_cmd_status	; request status command
 	call	kbc_aux_send
 	jc	int_15_fnC2_err		; error
 	call	kbc_aux_read
@@ -348,10 +349,10 @@ int_15_fnC206:
 	jmp	int_15_fnC2_ok
 
 .scale_2x1:
-	mov	al,0E7h			; set 2:1 scaling factor command
+	mov	al,aux_cmd_scale21	; set 2:1 scaling factor command
 	jmp	.send_it
 .scale_1x1:
-	mov	ah,0E6h			; set 1:1 scaling factor command
+	mov	ah,aux_cmd_scale11	; set 1:1 scaling factor command
 .send_it:
 	call	kbc_aux_send
 	jc	int_15_fnC2_err		; error
