@@ -130,7 +130,7 @@ kbc_kb_send:
 ;	CF == 1 - timeout
 ;-------------------------------------------------------------------------
 kbc_send_cmd:
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 	jc	.exit
 	xchg	al,ah
 	call	kbc_write_data
@@ -139,14 +139,14 @@ kbc_send_cmd:
 	ret
 
 ;=========================================================================
-; kbc_send_cmd_byte - send command byte to keyboard controller
+; kbc_write_command - send command byte to keyboard controller
 ; Input:
 ;	AL - command byte
 ; Output:
 ;	CF == 0 - no error
 ;	CF == 1 - timeout
 ;-------------------------------------------------------------------------
-kbc_send_cmd_byte:
+kbc_write_command:
 	call	kbc_wait_write
 	jc	.timeout		; CF == 1 - timeout
 	out	kbc_command_reg,al	; write command
@@ -199,7 +199,7 @@ kbc_wait_write:
 	ret
 
 ;=========================================================================
-; NEW: kbc_wait_input - wait for data in keyboard controller output buffer
+; NEW: kbc_data_read - wait for data in keyboard controller output buffer
 ;                  and read it
 ; Input:
 ;	none
@@ -209,7 +209,7 @@ kbc_wait_write:
 ;	CF == 0 - no error, data is available
 ;	CF == 1 - KBC timeout
 ;-------------------------------------------------------------------------
-kbc_wait_input:
+kbc_data_read:
 	push	cx
 	mov	cx,kbc_ctr_timeout
 					; wait for data
@@ -454,7 +454,7 @@ kbc_init:
 
 ; XXX loop for a number of times, don't hang
 .flush:
-	call	kbc_wait_input
+	call	kbc_data_read
 	jnc	.flush			; more data might be available
 					; read again
 
@@ -462,9 +462,9 @@ kbc_init:
 ; run keyboard controller self-test
 
 	mov	al,kbc_cmd_test		; send KBC self test command
-	call 	kbc_send_cmd_byte
+	call 	kbc_write_command
 
-	call	kbc_wait_input		; wait and read the response
+	call	kbc_data_read		; wait and read the response
 	jc	kbc_flush_fail		; XXX: use different error code
 	cmp	al,55h			; check for success
 	jne	kbc_test_fail
@@ -473,9 +473,9 @@ kbc_init:
 ; run keyboard interface test
 
 	mov	al,kbc_cmd_kbd_tst	; send test keyboard interface command
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 	
-	call	kbc_wait_input		; wait and read test result
+	call	kbc_data_read		; wait and read test result
 	cmp	al,0			; check for success
 	jne	kbd_init_fail
 
@@ -483,9 +483,9 @@ kbc_init:
 ; read display type and set equipment bits accordingly
 
 	mov	al,kbc_cmd_rd_in	; send read input port command
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 
-	call	kbc_wait_input		; wait and read input port value
+	call	kbc_data_read		; wait and read input port value
 	test	al,kbc_in_display
 	jnz	.get_disp_color		; input port bit 6 set => CGA display
 	or	word [equipment_list],equip_mono
@@ -498,25 +498,20 @@ kbc_init:
 ; enable keyboard interface and reset the keyboard
 
 	mov	al,kbc_cmd_kbd_ena	; send enable keyboard interface cmd
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 	jc	kbd_init_fail
 
 ;XXX: fixme implement kbd_send_cmd_byte, or use DX as the register address?
-	call	kbc_wait_write
+	mov	al,kbd_cmd_reset
+	call	kbc_write_data		; send reset command to the keyboard
 	jc	kbd_init_fail
-	mov	al,kbd_cmd_reset	; send keyboard reset command
-	out	kbc_data_reg,al
 
-;	XXX: kbc_wait_input already has a delay in it
-;	mov	cx,1000h
-;	call	delay_15us
-
-	call	kbc_wait_input		; wait for ACK
+	call	kbc_data_read		; wait for ACK
 	jc	kbd_key_fail
 	cmp	al,kbd_rsp_ack
 	jne	kbd_key_fail		; XXX: print error if no keyboard
 
-	call	kbc_wait_input
+	call	kbc_data_read
 	jc	kbd_key_fail
 	cmp	al,kbd_rsp_bat_ok
 	jne	kbd_key_fail		; XXX: print error if BAT fails
@@ -524,12 +519,11 @@ kbc_init:
 ;-------------------------------------------------------------------------
 ; disable keyboard
 
-	call	kbc_wait_write
+	mov	al,kbd_cmd_disable
+	call	kbc_write_data		; send keyboard disable command
 	jc	kbd_key_fail
-	mov	al,kbd_cmd_disable	; send keyboard disable command
-	out	kbc_data_reg,al
 
-	call	kbc_wait_input		; wait for ACK
+	call	kbc_data_read		; wait for ACK
 	jc	kbd_key_fail
 	cmp	al,kbd_rsp_ack
 	jne	kbd_key_fail		; XXX: print error if no keyboard
@@ -539,7 +533,7 @@ kbc_init:
 ; enable auxiliary port and check for PS/2 mouse presence
 
 	mov	al,kbc_cmd_aux_ena	; send enable auxiliary interface cmd
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 
 ; FIXME - do we need to retry it?
 ;	mov	cx,10			; try 10 times
@@ -582,12 +576,11 @@ kbc_init:
 ;-------------------------------------------------------------------------
 ; enable keyboard
 
-	call	kbc_wait_write
+	mov	al,kbd_cmd_enable
+	call	kbc_write_data		; send keyboard enable command
 	jc	kbd_init_fail
-	mov	al,kbd_cmd_enable	; send keyboard enable command
-	out	kbc_data_reg,al
 
-	call	kbc_wait_input		; wait for ACK
+	call	kbc_data_read		; wait for ACK
 	jc	kbd_key_fail
 	cmp	al,kbd_rsp_ack
 	jne	kbd_key_fail		; XXX: print error if no keyboard

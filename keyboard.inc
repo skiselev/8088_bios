@@ -168,7 +168,7 @@ int_16_fn03:
 	push	bx
 	push	cx
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 	and	bh,3			; legal BH values from 0 to 3
 	mov	cl,5
 	shl	bh,cl
@@ -178,7 +178,7 @@ int_16_fn03:
 	mov	al,bh
 	call	kbc_kb_send
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 	mov	al,04h			; XXX: Should it be 0F4h/enable kbd?
 	call	kbc_kb_send
 	pop	cx
@@ -266,7 +266,7 @@ int_09:
 %ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
-	call    kbc_send_cmd_byte
+	call    kbc_write_command
 %endif
 %endif ; AT_KEYBOARD
 	in	al,ppi_pa_reg		; get keyboard data / scancode
@@ -540,7 +540,7 @@ keyboard_int_exit:
 %ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 %endif
 %endif ; AT_KEYBOARD
 	mov	al,20h			; send EOI (end of interrupt)
@@ -590,12 +590,12 @@ set_LEDs:
 %ifdef AT_KEYBOARD
 %ifndef DISABLE_KBD_DURING_INTERRUPTS
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 %endif
 	mov	ah,al			; save LED bits
 
 	mov	al,kbc_cmd_kbd_dis	; disable keyboard interface
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 
 	mov	al,kbd_cmd_leds		; set LEDs command
 	call	kbc_kb_send		; send the command to the keyboard
@@ -603,7 +603,7 @@ set_LEDs:
 	call	kbc_kb_send		; send parameter to the keyboard
 
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
-	call	kbc_send_cmd_byte
+	call	kbc_write_command
 	mov	al,kbd_cmd_enable	; restart keyboard scanning
 	call	kbc_kb_send
 %endif ; AT_KEYBOARD
