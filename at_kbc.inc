@@ -130,35 +130,12 @@ kbc_kb_send:
 ;	CF == 1 - timeout
 ;-------------------------------------------------------------------------
 kbc_send_cmd:
-	push	cx
-	mov	ch,al			; save command byte to CH
-	mov	cl,30			; 30 retries
-.1:
-	mov	al,ch
 	call	kbc_send_cmd_byte
-	jc	.exit			; timeout
-	in	al,kbc_status_reg
-	test	al,kbc_stat_obf
-	jz	.3			; output buffer is empty
-	test	al,kbc_stat_aobf
-	jz	.2			; output buffer is full, not aux data
-	in	al,kbc_data_reg		; clean up auxiliary data from buffer
-%ifdef PS2_MOUSE
-	and	byte [mouse_flags_1],0F8h ; reset the mouse data index
-%endif ; PS2_MOUSE
-	jmp	.3
-.2:
-	dec	cl
-	jnz	.1
-	stc				; CF=1 - timeout
-	jmp	.exit
-.3:
-	mov	al,ah
-	out	kbc_data_reg,al
-	clc				; CF=0 - no error
+	jc	.exit
+	xchg	al,ah
+	call	kbc_write_data
+	xchg	al,ah
 .exit:
-	mov	al,ch			; restore AL
-	pop	cx
 	ret
 
 ;=========================================================================
@@ -173,7 +150,22 @@ kbc_send_cmd_byte:
 	call	kbc_wait_write
 	jc	.timeout		; CF == 1 - timeout
 	out	kbc_command_reg,al	; write command
-; FIXME - do we need to wait for KBC here?
+
+.timeout:
+	ret
+
+;=========================================================================
+; kbc_write_data - write byte to keyboard controller data register (0x60)
+; Input:
+;	AL - command byte
+; Output:
+;	CF == 0 - no error
+;	CF == 1 - timeout
+;-------------------------------------------------------------------------
+kbc_write_data:
+	call	kbc_wait_write
+	jc	.timeout		; CF == 1 - timeout
+	out	kbc_data_reg,al		; write data register
 
 .timeout:
 	ret
@@ -204,6 +196,43 @@ kbc_wait_write:
 .exit:
 	pop	cx
 	pop	ax
+	ret
+
+;=========================================================================
+; NEW: kbc_wait_input - wait for data in keyboard controller output buffer
+;                  and read it
+; Input:
+;	none
+; Output:
+;	AL = data from the keyboard controller
+;	AH = keyboard controller status register
+;	CF == 0 - no error, data is available
+;	CF == 1 - KBC timeout
+;-------------------------------------------------------------------------
+kbc_wait_input:
+	push	cx
+	mov	cx,kbc_ctr_timeout
+					; wait for data
+.wait:
+	in	al,kbc_status_reg
+	mov	ah,al
+	test	ah,kbc_stat_obf
+	jnz	.read_data		; note: test instruction sets CF=0
+	push	cx
+	mov	cx,4
+	call	delay_15us		; 45-60us I/O delay
+	pop	cx
+	loop	.wait
+	stc				; CF=1 - timeout
+	jmp	.exit
+.read_data:
+	in	al,kbc_data_reg
+					; check for receive/transmit timeout
+					; and parity errors
+	test	ah,kbc_stat_tout | kbc_stat_perr
+	jnz	.wait			; note: test instruction sets CF=0
+.exit:
+	pop	cx
 	ret
 
 ;=========================================================================
@@ -423,56 +452,31 @@ kbc_init:
 ;-------------------------------------------------------------------------
 ; flush the data from keyboard controller output buffer
 
-	call	kbc_flush		; flush all input data from KBC
-	jc	kbc_flush_fail
-
-;-------------------------------------------------------------------------
-; set initial keyboard controller configuration:
-; disable keyboard and auxiliary interfaces
-
-	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
-	mov	ah,01110000b
-;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
-;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
-;		   |||||`-- 0 == power on / POST in progress
-;		   ||||`-- 0 == reserved, must be 0
-;		   |||`-- 1 == disable keyboard interface
-;		   ||`-- 1 == disable auxiliary interface
-;		   |`-- 1 == enable scan code translation to IBM PC scan codes
-;		   `-- 0 == reserved, must be 0
-	call	kbc_send_cmd
-	jc	kbc_flush_fail
-
-	call	kbc_flush		; flush any remaining input data
-	jc	kbc_flush_fail
+; XXX loop for a number of times, don't hang
+.flush:
+	call	kbc_wait_input
+	jnc	.flush			; more data might be available
+					; read again
 
 ;-------------------------------------------------------------------------
 ; run keyboard controller self-test
 
-; FIXME - do we need to retry it?
-	mov	cx,10			; try 10 times
-
-.kbc_test_retry:
 	mov	al,kbc_cmd_test		; send KBC self test command
 	call 	kbc_send_cmd_byte
-	call	kbc_wait_read		; wait for response
-	in	al,kbc_data_reg
+
+	call	kbc_wait_input		; wait and read the response
+	jc	kbc_flush_fail		; XXX: use different error code
 	cmp	al,55h			; check for success
-	loopne	.kbc_test_retry
 	jne	kbc_test_fail
 
 ;-------------------------------------------------------------------------
 ; run keyboard interface test
 
-	mov	cx,10			; try 10 times
-
-.kbd_test_retry:
 	mov	al,kbc_cmd_kbd_tst	; send test keyboard interface command
 	call	kbc_send_cmd_byte
-	call	kbc_wait_read		; wait for test result
-	in	al,kbc_data_reg
+	
+	call	kbc_wait_input		; wait and read test result
 	cmp	al,0			; check for success
-	loopne	.kbd_test_retry
 	jne	kbd_init_fail
 
 ;-------------------------------------------------------------------------
@@ -480,8 +484,8 @@ kbc_init:
 
 	mov	al,kbc_cmd_rd_in	; send read input port command
 	call	kbc_send_cmd_byte
-	call	kbc_wait_read
-	in	al,kbc_data_reg
+
+	call	kbc_wait_input		; wait and read input port value
 	test	al,kbc_in_display
 	jnz	.get_disp_color		; input port bit 6 set => CGA display
 	or	word [equipment_list],equip_mono
@@ -495,19 +499,40 @@ kbc_init:
 
 	mov	al,kbc_cmd_kbd_ena	; send enable keyboard interface cmd
 	call	kbc_send_cmd_byte
+	jc	kbd_init_fail
 
+;XXX: fixme implement kbd_send_cmd_byte, or use DX as the register address?
+	call	kbc_wait_write
+	jc	kbd_init_fail
 	mov	al,kbd_cmd_reset	; send keyboard reset command
-	call	kbc_send_cmd_byte
+	out	kbc_data_reg,al
 
-	mov	cx,1000h
-	call	delay_15us
+;	XXX: kbc_wait_input already has a delay in it
+;	mov	cx,1000h
+;	call	delay_15us
 
-	call	kbc_wait_read		; wait for response
-	in	al,kbc_data_reg		; clear the output buffer
-					; FIXME - check the response:
-					; 0xAA - self-test passed
-					; 0xFC, 0xFD - self-test failed
-					; 0xFE - resend
+	call	kbc_wait_input		; wait for ACK
+	jc	kbd_key_fail
+	cmp	al,kbd_rsp_ack
+	jne	kbd_key_fail		; XXX: print error if no keyboard
+
+	call	kbc_wait_input
+	jc	kbd_key_fail
+	cmp	al,kbd_rsp_bat_ok
+	jne	kbd_key_fail		; XXX: print error if BAT fails
+
+;-------------------------------------------------------------------------
+; disable keyboard
+
+	call	kbc_wait_write
+	jc	kbd_key_fail
+	mov	al,kbd_cmd_disable	; send keyboard disable command
+	out	kbc_data_reg,al
+
+	call	kbc_wait_input		; wait for ACK
+	jc	kbd_key_fail
+	cmp	al,kbd_rsp_ack
+	jne	kbd_key_fail		; XXX: print error if no keyboard
 
 %ifdef PS2_MOUSE
 ;-------------------------------------------------------------------------
@@ -517,13 +542,13 @@ kbc_init:
 	call	kbc_send_cmd_byte
 
 ; FIXME - do we need to retry it?
-	mov	cx,10			; try 10 times
-.mouse_reset_retry:
+;	mov	cx,10			; try 10 times
+;.mouse_reset_retry:
 	mov	al,aux_cmd_reset
 	call	kbc_aux_send
 	jnc	.mouse_reset_ok		; no error - continue
 	cmp	ah,03h			; timeout error?
-	loopz	.mouse_reset_retry
+;	loopz	.mouse_reset_retry
 	jmp	.no_mouse
 .mouse_reset_ok:
 	call	kbc_aux_read
@@ -552,6 +577,20 @@ kbc_init:
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
+	jc	kbd_init_fail
+
+;-------------------------------------------------------------------------
+; enable keyboard
+
+	call	kbc_wait_write
+	jc	kbd_init_fail
+	mov	al,kbd_cmd_enable	; send keyboard enable command
+	out	kbc_data_reg,al
+
+	call	kbc_wait_input		; wait for ACK
+	jc	kbd_key_fail
+	cmp	al,kbd_rsp_ack
+	jne	kbd_key_fail		; XXX: print error if no keyboard
 
 	mov	al,e_kbd_ok
 	out	post_reg,al
@@ -575,9 +614,17 @@ kbc_test_fail:
 	jmp	.1
 
 kbd_init_fail:
-	and	al,0Fh
+	push	ax
 	add	al,e_kbd_init_fail
 	out	post_reg,al
+	pop	ax
+	mov	cx,8000h
+	call	delay_15us
+	out	post_reg,al
+	mov	cx,8000h
+	call	delay_15us
+	jmp	kbd_init_fail
+
 .1:
 	hlt
 	jmp	.1
