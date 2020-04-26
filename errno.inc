@@ -48,8 +48,21 @@ e_ext_complete	equ	43h		; BIOS extension scan complete
 e_cpu_fail	equ	52h		; CPU test failed
 e_low_ram_fail	equ	54h		; low RAM test failed
 e_kbc_flsh_fail	equ	60h		; unable to flush KBC output buffer
-e_kbc_test_fail	equ	61h		; keyboard controller self test failed
-e_kbd_key_fail	equ	62h		; KBD test - echo test failed
-e_kbd_timeout	equ	63h		; KBD timeout
-e_kbd_init_fail	equ	64h		; KBD test - interface test failed
+e_kbc_cmd_fail	equ	61h		; unable to send command to KBC
+e_kbc_test_fail	equ	62h		; keyboard controller self test failed
+e_kbc_int_fail	equ	63h		; keyboard interface test failed
+e_kbd_bat_fail	equ	70h		; keyboard BAT test failed
+e_kbd_dis_fail	equ	71h		; keyboard disable command failed
+e_kbd_ena_fail	equ	72h		; keyboard enable command failed
 e_ram_fail	equ	80h		; RAM test failed
+;-------------------------------------------------------------------------
+; Minor numbers for keyboard errors
+e_kbd_tout_fail	equ	01h		; keyboard timeout sending command
+e_kbd_resp_fail	equ	02h		; keyboard no response
+e_kbd_nack_fail	equ	03h		; acknowledge response was expected
+					; but keyboard have sent something else
+e_kbd_rsp2_fail	equ	04h		; keyboard no response byte 2 for BAT
+e_kbd_nbat_fail	equ	05h		; BAT OK response was expected
+					; but keyboard have sent something else
+e_kbd_test_fail	equ	06h		; keyboard controller test failed
+e_kbd_int_fail	equ	07h		; keyboard interface test failed

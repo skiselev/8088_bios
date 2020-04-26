@@ -37,7 +37,8 @@ kbc_stat_tout	equ	40h	; receive/transmit timeout
 kbc_stat_perr	equ	80h	; parity error
 ; keyboard contoller command register and commands
 kbc_command_reg	equ	64h
-kbc_cmd_wr_ctr	equ	60h	; write control register command
+kbc_cmd_rd_ctr	equ	20h	; read controller configuration byte command
+kbc_cmd_wr_ctr	equ	60h	; write controller configruation byte command
 kbc_cmd_aux_dis	equ	0A7h	; disable auxiliary interface command
 kbc_cmd_aux_ena	equ	0A8h	; enable auxiliary interface command
 kbc_cmd_aux_tst	equ	0A9h	; test auxiliary interface command
@@ -56,8 +57,8 @@ kbc_ctr_aux_dis equ	20h	; disable auxiliary interface
 kbc_ctr_xlat	equ	40h	; enable keyboard scancode translation
 ; keyboard controller input port bits
 kbc_in_display	equ	40h	; input port bit 6: 0 = MDA, 1 = CGA
-; timeout - number of retries
-kbc_ctr_timeout        equ     30000; XXX 20000
+; keyboard controller response timeout in 60us units
+kbc_ctr_timeout	equ     20000	; 1.2 seconds
 ; keyboard and auxiliary device commands
 kbd_cmd_leds	equ	0EDh	; keyboard set LEDs
 kbd_cmd_rate	equ	0F3h	; keyboard set typematic rate/delay
@@ -450,37 +451,82 @@ kbc_init:
 	push	dx
 
 ;-------------------------------------------------------------------------
-; flush the data from keyboard controller output buffer
+; Flush the data from keyboard controller output buffer
 
-; XXX loop for a number of times, don't hang
-.flush:
-	call	kbc_data_read
-	jnc	.flush			; more data might be available
-					; read again
+	call	kbc_flush
+	jc	kbc_flush_fail
 
 ;-------------------------------------------------------------------------
-; run keyboard controller self-test
+; Disable keyboard and mouse interfaces so that they don't interfere with tests
+; No error handling here. The controller and the keyboard are tested later
 
+;	mov	al,kbc_cmd_rd_ctr	; read controller configuration byte
+;	call	kbc_write_command
+;	call	kbc_data_read
+
+;	mov	ah,al
+;	and	ah,01110100b		; disable interrupts and
+					; clear reserved bits 7 and 4
+					; FIXME clear translation bit too?
+;	or	ah,00110000b		; disable interfaces
+	mov	ah,01110000b
+;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
+;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
+;		   |||||`-- 0 == power on / POST in progress
+;		   ||||`-- 0 == reserved, must be 0
+;		   |||`-- 1 == disable keyboard interface
+;		   ||`-- 1 == disable auxiliary interface
+;		   |`-- 1 == enable scan code translation to IBM PC scan codes
+;		   `-- 0 == reserved, must be 0
+
+	mov	al,kbc_cmd_wr_ctr	; write controller configuration byte
+	call	kbc_send_cmd
+
+;-------------------------------------------------------------------------
+; Run keyboard controller self-test
+
+	mov	dh,e_kbc_test_fail
+	mov	dl,e_kbd_tout_fail
 	mov	al,kbc_cmd_test		; send KBC self test command
 	call 	kbc_write_command
+	jc	.kbc_test_error
 
+	mov	dl,e_kbd_resp_fail
 	call	kbc_data_read		; wait and read the response
-	jc	kbc_flush_fail		; XXX: use different error code
+	jc	.kbc_test_error
+	mov	dl,e_kbc_test_fail
 	cmp	al,55h			; check for success
-	jne	kbc_test_fail
+	je	.kbc_test_ok
+
+.kbc_test_error:
+	call	kbd_key_fail		; show the error on the POST display
+
+.kbc_test_ok:
 
 ;-------------------------------------------------------------------------
-; run keyboard interface test
+; Run keyboard interface test
 
+	mov	dh,e_kbc_int_fail
+	mov	dl,e_kbd_tout_fail
 	mov	al,kbc_cmd_kbd_tst	; send test keyboard interface command
 	call	kbc_write_command
-	
+	jc	.keyboard_interface_error
+
+	mov	dl,e_kbd_resp_fail
 	call	kbc_data_read		; wait and read test result
+	jc	.keyboard_interface_error
+	mov	dl,e_kbd_int_fail
 	cmp	al,0			; check for success
-	jne	kbd_init_fail
+	je	.keyboard_interface_ok
+
+.keyboard_interface_error:
+	call	kbd_key_fail		; show the error on the POST display
+
+.keyboard_interface_ok:
 
 ;-------------------------------------------------------------------------
-; read display type and set equipment bits accordingly
+; Read display type and set equipment bits accordingly
+; No error handling here. In the worst case the display settings will be wrong
 
 	mov	al,kbc_cmd_rd_in	; send read input port command
 	call	kbc_write_command
@@ -495,42 +541,80 @@ kbc_init:
 .get_disp_done:
 
 ;-------------------------------------------------------------------------
-; enable keyboard interface and reset the keyboard
+; Enable keyboard interface
 
 	mov	al,kbc_cmd_kbd_ena	; send enable keyboard interface cmd
 	call	kbc_write_command
-	jc	kbd_init_fail
-
-;XXX: fixme implement kbd_send_cmd_byte, or use DX as the register address?
-	mov	al,kbd_cmd_reset
-	call	kbc_write_data		; send reset command to the keyboard
-	jc	kbd_init_fail
-
-	call	kbc_data_read		; wait for ACK
-	jc	kbd_key_fail
-	cmp	al,kbd_rsp_ack
-	jne	kbd_key_fail		; XXX: print error if no keyboard
-
-	call	kbc_data_read
-	jc	kbd_key_fail
-	cmp	al,kbd_rsp_bat_ok
-	jne	kbd_key_fail		; XXX: print error if BAT fails
+	jc	kbc_cmd_fail
 
 ;-------------------------------------------------------------------------
-; disable keyboard
+; Check that BAT (Basic Assurance Test) is OK:
 
+; Someone at IBM thought that it is a really clever idea that the keyboard
+; would send a BAT (Basic Assurance Test) OK code (0AAh) after the power on
+; And yet, not all keyboards do, at least not always...
+; Also keyboards do not reset themself on the system reset/reboot...
+; Also some keyboard controllers (VIA VT82C42 particularly)
+; seem to fake BAT OK code on the power on...
+
+; check for BAT code in the buffer, and if it is not there -
+; issue a keyboard reset command
+
+	call	kbc_data_read		; check for BAT code in the buffer
+	jc	.keyboard_reset		; timeout - reset the keyboard
+	cmp	al,kbd_rsp_bat_ok
+	je	.keyboard_bat_ok	; all good, do not reset the keyboard
+
+.keyboard_reset:
+	mov	dh,e_kbd_bat_fail	; major error numbre
+	mov	dl,e_kbd_tout_fail	; minor error number
+	mov	al,kbd_cmd_reset
+	call	kbc_write_data		; send reset command to the keyboard
+	jc	.keyboard_reset_error
+
+	mov	dl,e_kbd_resp_fail	; minor error number
+	call	kbc_data_read		; wait for ACK
+	jc	.keyboard_reset_error
+	mov	dl,e_kbd_nack_fail	; minor error number
+	cmp	al,kbd_rsp_ack
+	jne	.keyboard_reset_error
+
+	mov	dl,e_kbd_rsp2_fail	; minor error number
+	call	kbc_data_read
+	jc	.keyboard_reset_error
+	mov	dl,e_kbd_nbat_fail	; minor error number
+	cmp	al,kbd_rsp_bat_ok
+	je	.keyboard_bat_ok	; BAT received, continue
+
+.keyboard_reset_error:
+	call	kbd_key_fail		; show the error on the POST display
+
+.keyboard_bat_ok:
+
+;-------------------------------------------------------------------------
+; Disable keyboard
+
+	mov	dh,e_kbd_dis_fail	; major error number
+	mov	dl,e_kbd_tout_fail	; minor error number
 	mov	al,kbd_cmd_disable
 	call	kbc_write_data		; send keyboard disable command
-	jc	kbd_key_fail
+	jc	.keyboard_disable_error
 
+	mov	dl,e_kbd_resp_fail	; minor error number
 	call	kbc_data_read		; wait for ACK
-	jc	kbd_key_fail
+	jc	.keyboard_disable_error
+	mov	dl,e_kbd_nack_fail	; minor error number
 	cmp	al,kbd_rsp_ack
-	jne	kbd_key_fail		; XXX: print error if no keyboard
+	je	.keyboard_disable_ok	; ACK received, continue
+
+.keyboard_disable_error:
+	call	kbd_key_fail		; show the error on the POST display
+
+.keyboard_disable_ok:
 
 %ifdef PS2_MOUSE
 ;-------------------------------------------------------------------------
-; enable auxiliary port and check for PS/2 mouse presence
+; Enable auxiliary port and check for PS/2 mouse presence
 
 	mov	al,kbc_cmd_aux_ena	; send enable auxiliary interface cmd
 	call	kbc_write_command
@@ -557,8 +641,8 @@ kbc_init:
 %endif ; PS2_MOUSE
 
 ;-------------------------------------------------------------------------
-; set keyboard controller configuration:
-; enable keyboard interface, disable auxiliary interface, set POST complete
+; Set keyboard controller configuration:
+; Enable keyboard interface; Disable auxiliary interface; Set POST complete
 
 	mov	al,kbc_cmd_wr_ctr	; send "write keyboard controller" cmd
 	mov	ah,01100101b
@@ -571,19 +655,29 @@ kbc_init:
 ;		   |`-- 1 == enable scan code translation to IBM PC scan codes
 ;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
-	jc	kbd_init_fail
+	jc	kbc_cmd_fail
 
 ;-------------------------------------------------------------------------
-; enable keyboard
+; Enable keyboard
 
+	mov	dh,e_kbd_ena_fail	; major error number
+	mov	dl,e_kbd_tout_fail	; minor error number
 	mov	al,kbd_cmd_enable
 	call	kbc_write_data		; send keyboard enable command
-	jc	kbd_init_fail
+	jc	.keyboard_enable_error
 
+	mov	dl,e_kbd_resp_fail	; minor error number
 	call	kbc_data_read		; wait for ACK
-	jc	kbd_key_fail
+	jc	.keyboard_enable_error
+	mov	dl,e_kbd_nack_fail	; minor error number
 	cmp	al,kbd_rsp_ack
-	jne	kbd_key_fail		; XXX: print error if no keyboard
+	je	.keyboard_enable_ok	; ACK received, continue
+
+.keyboard_enable_error:
+	call	kbd_key_fail		; show the error on the POST display
+
+.keyboard_enable_ok:
+;-------------------------------------------------------------------------
 
 	mov	al,e_kbd_ok
 	out	post_reg,al
@@ -599,6 +693,13 @@ kbc_flush_fail:
 	hlt
 	jmp	.1
 
+kbc_cmd_fail:
+	mov	al,e_kbc_cmd_fail
+	out	post_reg,al
+.1:
+	hlt
+	jmp	.1
+
 kbc_test_fail:
 	mov	al,e_kbc_test_fail
 	out	post_reg,al
@@ -606,25 +707,41 @@ kbc_test_fail:
 	hlt
 	jmp	.1
 
-kbd_init_fail:
-	push	ax
-	add	al,e_kbd_init_fail
+kbc_int_fail:
+	mov	al,e_kbc_int_fail
 	out	post_reg,al
-	pop	ax
-	mov	cx,8000h
-	call	delay_15us
-	out	post_reg,al
-	mov	cx,8000h
-	call	delay_15us
-	jmp	kbd_init_fail
-
 .1:
 	hlt
 	jmp	.1
 
+;=========================================================================
+; kbd_key_fail - show keyboard initializaiton error on the POST display
+; Input:
+;	DH = major error number
+;	DL = minor error number
+;	AL = data or status code (DEBUG mode only)
+; Output:
+;	none
+;-------------------------------------------------------------------------
 kbd_key_fail:
-	mov	al,e_kbd_key_fail
-	out	post_reg,al
+	mov	cx,5			; repeat 5 times
+	mov	ah,al			; save AL in AH
 .1:
-	hlt
-	jmp	.1
+	push	cx
+	mov	al,dh			; show DH first (major error number)
+	out	post_reg,al
+	mov	cx,8000h		; wait approximately 0.5 seconds
+	call	delay_15us
+	mov	al,dl			; show DL next (minor error number)
+	out	post_reg,al
+	mov	cx,8000h		; wait approximately 0.5 seconds
+	call	delay_15us
+;%ifdef DEBUG
+	mov	al,ah			; show saved value of AL (data/status)
+	out	post_reg,al
+	mov	cx,8000h		; wait approximately 0.5 seconds
+	call	delay_15us
+;%endif ; DEBUG
+	pop	cx
+	loop	.1
+	ret
