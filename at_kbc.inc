@@ -561,23 +561,18 @@ kbc_init:
 	mov	al,kbc_cmd_aux_ena	; send enable auxiliary interface cmd
 	call	kbc_write_command
 
-; FIXME - do we need to retry it?
-;	mov	cx,10			; try 10 times
-;.mouse_reset_retry:
 	mov	al,aux_cmd_reset
 	call	kbc_aux_send
-	jnc	.mouse_reset_ok		; no error - continue
-	cmp	ah,03h			; timeout error?
-;	loopz	.mouse_reset_retry
-	jmp	.no_mouse
-.mouse_reset_ok:
+	cmp	ah,00h			; was the command sent successfully?
+	jne	.no_mouse
+
 	call	kbc_aux_read
 	jc	.no_mouse
 	cmp	al,0AAh			; Basic Assurance Test successful?
 	jne	.no_mouse
-	call	kbc_aux_read
+	call	kbc_aux_read		; read and throw away Mouse ID
 	jc	.no_mouse
-; mouse reset successful, update equipment word accordingly
+; mouse reset was successful, update equipment word accordingly
 	or      word [equipment_list],equip_mouse
 .no_mouse:
 %endif ; PS2_MOUSE
