@@ -200,8 +200,8 @@ kbc_wait_write:
 	ret
 
 ;=========================================================================
-; NEW: kbc_data_read - wait for data in keyboard controller output buffer
-;                  and read it
+; kbc_data_read - wait for data in keyboard controller output buffer
+;                 and read it
 ; Input:
 ;	none
 ; Output:
@@ -236,34 +236,6 @@ kbc_data_read:
 	pop	cx
 	ret
 
-;=========================================================================
-; kbc_wait_read - wait for data in keyboard controller output buffer
-; Input:
-;	none
-; Output:
-;	AL = keyboard status register
-;	CF == 0 - no error, data is available
-;	CF == 1 - timeout
-;-------------------------------------------------------------------------
-kbc_wait_read:
-	push	cx
-	mov	cx,kbc_ctr_timeout
-					; wait for data
-.wait:
-	in	al,kbc_status_reg
-	test	al,kbc_stat_obf
-	jnz	.exit			; note: test instruction sets CF=0
-	push	cx
-	mov	cx,4
-	call	delay_15us		; 45-60us I/O delay
-	pop	cx
-	loop	.wait
-	stc				; CF=1 - timeout
-	jmp	.exit
-.exit:
-	pop	cx
-	ret
-
 %ifdef PS2_MOUSE
 ;=========================================================================
 ; kbc_aux_read - read data from auxiliary device
@@ -271,18 +243,16 @@ kbc_wait_read:
 ;	none
 ; Output:
 ;	AL = data
+;	AH = keyboard controller status register
 ;	CF == 0 - no error
 ;	CF == 1 - timeout
 ;-------------------------------------------------------------------------
 kbc_aux_read:
-	call	kbc_wait_aux_read
-	jc	.exit			; CF==1 - timeout waiting for data
-	push	cx
-	mov	cx,1			; FIXME: why this delay is needed?
-	call	delay_15us
-	pop	cx
-	in	al,kbc_data_reg
-	clc				; set CF=0 - no error, data is in AL
+	call	kbc_data_read
+	jc	.exit			; CF==1 - timeout
+	test	ah,kbc_stat_aobf	; data from auxiliary device?
+	jnz	.exit			; note: test instruction sets CF=0
+	stc				; no auxiliary data, set CF=1
 .exit:
 	ret
 
@@ -308,12 +278,11 @@ kbc_aux_send:
 					; wait for acknowledge
 	mov	cx,10			; retry 10 times
 .retry:
-	call	kbc_wait_aux_read
-	jnc	.read_reply		; CF==0 - data is available
+	call	kbc_aux_read
+	jnc	.check_reply		; CF==0 - data is available
 	loop	.retry
 	jmp	.timeout		; no reply - timeout
-.read_reply:
-	in	al,kbc_data_reg
+.check_reply:
 	cmp	al,0FAh			; ACK?
 	je	.ok
 	cmp	al,0FEh			; resend?
@@ -389,24 +358,6 @@ kbc_aux_disable:
 ;		   `-- 0 == reserved, must be 0
 	call	kbc_send_cmd
 	pop	ax
-	ret
-
-;=========================================================================
-; kbc_wait_aux_read - wait for data in keyboard controller auxiliary buffer
-; Input:
-;	none
-; Output:
-;	AL = keyboard status register
-;	CF == 0 - no error, data is available
-;	CF == 1 - timeout or no data from an auxiliary device available
-;-------------------------------------------------------------------------
-kbc_wait_aux_read:
-	call	kbc_wait_read
-	jc	.exit			; CF==1 - timeout
-	test	al,kbc_stat_aobf
-	jnz	.exit			; note: test instruction sets CF=0
-	stc				; no auxiliary data, set CF=1
-.exit:
 	ret
 
 %endif ; PS2_MOUSE
