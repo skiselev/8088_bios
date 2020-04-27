@@ -60,24 +60,22 @@ kbc_in_display	equ	40h	; input port bit 6: 0 = MDA, 1 = CGA
 ; keyboard controller response timeout in 60us units
 kbc_ctr_timeout	equ     20000	; 1.2 seconds
 ; keyboard and auxiliary device commands
-kbd_cmd_leds	equ	0EDh	; keyboard set LEDs
-kbd_cmd_rate	equ	0F3h	; keyboard set typematic rate/delay
-kbd_cmd_enable	equ	0F4h	; keyboard enable
-kbd_cmd_disable	equ	0F5h	; keyboard disable 
-kbd_cmd_reset	equ	0FFh	; keyboard reset and self-test
 aux_cmd_scale11	equ	0E6h	; auxiliary device set 1:1 scaling factor
 aux_cmd_scale21	equ	0E7h	; auxiliary device set 2:1 scaling factor
 aux_cmd_resol	equ	0E8h	; auxiliary device set resolution
 aux_cmd_status	equ	0E9h	; auxiliary device get status
-aux_cmd_dev_id	equ	0F2h	; auxiliary device read device ID
-aux_cmd_rate	equ	0F3h	; auxiliary device set sample rate
-aux_cmd_enable	equ	0F4h	; auxiliary device enable
-aux_cmd_disable	equ	0F5h	; auxiliary device disable
-aux_cmd_reset	equ	0FFh	; auxiliary device reset and self-test
+kbd_cmd_leds	equ	0EDh	; keyboard set LEDs
+dev_cmd_dev_id	equ	0F2h	; read device ID
+dev_cmd_rate	equ	0F3h	; keyboard set typematic rate/delay
+				; auxiliary device set sample rate
+dev_cmd_enable	equ	0F4h	; device enable
+dev_cmd_disable	equ	0F5h	; device disable
+dev_cmd_reset	equ	0FFh	; reset and self-test
 ; keyboard and auxiliary device responses
-kbd_rsp_ack	equ	0FAh	; acknowledge
-kbd_rsp_bat_ok	equ	0AAh	; basic assurance test is OK
-
+dev_rsp_bat_ok	equ	0AAh	; basic assurance test is OK
+dev_rsp_ack	equ	0FAh	; acknowledge
+dev_rsp_error	equ	0FCh	; error (basic assurance test failed)
+dev_rsp_resend	equ	0FEh	; resend (invalid command or argument)
 
 ;=========================================================================
 ; kbc_kb_send - send command to keyboard, wait for acknowledge
@@ -283,11 +281,11 @@ kbc_aux_send:
 	loop	.retry
 	jmp	.timeout		; no reply - timeout
 .check_reply:
-	cmp	al,0FAh			; ACK?
+	cmp	al,dev_rsp_ack
 	je	.ok
-	cmp	al,0FEh			; resend?
+	cmp	al,dev_rsp_resend
 	je	.resend
-	cmp	al,0FCh			; error?
+	cmp	al,dev_rsp_error
 	je	.timeout		; treat as timeout/interface error
 	loop	.retry
 	jmp	.timeout
@@ -504,13 +502,13 @@ kbc_init:
 
 	call	kbc_data_read		; check for BAT code in the buffer
 	jc	.keyboard_reset		; timeout - reset the keyboard
-	cmp	al,kbd_rsp_bat_ok
+	cmp	al,dev_rsp_bat_ok
 	je	.keyboard_bat_ok	; all good, do not reset the keyboard
 
 .keyboard_reset:
 	mov	dh,e_kbd_bat_fail	; major error numbre
 	mov	dl,e_kbd_tout_fail	; minor error number
-	mov	al,kbd_cmd_reset
+	mov	al,dev_cmd_reset
 	call	kbc_write_data		; send reset command to the keyboard
 	jc	.keyboard_reset_error
 
@@ -518,14 +516,14 @@ kbc_init:
 	call	kbc_data_read		; wait for ACK
 	jc	.keyboard_reset_error
 	mov	dl,e_kbd_nack_fail	; minor error number
-	cmp	al,kbd_rsp_ack
+	cmp	al,dev_rsp_ack
 	jne	.keyboard_reset_error
 
 	mov	dl,e_kbd_rsp2_fail	; minor error number
 	call	kbc_data_read
 	jc	.keyboard_reset_error
 	mov	dl,e_kbd_nbat_fail	; minor error number
-	cmp	al,kbd_rsp_bat_ok
+	cmp	al,dev_rsp_bat_ok
 	je	.keyboard_bat_ok	; BAT received, continue
 
 .keyboard_reset_error:
@@ -538,7 +536,7 @@ kbc_init:
 
 	mov	dh,e_kbd_dis_fail	; major error number
 	mov	dl,e_kbd_tout_fail	; minor error number
-	mov	al,kbd_cmd_disable
+	mov	al,dev_cmd_disable
 	call	kbc_write_data		; send keyboard disable command
 	jc	.keyboard_disable_error
 
@@ -546,7 +544,7 @@ kbc_init:
 	call	kbc_data_read		; wait for ACK
 	jc	.keyboard_disable_error
 	mov	dl,e_kbd_nack_fail	; minor error number
-	cmp	al,kbd_rsp_ack
+	cmp	al,dev_rsp_ack
 	je	.keyboard_disable_ok	; ACK received, continue
 
 .keyboard_disable_error:
@@ -561,14 +559,14 @@ kbc_init:
 	mov	al,kbc_cmd_aux_ena	; send enable auxiliary interface cmd
 	call	kbc_write_command
 
-	mov	al,aux_cmd_reset
+	mov	al,dev_cmd_reset
 	call	kbc_aux_send
 	cmp	ah,00h			; was the command sent successfully?
 	jne	.no_mouse
 
 	call	kbc_aux_read
 	jc	.no_mouse
-	cmp	al,0AAh			; Basic Assurance Test successful?
+	cmp	al,dev_rsp_bat_ok	; Basic Assurance Test successful?
 	jne	.no_mouse
 	call	kbc_aux_read		; read and throw away Mouse ID
 	jc	.no_mouse
@@ -599,7 +597,7 @@ kbc_init:
 
 	mov	dh,e_kbd_ena_fail	; major error number
 	mov	dl,e_kbd_tout_fail	; minor error number
-	mov	al,kbd_cmd_enable
+	mov	al,dev_cmd_enable
 	call	kbc_write_data		; send keyboard enable command
 	jc	.keyboard_enable_error
 
@@ -607,7 +605,7 @@ kbc_init:
 	call	kbc_data_read		; wait for ACK
 	jc	.keyboard_enable_error
 	mov	dl,e_kbd_nack_fail	; minor error number
-	cmp	al,kbd_rsp_ack
+	cmp	al,dev_rsp_ack
 	je	.keyboard_enable_ok	; ACK received, continue
 
 .keyboard_enable_error:
