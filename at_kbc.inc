@@ -460,15 +460,6 @@ kbc_init:
 ; Disable keyboard and mouse interfaces so that they don't interfere with tests
 ; No error handling here. The controller and the keyboard are tested later
 
-;	mov	al,kbc_cmd_rd_ctr	; read controller configuration byte
-;	call	kbc_write_command
-;	call	kbc_data_read
-
-;	mov	ah,al
-;	and	ah,01110100b		; disable interrupts and
-					; clear reserved bits 7 and 4
-					; FIXME clear translation bit too?
-;	or	ah,00110000b		; disable interfaces
 	mov	ah,01110000b
 ;		   |||||||`-- 0 == disable OBF interrupt for keyboard (IRQ1)
 ;		   ||||||`-- 0 == disable OBF interrupt for aux port (IRQ12)
