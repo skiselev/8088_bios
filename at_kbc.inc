@@ -635,20 +635,6 @@ kbc_cmd_fail:
 	hlt
 	jmp	.1
 
-kbc_test_fail:
-	mov	al,e_kbc_test_fail
-	out	post_reg,al
-.1:
-	hlt
-	jmp	.1
-
-kbc_int_fail:
-	mov	al,e_kbc_int_fail
-	out	post_reg,al
-.1:
-	hlt
-	jmp	.1
-
 ;=========================================================================
 ; kbd_key_fail - show keyboard initializaiton error on the POST display
 ; Input:

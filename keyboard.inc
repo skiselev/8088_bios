@@ -173,7 +173,7 @@ int_16_fn03:
 	mov	cl,5
 	shl	bh,cl
 	and	bl,1Fh			; legal BL values from 0 to 1F
-	mov	al,kbd_cmd_rate
+	mov	al,dev_cmd_rate
 	call	kbc_kb_send
 	mov	al,bh
 	call	kbc_kb_send
@@ -604,7 +604,7 @@ set_LEDs:
 
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_write_command
-	mov	al,kbd_cmd_enable	; restart keyboard scanning
+	mov	al,dev_cmd_enable	; restart keyboard scanning
 	call	kbc_kb_send
 %endif ; AT_KEYBOARD
 	jmp	keyboard_int_exit1
