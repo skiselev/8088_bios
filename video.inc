@@ -197,21 +197,23 @@ TABMUL	db	00h,00h,10h,10h,20h,20h,20h,30h ; Table lookup for multiply
 ;-------------------------------------------------------------------------
 int_10_fn00:
 	mov	bl,byte [bp+int_10_al]	; BL = video mode
-	mov	cx,0B800h		; video memory segment for CGA
-	mov	dx,3D4h			; assume CGA mode
+					; assume CGA mode
+	mov	cx,0B800h		; CGA video memory segment
+	mov	dx,3D4h			; port for MC6845 CRTC address register
 	mov	al,0
 	cmp	bl,07h
-	jb	.color			; jump if monochrome mode
-	mov	ch,0B0h			; video memory segment for MDA
-	mov	dl,0B4h 		; 3B4h - monochrome port XXX
+	jb	.color			; jump if CGA/color mode
+					; set MDA mode
+	mov	ch,0B0h			; MDA video memory segment
+	mov	dl,0B4h 		; port for MC6845 CRTC address register
 	inc	al
 
 .color:
 	mov	es,cx			; ES = video memory segment
-	mov	word [video_port],dx	; Save cur. CRTC display port
+	mov	word [video_port],dx	; Save current CRTC display port
 	add	dl,4
 	out	dx,al			; Reset the video
-	mov	byte [video_mode],bl	;  ...save cur. CRTC mode
+	mov	byte [video_mode],bl	; Save current CRTC mode
 	mov	bh,0
 	push	bx
 	push	es
@@ -228,7 +230,7 @@ int_10_fn00:
 	mov	cx,10h			; Sixteen values to send
 
 .setup_crt_loop:
-    es	mov	al,byte [si]		; Value to send in si
+    es	mov	al,byte [si]		; Value to send in SI
 	call	vid_crtc_writeb			;  ...send it
 	inc	ah			;  ...bump count
 	inc	si			;  ...point to next
@@ -238,7 +240,7 @@ int_10_fn00:
 	mov	cx,2000h		; video memory size for CGA
 	xor	ax,ax			; fill word for graphics mode
 	call	vid_check_mode		; Set flags according to mode
-	jb	.clear_screen		; jump if graphics mode
+	jc	.clear_screen		; jump if graphics mode
 	jnz	.text_fill		; jump if CGA mode
 	mov	cx,0800h 		; video memory size for MDA
 
@@ -399,7 +401,7 @@ int_10_fn04:
 
 .1:
 	call	vid_check_mode			; check video mode
-	jnb	.text			; calculate character position if text
+	jnc	.text			; calculate character position if text
 	mov	dl,40			; divide by 40
 	div	dl			; AL = row, AH = column (reminder)
 	mov	bh,0
@@ -490,7 +492,7 @@ int_10_fn05:
 int_10_fn06:
 int_10_fn07:
 	call	vid_check_mode
-	jb	.graphics_scroll
+	jc	.graphics_scroll
 
 	xor	si,si			; SI - "snow" workaround not required
 	cmp	byte [video_mode],2
@@ -781,7 +783,7 @@ int_10_fn08:
 int_10_fn09:
 int_10_fn0A:
 	call	vid_check_mode
-	jb	.graphics		; jump if graphics mode
+	jc	.graphics		; jump if graphics mode
 	mov	bl,byte [bp+int_10_bh]	; BL = page number
 	mov	bh,0
 	push	bx
@@ -1269,7 +1271,7 @@ int_10_fn0E:
 	int	10h			; set new cursor position
 	call	vid_check_mode
 	mov	bh,0
-	jb	.do_scroll		; jump if text mode - do scroll
+	jc	.do_scroll		; jump if text mode - do scroll
 	mov	ah,08h			; INT 10h, function 08h - read char
 	int	10h			; read attirbute at current position
 	mov	bh,ah
@@ -1317,9 +1319,9 @@ vid_check_mode:
 	jz	.exit			; jump if monochrome
 	cmp	al,04h			; clears CF if graphics mode
 	cmc				; invert CF flag (CF = 1 - graphics)
-	jnb	.exit			; jump if not graphics
-	sbb	al,al			; XXX - what for? clear ZF?
-	stc				; XXX
+	jnc	.exit			; jump if not graphics (CF = 0, ZF = 0)
+	sbb	al,al			; AL=AL-(AL+CF) set CF and clear ZF?
+	stc				; set CF back
 
 .exit:
 	pop	ax

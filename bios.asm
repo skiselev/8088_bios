@@ -251,7 +251,7 @@ mouse_data	equ	28h	; 8 bytes - mouse data buffer
 %ifndef MACHINE_XT			; No space in XT ROM for font
 %include	"fnt80-FF.inc"		; font for graphics modes
 %endif ; MACHINE_XT
-;%include	"inttrace.inc"		; XXX
+;%include	"inttrace.inc"		; Uncomment for interrupt debugging
 %ifdef AT_RTC
 %include	"rtc.inc"		; RTC and CMOS read / write functions
 %endif ; AT_RTC
@@ -891,8 +891,8 @@ low_ram_ok:
 	out	pit_ctl_reg,al		; used for DRAM refresh on IBM PC/XT/AT
 	mov	al,12h			; or for delays (using port_b, bit 4)
 	out	pit_ch1_reg,al		; pulse every 15ms
-	mov	al,40h			; XXX timer latch
-	out	pit_ctl_reg,al
+	mov	al,40h			; channel 1, counter latch
+	out	pit_ctl_reg,al		; FIXME - not needed?
 
 ;-------------------------------------------------------------------------
 ; Play "power on" sound - also tests PIT functionality
