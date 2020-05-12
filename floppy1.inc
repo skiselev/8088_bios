@@ -1312,11 +1312,11 @@ fdc_reset:
 ;=========================================================================
 
 read_cmos_type:
-%ifdef BIOS_CONFIG
+%ifdef BIOS_SETUP
 	call	get_floppy
-%else ; BIOS_CONFIG
+%else ; BIOS_SETUP
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
-%endif ; BIOS_CONFIG
+%endif ; BIOS_SETUP
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
 	shr	al,1			; shift drive 0 bits 7-4 to 3-0
@@ -1682,7 +1682,7 @@ fdc_wait_ready:
 detect_floppy:
 %ifdef BIOS_SETUP
 	call	get_floppy
-%else ; FLASH_NVRAM
+%else ; BIOS_SETUP
 	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
 %endif ; BIOS_SETUP
 	cmp	al,00h			; No floppy drives?
