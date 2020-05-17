@@ -925,33 +925,33 @@ fdc_end_io:
 ; fdc_disk_change - Read disk change line, reset it if active
 ; Input:
 ;	AL = CMOS drive type
-;	DS:SI -> drive media type
+;	DS:SI = drive media type
 ; Output:
 ;	CF clear if disk not changed
 ;		AH = 00h - disk not changed
 ;	CF set if disk changed or on error
 ;		AH = 06h - disk changed
 ;		AH = error code
+;		AL - trashed
 ; Note:
 ;	Motor needs to be turned on before calling this function
 ;------------------------------------------------------------------------
 fdc_disk_change:
 	push	cx
-	mov	ah,0
+	mov	ah,al			; save AL value in AH
 	cmp	al,cmos_360
-	je	.exit			; jump if 360K drive (no change line)
+	je	.not_changed		; jump if 360K drive (no change line)
 	cmp	al,cmos_720
-	je	.exit			; jump if 720K drive (no change line)
-.cmos_invalid:
+	je	.not_changed		; jump if 720K drive (no change line)
 	mov	al,[si]			; media type
 	and	al,fdc_m_state_bits
-	jz	.exit			; jump if 360K drive (no change line)
+	jz	.not_changed		; jump if 360K drive (no change line)
 	cmp	al,3
-	je	.exit			; jump if 360K dirve (no change line)
+	je	.not_changed		; jump if 360K dirve (no change line)
 	mov	dx,fdc_dir_reg
 	in	al,dx			; read disk change line
 	shl	al,1
-	jnc	.exit			; no disk change
+	jnc	.not_changed		; no disk change
 	and	byte [si],0EFH		; media not detected
 	call	fdc_init		; full initialization
 	jc	.exit
@@ -971,6 +971,11 @@ fdc_disk_change:
 
 .changed_or_error:
 	stc
+	jmp	.exit
+
+.not_changed:
+	mov	al,ah			; restore AL
+	mov	ah,0			; AH = 00h - disk not changed
 
 .exit:
 	mov	dx,word [bp+int_13_dx]	; restore dx
@@ -1341,7 +1346,8 @@ read_cmos_type:
 ;=========================================================================
 ; fdc_detect_media - Detect media type, update it in fdc_media_state[drive]
 ; Input:
-;	none, expects drive number in [bp+int_13_dl]
+;	AL = CMOS drive type
+;	DS:SI = drive media type
 ; Output:
 ;	CF clear if successful
 ;		AH = 00h
@@ -1351,13 +1357,7 @@ read_cmos_type:
 fdc_detect_media:
 	push	dx
 	push	cx
-	push	bx
-	mov	dl,byte [bp+int_13_dl]	; DL - drive
-	mov	bx,fdc_media_state
-	add	bl,dl
-	call	read_cmos_type		; get drive type to AL
 	mov	ah,0
-	jc	.invalid_cmos		; invalid drive type in CMOS
 
 	cmp	al,cmos_720
 	je	.set_720
@@ -1369,15 +1369,10 @@ fdc_detect_media:
 	je	.detect_2880
 	
 	mov	al,fdc_m_360in360	; set 360K disk in 360K drive
-	jmp	.set_rate
+	jmp	.exit_set_media
 
 .set_720:
-	mov	al,fdc_m_720
-
-.set_rate:
-	push	ax
-	call	fdc_set_rate		; transfer rate in AL
-	pop	ax
+	mov	al,fdc_m_720		; set 720K disk
 	jmp	.exit_set_media
 
 .detect_1200:
@@ -1420,11 +1415,10 @@ fdc_detect_media:
 	mov	al,fdc_m_try_2880
 
 .exit_set_media:
-	mov	byte [bx],al		; set media type
+	mov	byte [si],al		; set media type
 
 .exit:
 	mov	byte [fdc_last_error],ah
-	pop	bx
 	pop	cx
 	pop	dx
 	ret
@@ -1491,15 +1485,15 @@ fdc_read_id:
 ;=========================================================================
 ; fdc_select_rate - Select FDC transfer rate
 ; Input:
-;	DS:SI   - media status
-;	DS:008B - last data rate selected
+;	DS:SI = drive media type
+;	DS:008B = last data rate selected
 ; Output:
 ;	AL = data transfer rate (bits 7-6)
-;	DS:008B - new data rate selected
+;	DS:008B = new data rate selected
 ;-------------------------------------------------------------------------
 fdc_select_rate:
-	mov	dh,byte [si]		; new media status
-	mov	dl,byte [fdc_last_rate]	; last selected rate
+	mov	dh,byte [si]		; DH - media state
+	mov	dl,byte [fdc_last_rate]	; DL - last selected rate
 	and	dx,0C0C0h		; mask rate bits
 	cmp	dl,dh			; new rate is the same as the last rate?
 	je	.exit			; exit if rate is already selected

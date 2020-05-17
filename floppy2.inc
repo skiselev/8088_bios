@@ -225,13 +225,12 @@ int_13_fn04:
 	jnz	.select_rate		; jump if media type is established
 
 	call	fdc_detect_media	; establish media type
-	jnc	.fdc_send_specify
-	jmp	.error_end_io
+	jc	.error_end_io
 
 .select_rate:
 	call	fdc_select_rate		; select transfer rate
 	
-.fdc_send_specify:
+; send FDC specify command
 	mov	ax,0BF03h		; FDC Specify command +
 					; 0BFh - specify byte 0 for 1.44M
 	cmp	byte [si],fdc_m_1440	; 1.44M?
