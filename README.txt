@@ -16,6 +16,18 @@ TODO:
 - Xi 8088: Debug mouse issue with Intel 8242
 - Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
 
+Changes - Version 0.9.8
+-----------------------
+- Merge Micro 8088 and Xi 8088 to master branch (use same code base)
+- Implement BIOS setup option for F0000-F7FFF area extension ROM scan
+- Fix FDC data rate setting on systems with 360KB/720KB drives
+- Update the number of floppies in equipment_word when saving configuration
+- Revise POST codes. Display POST code prior to an action, such as device
+  test or subsystem initialization
+- Micro 8088: RTC autodetect fixes
+- Micro 8088: Fix floppy drives configuration
+- Xi 8088: AT / PS/2 keyboard controller initialization code improved
+
 Changes - Version 0.9.7
 -----------------------
 - Micro 8088: Implement RTC support and autodetect (based on the code
@@ -147,7 +159,6 @@ TODO
 - [low] Keyboard - sound on buffer overflow
 - [low] More tests - RTC, memory, DMA
 - [low] Pause if something in POST fails, so user can read messages
-- [low] Reset turbo bit during boot
 - [low] Init display before keyboard, so KBD errors can be displayed
         Alternatively store non-fatal errors and display them after display
         is initialized
