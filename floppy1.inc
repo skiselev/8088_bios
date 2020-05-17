@@ -1,6 +1,5 @@
 ;=========================================================================
 ; floppy1.inc - BIOS floppy disk services (part 1 of 2)
-;       INT 13h, function AH=00h
 ;       INT 13h, function AH=01h
 ;       INT 13h, function AH=08h
 ;       INT 13h, function AH=15h
@@ -122,106 +121,6 @@ cmos_1200	equ	02h
 cmos_720	equ	03h
 cmos_1440	equ	04h
 cmos_2880	equ	06h
-
-;=========================================================================
-; int_13_fn00: Reset disk system
-; Input:
-;	AH = 00h
-;	DL = drive number (bit 7 not set - floppy drive)
-; Output:
-;	CF clear if successful
-;		AH = 00h - successful completion
-;	CF set on error
-;		AH = 20h - controller failure
-;		AH = 80h - timeout / device not ready
-; Note:
-;	This function doesn't check drive number, but HDD BIOS (if installed)
-;	normally will call this functions if bit 7 of DL is not set
-;-------------------------------------------------------------------------
-int_13_fn00:
-	call	fdc_init
-	mov	[fdc_last_error],ah	; save the error code
-	jmp	int_13_exit
-
-;=========================================================================
-; fdc_init - Initialize floppy disk controller
-; Input:
-;	none
-; Output:
-;	CF clear on success
-;		AH = 00h - successful completion
-;	CF set if error
-;		AH = 20h - controller failure
-;		AH = 80h - timeout / device not ready
-;-------------------------------------------------------------------------
-fdc_init:
-	and	byte [fdc_calib_state],0F0h ; require recalibration
-	call	fdc_reset		; reset FDC
-	jc	fdc_init_error
-	mov	dx,fdc_status_reg
-	in	al,dx
-	test	al,80h
-	jz	.try_again		; try again if FDC not ready
-	test	al,40h
-	jz	.fdc_ready		; FDC ready to recieve data
-.try_again:
-	call	fdc_reset
-	mov	dx,fdc_status_reg
-	in	al,dx
-	test	al,80h
-	jz	fdc_init_error
-	test	al,40h
-	jnz	fdc_init_error
-.fdc_ready:
-	mov	al,08h			; FDC Sense Interrupt Status command
-	call	fdc_write		; send the command
-	jc	fdc_init_error
-	call	fdc_read		; read ST0
-	jc	fdc_init_error
-	mov	byte [fdc_ctrl_status],al	; save ST0
-	mov	ah,al			; save AL to AH
-	call	fdc_read		; read current cylinder
-	jc	fdc_init_error
-	mov	byte [fdc_ctrl_status+1],al	; save
-	and	ah,0C0h
-	cmp	ah,0C0h			; abnormal termination?
-	jne	fdc_init_error	; not an abnormal termination
-
-; fall through to fdc_send_specify
-
-;=========================================================================
-; fdc_send_specify - Send specify command to FDC
-; Input:
-;	none
-; Output:
-;	CF clear on success
-;		AH = 00 - successful completion
-;	CF set if error
-;		AH = 20h - controller failure
-;	AX,CL,SI trashed
-; Note:
-;	Specify command parameters are obtained from table at INT 1Eh vector
-;-------------------------------------------------------------------------
-fdc_send_specify:
-
-	push	ds
-	xor	ax,ax
-	mov	ds,ax
-	lds	si,[1Eh*4]		; DS:SI -> INT 1Eh
-	mov	al,3		 	; FDC Specify command
-	mov	ah,byte [si]		; specify command - byte 0
-	mov	si,word [si+1]		; specify command - byte 1
-	mov	cl,3			; command length 3 bytes (AX, SI - low)
-	pop	ds
-	call	fdc_send_cmd		; send specify command to FDC
-	jc	fdc_init_error
-	mov	ah,fdc_e_success	; successful completion
-	ret
-
-fdc_init_error:
-	mov	ah,fdc_e_failure
-	stc
-	ret
 
 ;=========================================================================
 ; int_13_fn01 - Get status of last operation
