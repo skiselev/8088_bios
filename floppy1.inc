@@ -1491,15 +1491,14 @@ fdc_read_id:
 ;=========================================================================
 ; fdc_select_rate - Select FDC transfer rate
 ; Input:
-;	none
+;	DS:SI   - media status
+;	DS:008B - last data rate selected
 ; Output:
 ;	AL = data transfer rate (bits 7-6)
+;	DS:008B - new data rate selected
 ;-------------------------------------------------------------------------
 fdc_select_rate:
-	push	bx
-	mov	bx,fdc_media_state
-	add	bl,dl			; SI -> drive media state
-	mov	dh,byte [bx]		; new media status
+	mov	dh,byte [si]		; new media status
 	mov	dl,byte [fdc_last_rate]	; last selected rate
 	and	dx,0C0C0h		; mask rate bits
 	cmp	dl,dh			; new rate is the same as the last rate?
@@ -1510,7 +1509,6 @@ fdc_select_rate:
 	call	fdc_set_rate		; send new rate (in AL) to FDC
 
 .exit:
-	pop	bx
 	mov	dx,word [bp+int_13_dx]	; restore DX
 	ret
 

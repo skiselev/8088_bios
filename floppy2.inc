@@ -217,17 +217,18 @@ int_13_fn04:
 
 .motor_on:
 	call	fdc_motor_on
-	cmp	al,cmos_360
-	je	.set_media_360		; set media type for 360K drive
-	cmp	al,cmos_720
-	je	.set_media_720		; set media type for 720K drive
 
 	call	fdc_disk_change
 	jc	.error_end_io		; jump if disk change check failed
 
 	test	byte [si],fdc_m_established
-	jz	.establish_media	; jump if media type is not established
+	jnz	.select_rate		; jump if media type is established
 
+	call	fdc_detect_media	; establish media type
+	jnc	.fdc_send_specify
+	jmp	.error_end_io
+
+.select_rate:
 	call	fdc_select_rate		; select transfer rate
 	
 .fdc_send_specify:
@@ -371,29 +372,6 @@ int_13_fn04:
 	mov	ax,fdc_e_invalid << 8	; AH = 01h, AL = 00h (0 sectors trans)
 	jmp	.error
 
-; 360K and 720K drives don't support change line, and only support
-; one media type - set it here
-
-.set_media_360:
-	mov	al,fdc_m_360in360	; 250Kbps, media established, 360K/360K
-	jmp	.set_media
-
-.set_media_720:
-	mov	al,fdc_m_720		; 250Kbps, media established, 720K/720K
-
-.set_media:
-	mov	byte [si],al		; save media state
-	call	fdc_set_rate		; send transfer rate (in AL) to FDC
-	mov	dx,word [bp+int_13_dx]	; restore DX (trashed by fdc_set_rate)
-	jmp	.fdc_send_specify
-
-; establish media type
-
-.establish_media:
-	call	fdc_detect_media
-	jc	.error_end_io
-	jmp	.fdc_send_specify
-	
 
 ;=========================================================================
 ; int_13_fn05 - Format track
