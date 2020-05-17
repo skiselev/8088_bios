@@ -4,7 +4,7 @@
 ;
 ; Compiles with NASM 2.11.08, might work with other versions
 ;
-; Copyright (C) 2010 - 2019 Sergey Kiselev.
+; Copyright (C) 2010 - 2020 Sergey Kiselev.
 ; Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 ;
 ; This program is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ msg_copyright	db	0Dh, 0Ah
 		db	" BIOS, Version "
 		db	VERSION
 		db	". "
-		db	"Copyright (C) 2010 - 2019 Sergey Kiselev", 0Dh, 0Ah
+		db	"Copyright (C) 2010 - 2020 Sergey Kiselev", 0Dh, 0Ah
 		db	"Distributed under the terms of "
 		db	"the GNU General Public License", 0Dh, 0Ah
 msg_crlf	db      0Dh, 0Ah, 00h
