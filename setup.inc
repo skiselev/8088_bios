@@ -557,6 +557,7 @@ nvram_setup:
 %ifdef FLASH_NVRAM
 	call	flash_save
 %endif ; FLASH_NVRAM
+	call	detect_floppy		; set floppies in equipment_list
 	jmp	.exit
 
 .no_save:
