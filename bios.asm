@@ -625,7 +625,7 @@ cold_start:
 warm_start:
 	cli				; disable interrupts
 	cld				; clear direction flag
-	mov	al,e_start
+	mov	al,e_cpu_test
 	out	post_reg,al		; POST start code
 
 ;-------------------------------------------------------------------------
@@ -699,11 +699,12 @@ cpu_fail:
 ; CPU test passed
 
 cpu_ok:
-	mov	al,e_cpu_ok
-	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ; disable NMI, turbo mode, and video output on CGA and MDA
+
+	mov	al,e_init_cfg
+	out	post_reg,al
 
 %ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
@@ -746,6 +747,8 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; Initialize DMAC (8237)
  
+	mov	al,e_init_dmac
+	out	post_reg,al
  	out	0Dh,al			; DMA Master Clear register - reset DMA
  	mov	al,40h			; single mode, verify, channel 0
  	out	dmac_mode_reg,al	; DMA Mode register
@@ -765,13 +768,12 @@ cpu_ok:
  	out	81h,al			; DMA Page, channel 2
  	out	82h,al			; DMA Page, channel 3
  	out	83h,al			; DMA Page, channels 0,1
-	mov	al,e_dmac_ok
-	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ; Test first 32 KiB (MIN_RAM_SIZE) of RAM
 
-low_ram_test:
+	mov	al,e_low_ram_test
+	out	post_reg,al
 	xor	si,si
 	xor	di,di
 	mov	ds,di
@@ -837,8 +839,6 @@ low_ram_fail:
 
 low_ram_ok:
 	mov	word [warm_boot+biosdseg*16],dx ; restore soft reset flag
-	mov	al,e_low_ram_ok
-	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ; Set up stack - using upper 256 bytes of interrupt table
@@ -850,6 +850,8 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; Initialize interrupt table
 
+	mov     al,e_int_table
+	out	post_reg,al
 	push	cs
 	pop	ds
 	xor	di,di
@@ -870,8 +872,6 @@ low_ram_ok:
 	stosw				; store segment part
 	loop	.2
 %endif ; SECOND_PIC
-	mov     al,e_int_ok
-	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ; set DS to BIOS data area
@@ -896,14 +896,16 @@ low_ram_ok:
 
 ;-------------------------------------------------------------------------
 ; Play "power on" sound - also tests PIT functionality
-	call	sound
 
-	mov     al,e_pit_ok		; PIT initialization successful
+	mov     al,e_pit_init
 	out	post_reg,al
+	call	sound
 
 ;-------------------------------------------------------------------------
 ; Initialize PIC (8259)
 
+	mov	al,e_pic_init
+	out	post_reg,al
 %ifdef SECOND_PIC
 	mov	al,11h			; ICW1 - edge triggered, cascade, ICW4
 	out	pic1_reg0,al
@@ -926,13 +928,13 @@ low_ram_ok:
 	out	pic1_reg1,al
 	mov	al,9			; ICW4 - buffered mode, 8086/8088
 	out	pic1_reg1,al
-	mov	al,e_pic_ok
-	out	post_reg,al
 %endif ; SECOND_PIC
 
 ;-------------------------------------------------------------------------
 ; initialize keyboard controller (8242), keyboard and PS/2 auxiliary device
 
+	mov	al,e_kbd_init
+	out	post_reg,al
 %ifdef AT_KEYBOARD
 	call	kbc_init
 %else ; AT_KEYBOARD
@@ -960,12 +962,11 @@ low_ram_ok:
 
 	call	kbd_buffer_init		; setup keyboard buffer
 
-	mov	al,e_kbd_ok
-	out	post_reg,al
-
 ;-------------------------------------------------------------------------
 ; enable interrupts
 
+	mov	al,e_int_ena
+	out	post_reg,al
 %ifdef SECOND_PIC
 	mov	al,0B8h		; OSW1: unmask timer, keyboard, IRQ2 and FDC
 	out	pic1_reg1,al
@@ -1005,23 +1006,25 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; look for video BIOS, initialize it if present
 
+	mov	al,e_vid_bios_scan
+	out	post_reg,al
 	mov	dx,0C000h
 	mov	bx,0C800h
 	call	extension_scan
 	cmp	word [67h],0
 	jz	.no_video_bios
-	mov	al,e_video_bios_ok
+	mov	al,e_vid_bios_init
 	out	post_reg,al
 	call	far [67h]
 	mov	ax,biosdseg		; DS = BIOS data area
 	mov	ds,ax
-	mov	al,e_video_init_ok
-	out	post_reg,al
 ; set video bits to 00 - EGA or later (Video adapter with BIOS)		
 	and	word [equipment_list],~equip_video
 	jmp	.video_initialized
 
 .no_video_bios:
+	mov	al,e_vid_no_bios
+	out	post_reg,al
 	mov	ah,byte [equipment_list] ; get equipment - low byte
 	and	ah,equip_video		; get video adapter type
 	mov	al,07h			; monochrome 80x25 mode

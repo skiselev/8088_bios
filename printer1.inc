@@ -86,6 +86,9 @@ detect_parallel:
 	push	bx
 	push	dx
 	push	si
+	mov	al,e_parallel_scan
+	out	post_reg,al
+
 	mov	bx,1414h		; default timeout is 20 seconds
 	mov	word [printer_timeout],bx   ; initialize timeout values
 	mov	word [printer_timeout+2],bx ; for all 4 ports
@@ -156,9 +159,6 @@ detect_parallel:
 .done:
 	mov	si,msg_crlf
 	call	print
-
-	mov	al,e_parallel_ok	; parallel port detection complete
-	out	post_reg,al
 
 	pop	si
 	pop	dx

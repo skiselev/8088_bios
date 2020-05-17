@@ -614,8 +614,6 @@ kbc_init:
 .keyboard_enable_ok:
 ;-------------------------------------------------------------------------
 
-	mov	al,e_kbd_ok
-	out	post_reg,al
 	pop	dx
 	pop	cx
 	pop	ax
@@ -657,12 +655,10 @@ kbd_key_fail:
 	out	post_reg,al
 	mov	cx,8000h		; wait approximately 0.5 seconds
 	call	delay_15us
-;%ifdef DEBUG
 	mov	al,ah			; show saved value of AL (data/status)
 	out	post_reg,al
 	mov	cx,8000h		; wait approximately 0.5 seconds
 	call	delay_15us
-;%endif ; DEBUG
 	pop	cx
 	loop	.1
 	ret

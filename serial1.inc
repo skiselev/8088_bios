@@ -212,6 +212,9 @@ detect_serial:
 	push	bx
 	push	dx
 	push	si
+	mov	al,e_serial_scan
+	out	post_reg,al
+
 	mov	si,msg_serial
 	call	print
 	mov	bx,0101h		; the default timeout is 1 sec
@@ -270,9 +273,6 @@ detect_serial:
 .done:
 	mov	si,msg_crlf
 	call	print
-
-	mov	al,e_serial_ok		; serial port detection complete
-	out	post_reg,al
 
 	pop	si
 	pop	dx

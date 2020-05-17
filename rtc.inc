@@ -203,6 +203,8 @@ rtc_init:
 	push	cx
 	push	dx
 	push	si
+	mov	al,e_rtc_init
+	out	post_reg,al
 	mov	al,cmos_control_a	; select control A register
 	mov	ah,26h			; turn on oscillator and time keeping
 					; set SQW frequency to 1.024 KHz
@@ -302,8 +304,6 @@ rtc_init:
 	and	byte [equipment_list],equip_video|equip_mouse
 	or	byte [equipment_list],al
 
-	mov	al,e_rtc_init_ok	; RTC initialized successfully
-	out	post_reg,al
 %endif ; AT_RTC_NVRAM
 
 .exit:

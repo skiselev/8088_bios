@@ -33,6 +33,9 @@ flags_tf	equ	0100h		; TF flag - enables single-step
 detect_cpu:
 	push	ax
 	push	si
+	mov	al,e_cpu_detect
+	out	post_reg,al
+
 	mov	si,msg_cpu
 	call	print
 
@@ -128,9 +131,6 @@ detect_cpu:
 	call	print
 
 .exit:
-	mov	al,e_cpu_detect_ok	; CPU detection finished
-	out	post_reg,al
-
 	pop	si
 	pop	ax
 	ret
@@ -163,6 +163,9 @@ detect_fpu:
 	push	ax
 	push	cx
 	push	si
+	mov	al,e_fpu_detect
+	out	post_reg,al
+
 	mov	si,msg_fpu
 	call	print
 	fninit				; initialize coprocessor
@@ -190,9 +193,6 @@ detect_fpu:
 
 .exit:
 	mov	word [test_word],cx	; restore initial value of test_word
-
-	mov	al,e_fpu_detect_ok	; FPU detection finished
-	out	post_reg,al
 
 	pop	si
 	pop	cx
