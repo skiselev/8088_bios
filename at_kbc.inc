@@ -620,15 +620,15 @@ kbc_init:
 	ret
 
 kbc_flush_fail:
-	mov	al,e_kbc_flsh_fail
-	out	post_reg,al
+	mov	al,e_kbc_flsh_fail	
+	call code_post
 .1:
 	hlt
 	jmp	.1
 
 kbc_cmd_fail:
-	mov	al,e_kbc_cmd_fail
-	out	post_reg,al
+	mov	al,e_kbc_cmd_fail	
+	call code_post
 .1:
 	hlt
 	jmp	.1
@@ -647,16 +647,16 @@ kbd_key_fail:
 	mov	ah,al			; save AL in AH
 .1:
 	push	cx
-	mov	al,dh			; show DH first (major error number)
-	out	post_reg,al
+	mov	al,dh			; show DH first (major error number)	
+	call code_post
 	mov	cx,8000h		; wait approximately 0.5 seconds
 	call	delay_15us
-	mov	al,dl			; show DL next (minor error number)
-	out	post_reg,al
+	mov	al,dl			; show DL next (minor error number)	
+	call code_post
 	mov	cx,8000h		; wait approximately 0.5 seconds
 	call	delay_15us
-	mov	al,ah			; show saved value of AL (data/status)
-	out	post_reg,al
+	mov	al,ah			; show saved value of AL (data/status)	
+	call code_post
 	mov	cx,8000h		; wait approximately 0.5 seconds
 	call	delay_15us
 	pop	cx

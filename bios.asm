@@ -350,8 +350,8 @@ boot_os:
 	call	set_cpu_clk		; set CPU clock
 %endif ; TURBO_MODE
 
-	mov	al,e_boot		; boot the OS POST code
-	out	post_reg,al
+	mov	al,e_boot		; boot the OS POST code	
+	call code_post
 
 	mov	si,msg_boot
 	call	print
@@ -475,6 +475,67 @@ print_digit:
 	int	10h
 	pop	bx
 	pop	ax
+	ret
+
+;=========================================================================
+; code_post
+; Input:
+;	AL - byte to print
+; Output:
+;	none
+;-------------------------------------------------------------------------
+code_post:
+	
+	out	post_reg,al
+	push es
+	push dx
+	push ax
+			
+	mov dx,0b800h
+	mov es,dx
+	mov ah, 01Fh ; Attribute Bright White over Blue
+	
+	rol	al,1
+	rol	al,1
+	rol	al,1
+	rol	al,1
+	push ax	
+	call get_digit	
+	es	mov	word [13Ah],ax ; (Position 1, 77)
+	pop ax
+	
+	rol	al,1
+	rol	al,1
+	rol	al,1
+	rol	al,1	
+	call get_digit	
+	es	mov	word [13Ch],ax ; (Position 1, 78)
+		
+	pop ax
+	pop dx
+	pop es
+	push cx
+	mov cx, 0F000h ; A bit delay to visualization
+.delay
+	nop
+	loop .delay
+	pop cx
+	ret
+	
+;=========================================================================
+; get_digit - get hexadecimal digit
+; Input:
+;	AL - bits 3...0
+; Output:
+;	AL - digit to print (0...F)
+;-------------------------------------------------------------------------
+get_digit:	
+	and	al,0Fh
+	add	al,'0'			; convert to ASCII
+	cmp	al,'9'			; less or equal 9?
+	jna	.2
+	add	al,'A'-'9'-1		; a hex digit
+.2:
 	ret
 
 %ifdef EBDA_SIZE
@@ -625,8 +686,9 @@ cold_start:
 warm_start:
 	cli				; disable interrupts
 	cld				; clear direction flag
-	mov	al,e_cpu_test
-	out	post_reg,al		; POST start code
+	mov	al,e_cpu_test	
+	call code_post		; POST start code
+	
 
 ;-------------------------------------------------------------------------
 ; test CPU's FLAG register
@@ -675,8 +737,8 @@ warm_start:
 	jz	cpu_ok
 
 cpu_fail:
-	mov	al,e_cpu_fail
-	out	post_reg,al
+	mov	al,e_cpu_fail	
+	call code_post
 
 ;-------------------------------------------------------------------------
 ; CPU error: continious beep - 400 Hz
@@ -703,8 +765,8 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; disable NMI, turbo mode, and video output on CGA and MDA
 
-	mov	al,e_init_cfg
-	out	post_reg,al
+	mov	al,e_init_cfg	
+	call code_post
 
 %ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
@@ -747,8 +809,8 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; Initialize DMAC (8237)
  
-	mov	al,e_init_dmac
-	out	post_reg,al
+	mov	al,e_init_dmac	
+	call code_post	
  	out	0Dh,al			; DMA Master Clear register - reset DMA
  	mov	al,40h			; single mode, verify, channel 0
  	out	dmac_mode_reg,al	; DMA Mode register
@@ -772,8 +834,8 @@ cpu_ok:
 ;-------------------------------------------------------------------------
 ; Test first 32 KiB (MIN_RAM_SIZE) of RAM
 
-	mov	al,e_low_ram_test
-	out	post_reg,al
+	mov	al,e_low_ram_test	
+	call code_post	
 	xor	si,si
 	xor	di,di
 	mov	ds,di
@@ -806,8 +868,8 @@ cpu_ok:
 	jmp	low_ram_ok		; test passed
 
 low_ram_fail:
-	mov	al,e_low_ram_fail	; test failed
-	out	post_reg,al
+	mov	al,e_low_ram_fail	; test failed	
+	call code_post
 
 ;-------------------------------------------------------------------------
 ;  Low memory error: beep - pause - beep - pause ... - 400 Hz
@@ -850,8 +912,8 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; Initialize interrupt table
 
-	mov     al,e_int_table
-	out	post_reg,al
+	mov     al,e_int_table	
+	call code_post
 	push	cs
 	pop	ds
 	xor	di,di
@@ -897,15 +959,15 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; Play "power on" sound - also tests PIT functionality
 
-	mov     al,e_pit_init
-	out	post_reg,al
+	mov     al,e_pit_init	
+	call code_post
 	call	sound
 
 ;-------------------------------------------------------------------------
 ; Initialize PIC (8259)
 
-	mov	al,e_pic_init
-	out	post_reg,al
+	mov	al,e_pic_init	
+	call code_post
 %ifdef SECOND_PIC
 	mov	al,11h			; ICW1 - edge triggered, cascade, ICW4
 	out	pic1_reg0,al
@@ -933,8 +995,8 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; initialize keyboard controller (8242), keyboard and PS/2 auxiliary device
 
-	mov	al,e_kbd_init
-	out	post_reg,al
+	mov	al,e_kbd_init	
+	call code_post
 %ifdef AT_KEYBOARD
 	call	kbc_init
 %else ; AT_KEYBOARD
@@ -965,8 +1027,8 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; enable interrupts
 
-	mov	al,e_int_ena
-	out	post_reg,al
+	mov	al,e_int_ena	
+	call code_post	
 %ifdef SECOND_PIC
 	mov	al,0B8h		; OSW1: unmask timer, keyboard, IRQ2 and FDC
 	out	pic1_reg1,al
@@ -1006,15 +1068,15 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; look for video BIOS, initialize it if present
 
-	mov	al,e_vid_bios_scan
-	out	post_reg,al
+	mov	al,e_vid_bios_scan	
+	call code_post
 	mov	dx,0C000h
 	mov	bx,0C800h
 	call	extension_scan
 	cmp	word [67h],0
 	jz	.no_video_bios
-	mov	al,e_vid_bios_init
-	out	post_reg,al
+	mov	al,e_vid_bios_init	
+	call code_post
 	call	far [67h]
 	mov	ax,biosdseg		; DS = BIOS data area
 	mov	ds,ax
@@ -1023,8 +1085,8 @@ low_ram_ok:
 	jmp	.video_initialized
 
 .no_video_bios:
-	mov	al,e_vid_no_bios
-	out	post_reg,al
+	mov	al,e_vid_no_bios	
+	call code_post
 	mov	ah,byte [equipment_list] ; get equipment - low byte
 	and	ah,equip_video		; get video adapter type
 	mov	al,07h			; monochrome 80x25 mode
@@ -1267,8 +1329,8 @@ config_table:
 ;-------------------------------------------------------------------------
 
 detect_rom_ext:
-	mov	al,e_ext_start		; ROM extension scan start
-	out	post_reg,al
+	mov	al,e_ext_start		; ROM extension scan start	
+	call code_post
 
 	mov	dx,0C800h
 	mov	bx,0F800h
@@ -1283,8 +1345,8 @@ detect_rom_ext:
 	call	extension_scan
 	cmp	word [67h],0
 	jz	.ext_scan_done		; No ROM extension found
-	mov	al,e_ext_detect		; ROM extension found
-	out	post_reg,al
+	mov	al,e_ext_detect		; ROM extension found	
+	call code_post
 	mov	si,msg_rom_found
 	call	print
 	mov	ax,word [69h]		; ROM extension's segment
@@ -1296,15 +1358,15 @@ detect_rom_ext:
 	call	far [67h]
 	mov	ax,biosdseg		; DS = BIOS data area
 	mov	ds,ax
-	mov	al,e_ext_init_ok	; ROM extension initialized
-	out	post_reg,al
+	mov	al,e_ext_init_ok	; ROM extension initialized	
+	call code_post
 	pop	dx
 	pop	bx
 	jmp	.ext_scan_loop
 
 .ext_scan_done:
-	mov	al,e_ext_complete	; ROM extension scan complete
-	out	post_reg,al
+	mov	al,e_ext_complete	; ROM extension scan complete	
+	call code_post
 
 	ret
 
@@ -1466,8 +1528,8 @@ ipl:
 ;	CX, SI - trashed
 ;-------------------------------------------------------------------------
 detect_ram:
-	mov	al,e_ram_start		; RAM scan start
-	out	post_reg,al
+	mov	al,e_ram_start		; RAM scan start	
+	call code_post
 
 	push	ds
 	mov	cl,6			; for SHL - converting KiB to segment
@@ -1543,8 +1605,8 @@ detect_ram:
 	jb	.test_loop
 
 	push	ax
-	mov	al,e_ram_complete	; RAM scan complete
-	out	post_reg,al
+	mov	al,e_ram_complete	; RAM scan complete	
+	call code_post
 	pop	ax
 
 	jmp	.test_done
@@ -1554,8 +1616,8 @@ detect_ram:
 	mov	ax,word [memory_size]
 
 	push	ax
-	mov	al,e_ram_esc		; RAM scan canceled
-	out	post_reg,al
+	mov	al,e_ram_esc		; RAM scan canceled	
+	call code_post
 	pop	ax
 
 	jmp	.test_done
@@ -1571,8 +1633,8 @@ detect_ram:
 	call	print
 
 	push	ax
-	mov	al,e_ram_fail		; RAM scan failed
-	out	post_reg,al
+	mov	al,e_ram_fail		; RAM scan failed	
+	call code_post
 	pop	ax
 
 .test_done:

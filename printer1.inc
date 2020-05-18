@@ -86,8 +86,8 @@ detect_parallel:
 	push	bx
 	push	dx
 	push	si
-	mov	al,e_parallel_scan
-	out	post_reg,al
+	mov	al,e_parallel_scan	
+	call code_post
 
 	mov	bx,1414h		; default timeout is 20 seconds
 	mov	word [printer_timeout],bx   ; initialize timeout values
