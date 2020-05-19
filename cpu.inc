@@ -34,7 +34,7 @@ detect_cpu:
 	push	ax
 	push	si
 	mov	al,e_cpu_detect	
-	call code_post
+	out	post_reg,al
 
 	mov	si,msg_cpu
 	call	print
@@ -164,7 +164,7 @@ detect_fpu:
 	push	cx
 	push	si
 	mov	al,e_fpu_detect	
-	call code_post
+	out	post_reg,al
 
 	mov	si,msg_fpu
 	call	print

@@ -515,7 +515,7 @@ code_post:
 	pop dx
 	pop es
 	push cx
-	mov cx, 0F000h ; A bit delay to visualization
+	mov cx, 0E000h ; A bit delay to visualization
 .delay
 	nop
 	loop .delay
@@ -687,7 +687,7 @@ warm_start:
 	cli				; disable interrupts
 	cld				; clear direction flag
 	mov	al,e_cpu_test	
-	call code_post		; POST start code
+	out	post_reg,al		; POST start code
 	
 
 ;-------------------------------------------------------------------------
@@ -738,7 +738,7 @@ warm_start:
 
 cpu_fail:
 	mov	al,e_cpu_fail	
-	call code_post
+	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ; CPU error: continious beep - 400 Hz
@@ -766,7 +766,7 @@ cpu_ok:
 ; disable NMI, turbo mode, and video output on CGA and MDA
 
 	mov	al,e_init_cfg	
-	call code_post
+	out	post_reg,al
 
 %ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
@@ -810,7 +810,7 @@ cpu_ok:
 ; Initialize DMAC (8237)
  
 	mov	al,e_init_dmac	
-	call code_post	
+	out	post_reg,al	
  	out	0Dh,al			; DMA Master Clear register - reset DMA
  	mov	al,40h			; single mode, verify, channel 0
  	out	dmac_mode_reg,al	; DMA Mode register
@@ -835,7 +835,7 @@ cpu_ok:
 ; Test first 32 KiB (MIN_RAM_SIZE) of RAM
 
 	mov	al,e_low_ram_test	
-	call code_post	
+	out	post_reg,al	
 	xor	si,si
 	xor	di,di
 	mov	ds,di
@@ -869,7 +869,7 @@ cpu_ok:
 
 low_ram_fail:
 	mov	al,e_low_ram_fail	; test failed	
-	call code_post
+	out	post_reg,al
 
 ;-------------------------------------------------------------------------
 ;  Low memory error: beep - pause - beep - pause ... - 400 Hz
@@ -913,7 +913,7 @@ low_ram_ok:
 ; Initialize interrupt table
 
 	mov     al,e_int_table	
-	call code_post
+	out	post_reg,al
 	push	cs
 	pop	ds
 	xor	di,di
@@ -959,15 +959,15 @@ low_ram_ok:
 ;-------------------------------------------------------------------------
 ; Play "power on" sound - also tests PIT functionality
 
-	mov     al,e_pit_init	
-	call code_post
-	call	sound
+;	mov     al,e_pit_init	
+;	out	post_reg,al
+;	call	sound
 
 ;-------------------------------------------------------------------------
 ; Initialize PIC (8259)
 
 	mov	al,e_pic_init	
-	call code_post
+	out	post_reg,al
 %ifdef SECOND_PIC
 	mov	al,11h			; ICW1 - edge triggered, cascade, ICW4
 	out	pic1_reg0,al
@@ -996,7 +996,7 @@ low_ram_ok:
 ; initialize keyboard controller (8242), keyboard and PS/2 auxiliary device
 
 	mov	al,e_kbd_init	
-	call code_post
+	out	post_reg,al
 %ifdef AT_KEYBOARD
 	call	kbc_init
 %else ; AT_KEYBOARD
@@ -1028,7 +1028,7 @@ low_ram_ok:
 ; enable interrupts
 
 	mov	al,e_int_ena	
-	call code_post	
+	out	post_reg,al	
 %ifdef SECOND_PIC
 	mov	al,0B8h		; OSW1: unmask timer, keyboard, IRQ2 and FDC
 	out	pic1_reg1,al
@@ -1064,19 +1064,27 @@ low_ram_ok:
 	shl	al,cl		; move video mode to bits 5-4
 	or	[equipment_list],al
 %endif ; MACHINE_FE2010A or MACHINE_XT
+
+;-------------------------------------------------------------------------
+; Play "power on" sound - also tests PIT functionality
+
+	mov     al,e_pit_init	
+	out	post_reg,al
+	call	sound
+
 ; 
 ;-------------------------------------------------------------------------
 ; look for video BIOS, initialize it if present
 
 	mov	al,e_vid_bios_scan	
-	call code_post
+	out	post_reg,al
 	mov	dx,0C000h
 	mov	bx,0C800h
 	call	extension_scan
 	cmp	word [67h],0
 	jz	.no_video_bios
 	mov	al,e_vid_bios_init	
-	call code_post
+	out	post_reg,al
 	call	far [67h]
 	mov	ax,biosdseg		; DS = BIOS data area
 	mov	ds,ax
@@ -1086,7 +1094,7 @@ low_ram_ok:
 
 .no_video_bios:
 	mov	al,e_vid_no_bios	
-	call code_post
+	out	post_reg,al
 	mov	ah,byte [equipment_list] ; get equipment - low byte
 	and	ah,equip_video		; get video adapter type
 	mov	al,07h			; monochrome 80x25 mode
@@ -1100,15 +1108,18 @@ low_ram_ok:
 .set_mode:
 	mov	ah,00h			; INT 10, AH=00 - Set video mode
 	int	10h
-
+ 
 .video_initialized:
+
+	mov	bl,1			; 0.1 second beep
+	call	beep
 
 ;-------------------------------------------------------------------------
 ; print the copyright message
 
 	mov	si,msg_copyright
 	call	print
-
+	
 %ifdef AT_RTC
 
 ;-------------------------------------------------------------------------
