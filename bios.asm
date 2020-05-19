@@ -957,13 +957,6 @@ low_ram_ok:
 	out	pit_ctl_reg,al		; FIXME - not needed?
 
 ;-------------------------------------------------------------------------
-; Play "power on" sound - also tests PIT functionality
-
-;	mov     al,e_pit_init	
-;	out	post_reg,al
-;	call	sound
-
-;-------------------------------------------------------------------------
 ; Initialize PIC (8259)
 
 	mov	al,e_pic_init	
