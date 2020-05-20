@@ -164,7 +164,7 @@ int_15_fnC200:
 ;	AX = 0C201h
 ; Output:
 ;	BL - Basic Assurance Test (BAT) completion status
-;	     0AAh - BAT successful XXX test!!!
+;	     0AAh - BAT successful
 ;	     0FCh - BAT error
 ;	BH = device ID
 ;-------------------------------------------------------------------------

@@ -218,9 +218,10 @@ int_10_fn00:
 	push	bx
 	push	es
 	xor	ax,ax
-	mov	es,ax			; load interrupt table segment to ES
-    es	les	si,[1Dh*4]		; load INT 1Dh vector to ES:SI
-    cs	mov	bl,byte [bx+TABMUL]	; Get bl for index into int_1D
+	mov	es,ax			; Load interrupt table segment to ES
+    es	les	si,[1Dh*4]		; Load video parameters table
+					; (INT 1Dh vector) to ES:SI
+    cs	mov	bl,byte [bx+TABMUL]	; Get BL for indexing into int_1D
 	add	si,bx
 
     es	mov	cx,word [si+crtc_cur_start] ; cursor shape from INT 1Dh table
@@ -276,9 +277,11 @@ int_10_fn00:
 
     cs	mov	al,byte [bx+columns]	; Get display width
 	mov	word [video_columns],ax	;  ...save it
-	and	bl,0FEh			; XXX: this cleans up LSB
-					; but it means that for mode 7
-					; we'll get graphics page size?!
+	and	bl,0FEh			; Clear the LSB to get an index
+					; to 16-bit word page_size table
+					; FIXME: It returns graphics mode page
+					; size for mode 7. Probably not
+					; critical, as MDA has only one page
     cs	mov	ax,word [bx+page_size]	; Get video page size
 	mov	word [video_page_size],ax ;  ...save it
 	ret
@@ -909,12 +912,12 @@ int_10_fn0A:
 	mov	ds,dx
 	jz	.CG8_02			;  ...skip if so
 	shl	di,1
-	mov	al,byte [bp+int_10_bl]	; Get char. attribute
+	mov	al,byte [bp+int_10_bl]	; Get character attribute
 	and	ax,3
 	mov	bx,5555h
 	mul	bx
 	mov	dx,ax
-	mov	bl,byte [bp+int_10_bl]	; XXXX - why again
+	mov	bl,byte [bp+int_10_bl]	; Restore BL (character attribute)
 
 .CG9_04:
 	mov	bh,8			; Char 8 pixels wide
@@ -1080,9 +1083,10 @@ CGR_10:
 
 	or	al,al			; User graphics character set?
 	jz	CGR_11			;  ...no, not found
-	xor	bx,bx
-	mov	ds,bx			; XXX - where ES is going
-	les	di,[7Ch]		; Else load user graphics char
+	xor	bx,bx			; 
+	mov	ds,bx			; Load interrupt table segment to ES
+	les	di,[1Fh*4]		; Load user font for graphics 
+					; (INT 1Fh vector) to ES:SI
 	mov	bx,es
 	or	bx,di
 	jz	CGR_11			;  ...not found

@@ -60,9 +60,6 @@ kbd_ins_bit	equ	80h
 
 ;=========================================================================
 ; int_16 - BIOS keyboard functions
-; XXX: critical regions - it appears that INT 16h modifies buffer head,
-;	while INT 09h modifies buffer tail, so we shouldn't have any race
-;	conditions
 ;-------------------------------------------------------------------------
 	setloc	0E82Eh
 int_16:
@@ -179,7 +176,7 @@ int_16_fn03:
 	call	kbc_kb_send
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_write_command
-	mov	al,04h			; XXX: Should it be 0F4h/enable kbd?
+	mov	al,04h			; FIXME: Use dev_cmd_enable instead?
 	call	kbc_kb_send
 	pop	cx
 	pop	bx
@@ -517,7 +514,7 @@ int_09:
 	je	.no_buffer
 
 .put_in_buffer:
-	push	si			; XXX - use Int 16h/05?
+	push	si			; FIXME: Use Int 16h/05 instead?
 	mov	bx,word [kbd_buffer_tail]
 	mov	si,bx
 	add	bx,2

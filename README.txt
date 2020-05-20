@@ -152,13 +152,11 @@ Changes - Version 0.7b
 TODO
 ----
 
-- [crit] Remove XXX comments
 - [high] Add technical documentation
 - [med] Finalize extended keyboard support - full extended keyboard support
 - [med] Beep if no video, install dummy handler
 - [low] Keyboard - sound on buffer overflow
 - [low] More tests - RTC, memory, DMA
-- [low] Pause if something in POST fails, so user can read messages
 - [low] Init display before keyboard, so KBD errors can be displayed
         Alternatively store non-fatal errors and display them after display
         is initialized
