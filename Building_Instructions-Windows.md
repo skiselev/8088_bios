@@ -10,7 +10,7 @@ Contributed by [SQLServerIO](https://github.com/SQLServerIO), the original text 
 4. John Newbigin's [dd for windows](http://www.chrysocome.net/dd): The [latest version 0.6beta3](http://www.chrysocome.net/downloads/dd-0.6beta3.zip). This version implements /dev/zero, while GNUWin32 does not
   * Rename the original **C:\Program Files (x86)\GnuWin32\bin\dd.exe** to **dd_gnu.exe**
   * Download and then unzip **dd.exe** from this package to the **C:\Program Files (x86)\GnuWin32\bin** folder
-5. Download and unpack 8088 BIOS source from this repository
+5. Download and unpack 8088 BIOS source from [this](https://github.com/skiselev/8088_bios) repository
 
 ## Add NASM and GNUWin32 to PATH
 
@@ -19,17 +19,18 @@ Add NASM and GNUWin32 to the Windows PATH under Settings->Advanced settings->Env
 * NASM default installation path is **C:\Program Files\NASM**
 * GNUWin32 default installation path is **C:\Program Files (x86)\GnuWin32\bin**
 
-Alternatively you can temporarily add NASM and GNUWin32 to the path before running make. See [Building the BIOS](#building-the-bios) section below
+Alternatively you can temporarily add NASM and GNUWin32 to the PATH environment variable before running make. See [Building the BIOS](#building-the-bios) section below
 
 ## Update Makefile
 
 Modify the Makefile and replace all ibs=1k options to bs=1k. The installed version of dd doesn't support ibs= option, but bs= seems to work just as well
+Make sure that the MACHINE matches your hardware (Micro 8088, Xi 8088)
 
 ## Building the BIOS
 
 * Open a CMD console
 * Change current directory to the folder where 8088 BIOS was previously unpacked using **cd <path>** command
-* If needed, add NASM and GNUWin32 to PATH:
+* If needed, add NASM and GNUWin32 to the PATH environment variable:
   * **set PATH=%PATH%;C:\Program Files (x86)\GnuWin32\bin;C:\Program Files\NASM**
 * Run **make** 
 
