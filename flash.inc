@@ -273,6 +273,18 @@ flash_write_code:
 
 .try_sst39sf010:
 	cmp	cx,0B5BFh		; BF = SST, B5 = SST39SF010
+	jne	.try_sst39sf020
+	mov	cx,4096			; sector size is 4 KiB
+	jmp	short .write_erase_byte
+
+.try_sst39sf020:
+	cmp	cx,0B6BFh		; BF = SST, B6 = SST39SF020
+	jne	.try_sst39sf040
+	mov	cx,4096			; sector size is 4 KiB
+	jmp	short .write_erase_byte
+
+.try_sst39sf040:
+	cmp	cx,0B7BFh		; BF = SST, B7 = SST39SF040
 	jne	.try_am29f010
 	mov	cx,4096			; sector size is 4 KiB
 	jmp	short .write_erase_byte
@@ -281,6 +293,31 @@ flash_write_code:
 	cmp	cx,2001h		; 01 = AMD, 20 = Am29F010
 	jne	.error
 	mov	cx,16384		; sector size is 16 KiB
+	jmp	short .write_erase_byte
+
+; write Flash that auto erases itself and programmed sector by sector
+
+.write_auto_sector:
+	mov	bx,config_space
+	mov	byte [si],0AAh
+	mov	byte [di],55h
+	mov	byte [si],0A0h		; enter write mode
+
+.write_auto_sector1:
+    es	mov	al,byte [bx]		; read byte to write
+	mov	byte [bx],al		; write it to flash
+	inc	bx
+	loop	.write_auto_sector1	; write next byte
+
+	xor	cx,cx
+	dec	bx
+
+.write_auto_sector2:
+	cmp	al,byte [bx]		; wait for write operation to complete
+	loopne	.write_auto_sector2
+	or	cx,cx			; CX ?= 0
+	jz	.error			; write timed out
+	jmp	short .exit
 
 ; write Flash that requires block erase prior to write, and writen byte by byte
 	
@@ -324,30 +361,6 @@ flash_write_code:
 	inc	bx
 	dec	dx
 	jnz	.write_erase_byte3
-	jmp	short .exit
-
-; write Flash that auto erases itself and programmed sector by sector
-
-.write_auto_sector:
-	mov	bx,config_space
-	mov	byte [si],0AAh
-	mov	byte [di],55h
-	mov	byte [si],0A0h		; enter write mode
-
-.write_auto_sector1:
-    es	mov	al,byte [bx]		; read byte to write
-	mov	byte [bx],al		; write it to flash
-	inc	bx
-	loop	.write_auto_sector1	; write next byte
-
-	xor	cx,cx
-	dec	bx
-
-.write_auto_sector2:
-	cmp	al,byte [bx]		; wait for write operation to complete
-	loopne	.write_auto_sector2
-	or	cx,cx			; CX ?= 0
-	jz	.error			; write timed out
 
 .exit:
 	clc
