@@ -92,8 +92,8 @@ scan_xlat_table:
 	dw	207Ah,	2C5Ah,	2C1Ah,	2C00h	; z	Z	2Ch
 	dw	2078h,	2D58h,	2D18h,	2D00h	; x	X	2Dh
 	dw	2063h,	2E43h,	2E03h,	2E00h	; c	C	2Eh
-	dw	2076h,	2F56h,	2F06h,	2F00h	; v	V	2Fh
-	dw	2062h,	3042h,	3006h,	3000h	; b	B	30h
+	dw	2076h,	2F56h,	2F16h,	2F00h	; v	V	2Fh
+	dw	2062h,	3042h,	3002h,	3000h	; b	B	30h
 ;		Normal	Shift	Ctrl	Alt	Key	KeySh	Scan
 	dw	206Eh,	314Eh,	310Eh,	3100h	; n	N	31h
 	dw	206Dh,	324Dh,	320Dh,	3200h	; m	M	32h
