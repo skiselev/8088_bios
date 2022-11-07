@@ -1019,7 +1019,7 @@ low_ram_ok:
 	mov	ax,biosdseg		; DS = BIOS data area
 	mov	ds,ax
 ; set video bits to 00 - EGA or later (Video adapter with BIOS)		
-	and	word [equipment_list],~equip_video
+;	and	word [equipment_list],~equip_video
 	jmp	.video_initialized
 
 .no_video_bios:
