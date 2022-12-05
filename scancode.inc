@@ -59,7 +59,7 @@ scan_xlat_table:
 	dw	003Dh,	0D2Bh,	0,	8300h	; =	+	0Dh
 	dw	0008h,	0E08h,	0E7Fh,	0EF0h	; Back Space	0Eh
 	dw	0009h,	0F00h,	9400h,	0A500h	; Tab		0Fh
-	dw	2071h,	1051h,	1E11h,	1E00h	; q	Q	10h
+	dw	2071h,	1051h,	1011h,	1000h	; q	Q	10h
 ;		Normal	Shift	Ctrl	Alt	Key	KeySh	Scan
 	dw	2077h,	1157h,	1117h,	1100h	; w	W	11h
 	dw	2065h,	1245h,	1205h,	1200h	; e	E	12h
@@ -125,7 +125,7 @@ scan_xlat_table:
 	dw	7400h,	4B34h,	7300h,	9B00h	; Left	4	4Bh
 	dw	75F0h,	4C35h,	8F00h,	4CF0h	; Center5	4Ch
 	dw	7600h,	4D36h,	7400h,	9D00h	; Right	6 	4Dh
-	dw	002Bh,	4E2Bh,	0,	4EF0h	; Gray +	4Eh
+	dw	002Bh,	4E2Bh,	9000h,	4EF0h	; Gray +	4Eh
 	dw	7100h,	4F31h,	7500h,	9F00h	; End	1	4Fh
 	dw	7200h,	5032h,	9100h,	0A000h	; Down	2	50h
 ;		Normal	Shift	Ctrl	Alt	Key		Scan
