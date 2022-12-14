@@ -228,6 +228,7 @@ fdc_media_state	equ	90h	; byte[4] - drive media state (drives 0 - 3)
 fdc_cylinder	equ	94h	; byte[2] - current cylinder (drives 0 - 1)
 kbd_flags_3	equ	96h	; byte - keyboard status flags 3
 kbd_flags_4	equ	97h	; byte - keyboard status flags 4
+video_bios_pointer equ 0a8h ; dword pointing to BIOS Video Save/Override Pointer Table address
 prt_scrn_flags	equ	100h	; byte - print screen flags
 prt_scrn_ready	equ	00h	;	print screen is not in progress
 prt_scrn_run	equ	01h	; 	print screen is in progress
@@ -521,6 +522,11 @@ reserve_ebda:
 print_display:
 	mov	si,msg_disp
 	call	print
+	mov	si,msg_disp_ega		; otherwise EGA or later
+	test [video_bios_pointer], word 0xffff
+	jnz .print_disp
+	test [video_bios_pointer+2], word 0xffff
+	jnz .print_disp	
 	mov	al,byte [equipment_list] ; get equipment - low byte
 	and	al,equip_video		; get video adapter type
 	mov	si,msg_disp_mda
@@ -530,9 +536,9 @@ print_display:
 	cmp	al,equip_color_80	; CGA 80x25?
 	jz	.print_disp
 	mov	si,msg_disp_cga_40
-	cmp	al,equip_color_40	; CGA 40x25?
-	jz	.print_disp
-	mov	si,msg_disp_ega		; otherwise EGA or later
+	;cmp	al,equip_color_40	; CGA 40x25?
+	;jz	.print_disp
+	;mov	si,msg_disp_ega		; otherwise EGA or later
 .print_disp:
 	call	print
 	ret
