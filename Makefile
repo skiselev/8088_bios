@@ -51,36 +51,36 @@ bios.bin: $(SOURCES)
 	nasm -D$(MACHINE) -O9 -f bin -o bios.bin -l bios.lst bios.asm
 
 bios-micro8088.bin: bios.bin
-	dd if=/dev/zero ibs=1k count=40 | tr "\000" "\377" > bios-micro8088.bin
+	dd if=/dev/zero ibs=1k count=40 | LANG=C tr "\000" "\377" > bios-micro8088.bin
 	cat bios.bin >> bios-micro8088.bin
-	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088.bin
+	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088.bin
 
 bios-micro8088-xtide.bin: bios.bin ide_xt.bin
 	cat ide_xt.bin > bios-micro8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=32 | tr "\000" "\377" >> bios-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.bin
 	cat bios.bin >> bios-micro8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.bin
 
 bios-sergey-xt.bin: bios.bin
-	dd if=/dev/zero ibs=1k count=96 | tr "\000" "\377" > bios-sergey-xt.bin
+	dd if=/dev/zero ibs=1k count=96 | LANG=C tr "\000" "\377" > bios-sergey-xt.bin
 	cat bios.bin >> bios-sergey-xt.bin
 
 bios-sergey-xt-xtide.bin: bios.bin ide_xt.bin
-	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" > bios-sergey-xt-xtide.bin
+	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" > bios-sergey-xt-xtide.bin
 	cat ide_xt.bin >> bios-sergey-xt-xtide.bin
-	dd if=/dev/zero ibs=1k count=24 | tr "\000" "\377" >> bios-sergey-xt-xtide.bin
+	dd if=/dev/zero ibs=1k count=24 | LANG=C tr "\000" "\377" >> bios-sergey-xt-xtide.bin
 	cat bios.bin >> bios-sergey-xt-xtide.bin
 
 bios-xi8088.bin: bios.bin
-	dd if=/dev/zero ibs=1k count=32 | tr "\000" "\377" > bios-xi8088.bin
+	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" > bios-xi8088.bin
 	cat bios.bin >> bios-xi8088.bin
-	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-xi8088.bin
+	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088.bin
 
 bios-xi8088-xtide.bin: bios.bin ide_xt.bin
 	cat ide_xt.bin > bios-xi8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=24 | tr "\000" "\377" >> bios-xi8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=24 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.bin
 	cat bios.bin >> bios-xi8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=64 | tr "\000" "\377" >> bios-xi8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.bin
 
 clean:
 	rm -f bios.lst bios.bin bios-micro8088.bin bios-micro8088-xtide.bin bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin
