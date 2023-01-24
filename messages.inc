@@ -113,6 +113,7 @@ msg_set_help	db	0Dh, 0Ah
 		db	'f - Change first floppy drive type', 0Dh, 0Ah
 		db	'g - Change second floppy drive type', 0Dh, 0Ah
 		db	'e - Change BIOS extension ROM scan settings', 0Dh, 0Ah
+		db	'm - Change memory test settings', 0Dh, 0Ah
 %ifdef TURBO_MODE
 		db	'c - Set default CPU clock frequency', 0Dh, 0Ah
 %endif ; TURBO_MODE
@@ -158,8 +159,11 @@ msg_set_fd_prmt	db	0Dh, 0Ah, 'Enter floppy drive type (h for help): '
 msg_set_ext	db	'Scan F0000-F7FFF area for BIOS extension ROMs (y/n): '
 		db	00h
 msg_ext_scan	db	'F0000-F7FFF BIOS ext. scan: ', 00h
-msg_enabled	db	'enabled', 00h
-msg_disabled	db	'disabled', 00h
+msg_set_mem_tst	db	'Enable memory test (y/n): '
+		db	00h
+msg_mem_test	db	'Memory test:                ', 00h
+msg_enabled	db	'Enabled', 00h
+msg_disabled	db	'Disabled', 00h
 %ifdef FLASH_NVRAM
 msg_saving	db	0Dh, 0Ah, 'Saving configuration to Flash ROM... ', 00h
 msg_save_ok	db	'OK', 0Dh, 0Ah, 00h

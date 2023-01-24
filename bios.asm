@@ -1514,6 +1514,14 @@ detect_ram:
 	cmp	word [warm_boot],1234h	; warm boot - don't test RAM
 	je	.test_done
 
+%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+	push	ax
+	call	get_config_a
+	test	al,nvram_mem_test
+	pop	ax
+	jnz	.test_done		; mem_test set - skip memory test
+%endif ; AT_RTC_NVRAM or FLASH_NVRAM
+
 	mov	si,msg_ram_testing
 	call	print
 	mov	ax,MIN_RAM_SIZE		; start from 32 KiB

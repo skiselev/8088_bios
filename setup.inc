@@ -29,9 +29,12 @@ default_equip	db	21h		; CGA 80x25, one floppy drive
 default_config_a db	00000000b	; NVRAM BIOS configuration byte A
 ;			||||||`---------; 00 = 4.77 MHz / Turbo off
 ;			|||||`----------; 0 = F0000-F7FFF ROM scan enabled
+;			||||`-----------; 0 = Memory test enabled
 ;			`---------------; reserved
 nvram_trbo_mask equ	03h		; turbo mask
 nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
+					; (0 - enabled, 1 - disabled)
+nvram_mem_test	equ	08h		; Memory test bit
 					; (0 - enabled, 1 - disabled)
 %endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
@@ -91,6 +94,8 @@ nvram_setup:
 %endif ; AT_RTC
 	cmp	al,'e'
 	je	.set_ext_scan
+	cmp	al,'m'
+	je	.set_mem_test
 	cmp	al,'w'
 	je	.save
 	cmp	al,'q'
@@ -289,6 +294,17 @@ nvram_setup:
 	mov	si,msg_disabled		; F0000-F7FFF ROM scan disabled
 
 .print_ext_scan:
+	call	print
+	mov	si,msg_crlf
+	call	print
+	mov	si,msg_mem_test
+	call	print
+	mov	si,msg_enabled		; assume memory test enabled
+	test	ch,nvram_mem_test
+	jz	.print_mem_test
+	mov	si,msg_disabled
+
+.print_mem_test:
 	call	print
 	mov	si,msg_crlf
 	call	print
@@ -542,6 +558,46 @@ nvram_setup:
 	jmp	.set_ext_exit
 
 .set_ext_exit:
+	mov	si,msg_crlf
+	call	print
+	jmp	.menu_loop
+
+.set_mem_test:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_crlf
+	call	print
+	mov	si,msg_set_mem_tst
+	call	print
+
+.set_mem_test_input:
+	mov	ah,00h
+	int	16h
+	cmp	al,0Dh
+	je	.set_mem_test_exit
+	or	al,20h			; convert to lower case
+	cmp	al,'n'
+	je	.set_mem_test_disable
+	cmp	al,'y'
+	je	.set_mem_test_enable
+	jmp	.set_mem_test_input
+
+.set_mem_test_disable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	or	ch,nvram_mem_test	; bit set = disable test
+	jmp	.set_mem_test_exit
+
+.set_mem_test_enable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_mem_test	; bit clear = enable test
+	jmp	.set_mem_test_exit
+
+.set_mem_test_exit:
 	mov	si,msg_crlf
 	call	print
 	jmp	.menu_loop
