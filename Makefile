@@ -31,7 +31,9 @@ FLASH_ROM=SST39SF010A
 #FLASH_ROM=W29EE011
 #FLASH_ROM="AM29F010 @DIP32"
 
-SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
+XTIDE=ide_xt_r624.bin
+
+SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc Makefile $(XTIDE)
 
 ifeq "$(MACHINE)" "MACHINE_XI8088"
 IMAGES=bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin
@@ -55,8 +57,8 @@ bios-micro8088.bin: bios.bin
 	cat bios.bin >> bios-micro8088.bin
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088.bin
 
-bios-micro8088-xtide.bin: bios.bin ide_xt.bin
-	cat ide_xt.bin > bios-micro8088-xtide.bin
+bios-micro8088-xtide.bin: bios.bin $(XTIDE)
+	cat $(XTIDE) > bios-micro8088-xtide.bin
 	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.bin
 	cat bios.bin >> bios-micro8088-xtide.bin
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.bin
@@ -65,9 +67,9 @@ bios-sergey-xt.bin: bios.bin
 	dd if=/dev/zero ibs=1k count=96 | LANG=C tr "\000" "\377" > bios-sergey-xt.bin
 	cat bios.bin >> bios-sergey-xt.bin
 
-bios-sergey-xt-xtide.bin: bios.bin ide_xt.bin
+bios-sergey-xt-xtide.bin: bios.bin $(XTIDE)
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" > bios-sergey-xt-xtide.bin
-	cat ide_xt.bin >> bios-sergey-xt-xtide.bin
+	cat $(XTIDE) >> bios-sergey-xt-xtide.bin
 	dd if=/dev/zero ibs=1k count=24 | LANG=C tr "\000" "\377" >> bios-sergey-xt-xtide.bin
 	cat bios.bin >> bios-sergey-xt-xtide.bin
 
@@ -76,8 +78,8 @@ bios-xi8088.bin: bios.bin
 	cat bios.bin >> bios-xi8088.bin
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088.bin
 
-bios-xi8088-xtide.bin: bios.bin ide_xt.bin
-	cat ide_xt.bin > bios-xi8088-xtide.bin
+bios-xi8088-xtide.bin: bios.bin $(XTIDE)
+	cat $(XTIDE) > bios-xi8088-xtide.bin
 	dd if=/dev/zero ibs=1k count=24 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.bin
 	cat bios.bin >> bios-xi8088-xtide.bin
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.bin
