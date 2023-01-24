@@ -3,7 +3,7 @@
 ;       Characters from 00h to 7Fh
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.11.08, might work with other versions
+; Compiles with NASM 2.13.02, might work with other versions
 ;
 ; This font is borrowed from kbd package (alt-8x8)
 ;

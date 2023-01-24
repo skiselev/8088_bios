@@ -3,7 +3,7 @@
 ;       INT 10h, functions AH=00h to AH=0Fh
 ;-------------------------------------------------------------------------
 ;
-; Compiles with NASM 2.11.08, might work with other versions
+; Compiles with NASM 2.13.02, might work with other versions
 ;
 ; This code is adopted from XT-clone BIOS by Anonymous
 ;

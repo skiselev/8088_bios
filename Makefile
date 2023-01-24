@@ -1,6 +1,6 @@
 # Makefile - GNU Makefile
 # 
-# Copyright (C) 2010 - 2020 Sergey Kiselev.
+# Copyright (C) 2010 - 2023 Sergey Kiselev.
 # Provided for hobbyist use on the Xi 8088 and Micro 8088 boards.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -33,34 +33,40 @@ FLASH_ROM=SST39SF010A
 
 XTIDE=ide_xt_r624.bin
 
-SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc Makefile $(XTIDE)
+SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
 ifeq "$(MACHINE)" "MACHINE_XI8088"
 IMAGES=bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin
 FLASH_IMAGE=bios-xi8088.bin
 else
 ifeq "$(MACHINE)" "MACHINE_FE2010A"
-IMAGES=bios-micro8088.bin bios-micro8088-xtide.bin
+IMAGES=bios-micro8088.bin bios-micro8088-xtide.bin bios64k-micro8088.bin bios64k-micro8088-xtide.bin
 FLASH_IMAGE=bios-micro8088.bin
 else
 IMAGES=bios.bin
 endif
 endif
 
-all: $(SOURCES) $(IMAGES)
+all: Makefile $(SOURCES) $(IMAGES)
 
 bios.bin: $(SOURCES)
 	nasm -D$(MACHINE) -O9 -f bin -o bios.bin -l bios.lst bios.asm
 
-bios-micro8088.bin: bios.bin
-	dd if=/dev/zero ibs=1k count=40 | LANG=C tr "\000" "\377" > bios-micro8088.bin
-	cat bios.bin >> bios-micro8088.bin
+bios64k-micro8088.bin: bios.bin
+	dd if=/dev/zero ibs=1k count=40 | LANG=C tr "\000" "\377" > bios64k-micro8088.bin
+	cat bios.bin >> bios64k-micro8088.bin
+
+bios-micro8088.bin: bios64k-micro8088.bin
+	cp bios64k-micro8088.bin bios-micro8088.bin
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088.bin
 
-bios-micro8088-xtide.bin: bios.bin $(XTIDE)
-	cat $(XTIDE) > bios-micro8088-xtide.bin
-	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.bin
-	cat bios.bin >> bios-micro8088-xtide.bin
+bios64k-micro8088-xtide.bin: bios.bin $(XTIDE)
+	cat $(XTIDE) > bios64k-micro8088-xtide.bin
+	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" >> bios64k-micro8088-xtide.bin
+	cat bios.bin >> bios64k-micro8088-xtide.bin
+
+bios-micro8088-xtide.bin: bios64k-micro8088-xtide.bin
+	cp bios64k-micro8088-xtide.bin bios-micro8088-xtide.bin
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.bin
 
 bios-sergey-xt.bin: bios.bin
@@ -85,7 +91,7 @@ bios-xi8088-xtide.bin: bios.bin $(XTIDE)
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.bin
 
 clean:
-	rm -f bios.lst bios.bin bios-micro8088.bin bios-micro8088-xtide.bin bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin
+	rm -f bios.lst bios.bin bios-micro8088.bin bios-micro8088-xtide.bin bios-sergey-xt.bin bios-sergey-xt-xtide.bin bios-xi8088.bin bios-xi8088-xtide.bin bios64k-micro8088.bin bios64k-micro8088-xtide.bin
 
 flash:
 	minipro -p $(FLASH_ROM) -w $(FLASH_IMAGE)
