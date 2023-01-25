@@ -1086,7 +1086,8 @@ low_ram_ok:
 	call	detect_floppy		; detect floppy drive types
 	call	print_floppy		; print floppy drive types
 
-	call	detect_ram		; test RAM, get RAM size in AX
+	call	detect_ram		; detect RAM, get RAM size in AX
+	call	test_ram		; test RAM, get tested RAM size in AX
 
 	mov	si,msg_ram_total
 	call	print
@@ -1315,6 +1316,53 @@ detect_rom_ext:
 	ret
 
 ;=========================================================================
+; detect_ram - Determine the size of installed RAM and test it
+; Input:
+;	none
+; Output:
+;	AX = RAM size
+;	CX, SI - trashed
+;-------------------------------------------------------------------------
+detect_ram:
+	mov	al,e_ram_start		; RAM scan start
+	out	post_reg,al
+
+	push	ds
+	mov	cl,6			; for SHL - converting KiB to segment
+	mov	ax,MIN_RAM_SIZE
+
+.fill_loop:
+	push	ax
+	shl	ax,cl			; convert KiB to segment (mult. by 64)
+	mov	ds,ax
+	mov	word [RAM_TEST_BLOCK-2],ax
+	pop	ax
+	add	ax,RAM_TEST_BLOCK/1024
+	cmp	ax,MAX_RAM_SIZE
+	jne	.fill_loop
+	mov	ax,MIN_RAM_SIZE
+
+.size_loop:
+	push	ax
+	shl	ax,cl			; convert KiB to segment (mult. by 64)
+	mov	ds,ax
+	cmp	word [RAM_TEST_BLOCK-2],ax
+	jne	.size_done
+	pop	ax
+	add	ax,RAM_TEST_BLOCK/1024
+	cmp	ax,MAX_RAM_SIZE
+	jnb	.size_exit
+	jmp	.size_loop
+
+.size_done:
+	pop	ax
+
+.size_exit:
+	pop	ds
+	mov	word [memory_size],ax	; store it for now... might change later
+	ret
+
+;=========================================================================
 ; int_12 - Get memory size
 ; Input:
 ;	none
@@ -1464,53 +1512,14 @@ ipl:
 	jmp	.boot_retry
 
 ;=========================================================================
-; detect_ram - Determine the size of installed RAM and test it
+; test_ram - Test installed RAM
 ; Input:
-;	none
+;	AX = detected RAM size
 ; Output:
-;	AX = RAM size
+;	AX = tested RAM size
 ;	CX, SI - trashed
 ;-------------------------------------------------------------------------
-detect_ram:
-	mov	al,e_ram_start		; RAM scan start
-	out	post_reg,al
-
-	push	ds
-	mov	cl,6			; for SHL - converting KiB to segment
-	mov	ax,MIN_RAM_SIZE
-
-.fill_loop:
-	push	ax
-	shl	ax,cl			; convert KiB to segment (mult. by 64)
-	mov	ds,ax
-	mov	word [RAM_TEST_BLOCK-2],ax
-	pop	ax
-	add	ax,RAM_TEST_BLOCK/1024
-	cmp	ax,MAX_RAM_SIZE
-	jne	.fill_loop
-	mov	ax,MIN_RAM_SIZE
-
-.size_loop:
-	push	ax
-	shl	ax,cl			; convert KiB to segment (mult. by 64)
-	mov	ds,ax
-	cmp	word [RAM_TEST_BLOCK-2],ax
-	jne	.size_done
-	pop	ax
-	add	ax,RAM_TEST_BLOCK/1024
-	cmp	ax,MAX_RAM_SIZE
-	jnb	.size_exit
-	jmp	.size_loop
-
-.size_done:
-	pop	ax
-
-.size_exit:
-	pop	ds
-	mov	word [memory_size],ax	; store it for now... might change later
-
-; AX = detected memory size, now test the RAM
-
+test_ram:
 	cmp	word [warm_boot],1234h	; warm boot - don't test RAM
 	je	.test_done
 
