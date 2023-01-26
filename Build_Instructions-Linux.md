@@ -28,7 +28,7 @@ If using Git, this can be done using **git clone https://github.com/skiselev/808
 * Change current directory to the folder where 8088 BIOS was previously unpacked using **cd <path>** command
 * Run **make**
 
-Note: By default the Makefile is configured to build BIOS for Micro 8088. The same BIOS should also work for NuXT systems. Edit the Makefile, and uncomment **#MACHINE=MACHINE_XI8088** line if you want to build BIOS for Xi 8088
+Note: By default the Makefile is configured to build BIOS for Micro 8088. The same BIOS should also work for NuXT systems. Edit the Makefile, uncomment the **#MACHINE=MACHINE_XI8088** line, and comment out the **MACHINE=MACHINE_FE2010A** line if you want to build BIOS for Xi 8088
 
 ## Programming the BIOS to the Flash ROM
   
