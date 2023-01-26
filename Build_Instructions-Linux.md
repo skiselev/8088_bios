@@ -3,19 +3,19 @@
 ## Prerequisites
 
 1. [NASM](https://www.nasm.us/)
-  * Your distribution might already include nasm package. For example, on Ubuntu it can be installed using **sudo apt install nasm** command. If your distribution does not provide it, it is possible to download and build it using the link above
+Your distribution might already include nasm package. For example, on Ubuntu it can be installed using **sudo apt install nasm** command. If your distribution does not provide it, it is possible to download and build it using the link above
 
 2. Make utiltiy
-  * Most likely your distribution already comes with make utility. On Ubuntu it can be installed using **sudo apt install make** command
+Most likely your distribution already comes with make utility. On Ubuntu it can be installed using **sudo apt install make** command
 
 3. Git
-  * Git is the preferred method of acquiring the 8088 BIOS source. The alternate method, is to download the ZIP archive from GitHub using the **wget** utiltiy or a web browser. On Ubuntu git can be installed using **sudo apt install git** command
+Git is the preferred method of acquiring the 8088 BIOS source. The alternate method, is to download the ZIP archive from GitHub using the **wget** utiltiy or a web browser. On Ubuntu git can be installed using **sudo apt install git** command
 
 4. minipro software (optional)
-  * If you have a MiniPro TL866xx series programmer, you can install Linux software for it from [minipro](https://gitlab.com/DavidGriffith/minipro) Git repo, or find corresponding packages for your Linux distribution
+If you have a MiniPro TL866xx series programmer, you can install Linux software for it from [minipro](https://gitlab.com/DavidGriffith/minipro) Git repo, or find corresponding packages for your Linux distribution
 
 5. Clone or download and unpack 8088 BIOS source from [this](https://github.com/skiselev/8088_bios) repository
-  * If using Git, this can be done using **git clone https://github.com/skiselev/8088_bios.git** command
+If using Git, this can be done using **git clone https://github.com/skiselev/8088_bios.git** command
 
 ## Building the BIOS
 
