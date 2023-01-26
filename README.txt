@@ -1,5 +1,5 @@
-README file for Micro 8088 / Xi 8088 / Sergey's XT BIOS
-=======================================================
+README file for 8088 BIOS
+=========================
 
 BIOS Images
 -----------
@@ -12,9 +12,23 @@ bios-xi8088-xtide.bin	  - BIOS image for Xi 8088 Version 2.0 with XT-IDE
 bios-sergey-xt.bin	  - BIOS image for Sergey's XT Version 1.0
 bios-sergey-xt-xtide.bin  - BIOS image for Sergey's XT Version 1.0 with XT-IDE
 
-TODO:
-- Xi 8088: Debug mouse issue with Intel 8242
-- Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
+Changes - Version 0.9.9
+-----------------------
+- Add a setup configuration option to disable power-on memory test.
+  Disabling the memory test speeds up the boot process
+- Add support for SST39SF020A and SST39SF040 Flash ROMs. Note that unused
+  address lines on these chips need to be connected to the ground
+- Add generation of 64 KiB BIOS images to use with xiflash utility
+- Update XT-IDE BIOS ROM Extension to r624. Add corresponding xtidecfg.com
+  utility. The XT-IDE BIOS ROM image provided with 8088 BIOS is configured
+  for XT-CF-Lite at port 0x320. Use the xtidecfg.com utility to reconfigure
+  that if needed prior to building the BIOS
+- Fix keyboard scan codes for several key combinations: 
+  Ctrl-b, Ctrl-v, Ctrl-q, Alt-q, Ctrl-+
+- Fix an issue with BIOS resetting equipment list after VGA BIOS extension
+  initialization, which resulted in a missing or incorrect video output then
+  VGA is connected to a monochrome display
+
 
 Changes - Version 0.9.8
 -----------------------
@@ -155,6 +169,8 @@ TODO
 - [high] Add technical documentation
 - [med] Finalize extended keyboard support - full extended keyboard support
 - [med] Beep if no video, install dummy handler
+- [low] Xi 8088: Debug mouse issue with Intel 8242
+- [low] Xi 8088: Debug issues with Microsoft and Logitech mouse drivers
 - [low] Keyboard - sound on buffer overflow
 - [low] More tests - RTC, memory, DMA
 - [low] Init display before keyboard, so KBD errors can be displayed
