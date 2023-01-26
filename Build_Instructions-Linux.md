@@ -4,11 +4,11 @@
 
 1. [NASM](https://www.nasm.us/)
 
-Your distribution might already include nasm package. For example, on Ubuntu it can be installed using **sudo apt install nasm** command. If your distribution does not provide it, it is possible to download and build it using the link above
+Your distribution might already include **nasm** package. For example, on Ubuntu it can be installed using **sudo apt install nasm** command. If your distribution does not provide it, it is possible to download and build it using the link above
 
 2. Make utiltiy
 
-Most likely your distribution already comes with make utility. On Ubuntu it can be installed using **sudo apt install make** command
+Most likely your distribution already comes with **make** utility. On Ubuntu it can be installed using **sudo apt install make** command
 
 3. Git
 
@@ -24,7 +24,7 @@ If using Git, this can be done using **git clone https://github.com/skiselev/808
 
 ## Building the BIOS
 
-* Open a shell console
+* Open a terminal
 * Change current directory to the folder where 8088 BIOS was previously unpacked using **cd <path>** command
 * Run **make**
 
