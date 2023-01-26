@@ -14,6 +14,11 @@ Open source BIOS for Micro 8088, NuXT, and Xi 8088 systems
 |bios-sergey-xt.bin	  | BIOS image for Sergey's XT Version 1.0             |
 |bios-sergey-xt-xtide.bin | BIOS image for Sergey's XT Version 1.0 with XT-IDE |
 
+## Build Instructions
+
+* [Linux Build Instructions](Build_Instructions-Linux.md)
+* [Windows Build Instructions](Build_Instructions-Windows.md)
+
 ## Release Notes
 
 ### Changes
