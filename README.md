@@ -4,13 +4,15 @@ Open source BIOS for Micro 8088, NuXT, and Xi 8088 systems
 
 ## BIOS Images
 
-bios.bin		  - BIOS image for use with xiflash utility
-bios-micro8088.bin	  - BIOS image for Micro 8088 Version 1.1
-bios-micro8088-xtide.bin  - BIOS image for Micro 8088 Version 1.1 with XT-IDE
-bios-xi8088.bin		  - BIOS image for Xi 8088 Version 2.0
-bios-xi8088-xtide.bin	  - BIOS image for Xi 8088 Version 2.0 with XT-IDE
-bios-sergey-xt.bin	  - BIOS image for Sergey's XT Version 1.0
-bios-sergey-xt-xtide.bin  - BIOS image for Sergey's XT Version 1.0 with XT-IDE
+|File name                | Description                                        |
+|-------------------------|----------------------------------------------------|
+|bios.bin                 | BIOS image for use with xiflash utility            |
+|bios-micro8088.bin       | BIOS image for Micro 8088 Version 1.1              |
+|bios-micro8088-xtide.bin | BIOS image for Micro 8088 Version 1.1 with XT-IDE  |
+|bios-xi8088.bin          | BIOS image for Xi 8088 Version 2.0                 |
+|bios-xi8088-xtide.bin	  | BIOS image for Xi 8088 Version 2.0 with XT-IDE     |
+|bios-sergey-xt.bin	  | BIOS image for Sergey's XT Version 1.0             |
+|bios-sergey-xt-xtide.bin | BIOS image for Sergey's XT Version 1.0 with XT-IDE |
 
 ## Release Notes
 
