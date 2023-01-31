@@ -732,14 +732,16 @@ cpu_ok:
 %ifdef MACHINE_FE2010A
 	mov	al,fe_par_disable	; Disable parity checking
 	out	fe_config_reg,al	; FE2010A chipset configuration register
-	mov	al,10110000b		; Clear keyboard, disable keyb clock
+	mov	al,10110000b		; Clear keyboard, disable keyboard clock
+					; disable IOCHCK NMI, disable MB DRAM NMI
 	out	ppi_pb_reg,al		; Disable parity and IOCHK
 %endif ; MACHINE_FE2010A
 
 %ifdef MACHINE_XT
 	mov	al,ppi_cwd_value	; PPI port A and port C inputs
 	out	ppi_cwd_reg,al		; PPI control word register
-	mov	al,10100101b		; FIXME: Add documentation
+	mov	al,10100101b		; Clear keyboard, disable keyboard clock
+					; disable IOCHCK NMI, enable MB DRAM NMI
 	out	ppi_pb_reg,al
 %endif ; MACHINE_XT
 
@@ -897,8 +899,6 @@ low_ram_ok:
 	out	pit_ctl_reg,al		; used for DRAM refresh on IBM PC/XT/AT
 	mov	al,12h			; or for delays (using port_b, bit 4)
 	out	pit_ch1_reg,al		; pulse every 15ms
-	mov	al,40h			; channel 1, counter latch
-	out	pit_ctl_reg,al		; FIXME - not needed?
 
 ;-------------------------------------------------------------------------
 ; Play "power on" sound - also tests PIT functionality

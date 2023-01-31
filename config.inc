@@ -73,9 +73,9 @@
 %endif ; MACHINE_XT
 
 ; Automatic settings based on the machine settings above
-%ifdef AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
+%ifdef AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
 %define BIOS_SETUP			; Include BIOS setup utility
-%endif ; AT_RTC or AT_RTC_NVRAM or AT_FLASH_NVRAM
+%endif ; AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
 
 %ifdef MACHINE_XI8088 or MACHINE_FE2010A
 %define TURBO_MODE			; Has turbo mode
