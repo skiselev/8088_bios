@@ -23,7 +23,7 @@
 ;
 ;=========================================================================
 
-default_floppy	db	cmos_1440 << 4	; one 1.44 MB floppy drive
+default_floppy	db	type_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
 %ifdef AT_RTC_NVRAM or FLASH_NVRAM
 default_config_a db	00000000b	; NVRAM BIOS configuration byte A
