@@ -1073,6 +1073,9 @@ low_ram_ok:
 
 	call	detect_cpu		; detect and print CPU type
 	call	detect_fpu		; detect and print FPU presence
+%ifdef MACHINE_FE2010A
+	call	detect_chipset		; detect and print chipset type
+%endif ; MACHINE_FE2010A
 %ifdef AT_RTC
 	call	print_rtc		; print current RTC time
 %endif ; AT_RTC

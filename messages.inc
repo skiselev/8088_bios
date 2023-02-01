@@ -63,6 +63,11 @@ msg_cpu_8088_81	db      "Intel 8088 '81 or later, "
 msg_cpu_harris  db      'Harris-designed 80C88', 00h
 msg_cpu_nec_v20 db      'NEC V20', 00h
 msg_fpu_present db      'Intel 8087', 0Dh, 0Ah, 00h
+%ifdef MACHINE_FE2010A
+msg_chipset	db	'Chipset:                    ', 00h
+msg_fe2010a	db	'Faraday FE2010A', 0Dh, 0Ah, 00h
+msg_pt8010af	db	'Proton PT8010AF', 0Dh, 0Ah, 00h
+%endif ; MACHINE_FE2010A
 msg_disp	db      'Display Adapter Type:       ', 00h
 msg_disp_ega	db      'EGA/VGA (Video BIOS Present)', 0Dh, 0Ah, 00h
 msg_disp_cga_80	db      'CGA (80x25)', 0Dh, 0Ah, 00h

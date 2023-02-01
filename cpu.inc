@@ -199,6 +199,42 @@ detect_fpu:
 	pop	ax
 	ret
 
+%ifdef MACHINE_FE2010A
+;=========================================================================
+; detect_chipset - detect and print chipset type
+; Input:
+;	none
+; Output:
+;	none
+; Note: This subroutine also disables DRAM refresh on both FE2010A and PT8010AF
+;-------------------------------------------------------------------------
+detect_chipset:
+	push	ax
+	push	si
+	mov	si,msg_chipset
+	call	print
+	mov	si,msg_fe2010a
+	mov	al,54h			; channel 1, LSB only, mode 2, binary
+	out	pit_ctl_reg,al		; used for DRAM refresh on IBM PC/XT/AT
+	mov	al,12h			; or for delays (using port_b, bit 4)
+        out     pit_ch1_reg,al		; pulse every 15ms
+	mov	al,40h			; this disables refresh on FE2010A
+	out	pit_ctl_reg,al		; but not on PT8010AF
+	in	al,pit_ch1_reg
+	cmp	al,12h			; should be 12h on FE2010A
+	je	.print_chipset
+	mov	si,msg_pt8010af
+
+.print_chipset:
+	call	print
+	mov	al,54h			; channel 1, LSB only, mode 2, binary
+	out	pit_ctl_reg,al		; this disables memory refresh
+	pop	ax
+	pop	si
+	ret
+
+%endif ; MACHINE_FE2010A
+
 %ifdef TURBO_MODE
 ;=========================================================================
 ; print_cpu_clk - Print CPU clock frequency
