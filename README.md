@@ -29,7 +29,6 @@ Open source BIOS for Micro 8088, NuXT, and Xi 8088 systems
   * Add a setup option for configuring wait states for Faraday FE2010A and Proton PT8010AF chipsets
   * Add a setup configuration option to disable power-on memory test. Disabling the memory test speeds up the boot process
   * Add support for SST39SF020A and SST39SF040 Flash ROMs. Note that unused address lines on these chips need to be connected to the ground
-  * Add generation of 64 KiB BIOS images to use with xiflash utility
   * Update XT-IDE BIOS ROM Extension to r624. Add corresponding xtidecfg.com utility. The XT-IDE BIOS ROM image provided with 8088 BIOS is configured for XT-CF-Lite at port 0x320. Use the xtidecfg.com utility to reconfigure that if needed prior to building the BIOS
   * Fix keyboard scan codes for several key combinations: Ctrl-b, Ctrl-v, Ctrl-q, Alt-q, Ctrl-+
   * Fix an issue with BIOS resetting equipment list after VGA BIOS extension initialization, which resulted in a missing or incorrect video output then VGA is connected to a monochrome display
