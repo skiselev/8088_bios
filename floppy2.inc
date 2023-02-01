@@ -455,7 +455,7 @@ int_13_fn05:
 	shl	cx,1			; CX = CX * 4 (address field is 4 bytes)
 	shl	cx,1
 	dec	cx	 		; minus one byte...
-	mov	al,4Ah			; DMA mode byte for write
+	mov	al,4Ah			; DMA mode byte for write, channel 2
 	call	fdc_configure_dma
 	jc	.error_end_io		; DMA boundry crossed
 
