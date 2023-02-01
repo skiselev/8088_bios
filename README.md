@@ -24,6 +24,9 @@ Open source BIOS for Micro 8088, NuXT, and Xi 8088 systems
 ### Changes
 
 * Version 0.9.9
+  * Port floppy BIOS from [Multi-Floppy BIOS extension](https://github.com/skiselev/floppy_bios)
+  * Add chipset detection for Faraday FE2010A and Proton PT8010AF chipsets. Disable memory refresh on these chipsets
+  * Add a setup option for configuring wait states for Faraday FE2010A and Proton PT8010AF chipsets
   * Add a setup configuration option to disable power-on memory test. Disabling the memory test speeds up the boot process
   * Add support for SST39SF020A and SST39SF040 Flash ROMs. Note that unused address lines on these chips need to be connected to the ground
   * Add generation of 64 KiB BIOS images to use with xiflash utility
