@@ -122,6 +122,9 @@ msg_set_help	db	0Dh, 0Ah
 %ifdef TURBO_MODE
 		db	'c - Set default CPU clock frequency', 0Dh, 0Ah
 %endif ; TURBO_MODE
+%ifdef MACHINE_FE2010A
+		db	's - Change wait state settings', 0Dh, 0Ah
+%endif ; MACHINE_FE2010A
 		db	00h
 %ifdef AT_RTC
 msg_set_rtc_help db	't - Set time', 0Dh, 0Ah
@@ -164,9 +167,23 @@ msg_set_fd_prmt	db	0Dh, 0Ah, 'Enter floppy drive type (h for help): '
 msg_set_ext	db	'Scan F0000-F7FFF area for BIOS extension ROMs (y/n): '
 		db	00h
 msg_ext_scan	db	'F0000-F7FFF BIOS ext. scan: ', 00h
-msg_set_mem_tst	db	'Enable memory test (y/n): '
-		db	00h
+msg_set_mem_tst	db	'Enable memory test (y/n): ', 00h
 msg_mem_test	db	'Memory test:                ', 00h
+%ifdef MACHINE_FE2010A
+msg_set_ws	db	'Fast wait states (y/n, h for help): ', 00h
+msg_ws_help	db	0Dh, 0Ah
+		db	'Wait states configuration for FE2010A and PT8010AF:',
+		db	0Dh, 0Ah
+		db	'7.15 MHz, normal: I/O - 4 WS; Upper memory - 2 WS'
+		db	0Dh, 0Ah
+		db	'7.15 MHz, fast:   I/O - 4 WS; Upper memory - 0 WS'
+		db	0Dh, 0Ah
+		db	'9.54 MHz, normal: I/O - 6 WS; Upper memory - 4 WS'
+		db	0Dh, 0Ah
+		db	'9.54 MHz, fast:   I/O - 4 WS; Upper memory - 2 WS'
+		db	0Dh, 0Ah, 00h
+msg_ws		db	'Fast wait states:           ', 00h
+%endif ; MACHINE_FE2010A
 msg_enabled	db	'Enabled', 00h
 msg_disabled	db	'Disabled', 00h
 %ifdef FLASH_NVRAM

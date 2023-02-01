@@ -128,8 +128,10 @@ fe_par_disable	equ	01h	; Disable memory parity checking
 fe_fpu_nma_ena 	equ	02h	; Enable FPU NMI
 fe_config_lock	equ	08h	; Write lock of control register and
 				; bits 0-4 of configuration register
-fe_clk_7_16mhz	equ	40h	; FE2010A 7.16 MHz CPU clock frequency
-fe_clk_9_55mhz	equ	80h	; FE2010A 9.55 MHz CPU clock frequency
+fe_clk_7_norm	equ	40h	; FE2010A 7.15 MHz CPU clock frequency, normal WS
+fe_clk_7_fast	equ	60h	; FE2010A 7.15 MHz CPU clock frequency, fast WS
+fe_clk_9_norm	equ	80h	; FE2010A 9.54 MHz CPU clock frequency, normal WS
+fe_clk_9_fast	equ	0C0h	; FE2010A 9.54 MHz CPU clock frequency, fast WS
 %endif ; MACHINE_FE2010A
 
 ; IBM PC/XT - Port 63h - 8255 PPI Control Word

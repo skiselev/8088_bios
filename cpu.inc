@@ -318,20 +318,34 @@ set_cpu_clk_4_77mhz:
 
 set_cpu_clk_7_16mhz:
 	push ax
+	call	get_config_a
+	mov	ah,al
 	mov	al,byte [equipment_list] ; get lower byte of the equipment list
 	and	al,equip_fpu		; isolate FPU installed bit
 	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_7_16mhz	; set bit 6 - 7.16 MHz CPU clock
+	or	al,fe_clk_7_norm	; set bit 6 - 7.15 MHz CPU clock
+	test	ah,nvram_fast_ws	; nvram_fast_ws = 1 - Normal wait states
+	jnz	.set_config
+	or	al,fe_clk_7_fast
+
+.set_config:
 	out	fe_config_reg,al
 	pop ax
 	ret
 
 set_cpu_clk_9_55mhz:
 	push ax
+	call	get_config_a
+	mov	ah,al
 	mov	al,byte [equipment_list] ; get lower byte of the equipment list
 	and	al,equip_fpu		; isolate FPU installed bit
 	or	al,fe_par_disable	; disable memory parity checking
-	or	al,fe_clk_9_55mhz	; set bit 7 - 9.55 MHz CPU clock
+	or	al,fe_clk_9_norm	; set bit 7 - 9.54 MHz CPU clock
+	test	ah,nvram_fast_ws
+	jnz	.set_config		; nvram_fast_ws = 1 - Normal wait states
+	or	al,fe_clk_9_fast
+
+.set_config:
 	out	fe_config_reg,al
 	pop ax
 	ret

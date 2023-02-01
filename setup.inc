@@ -30,11 +30,14 @@ default_config_a db	00000000b	; NVRAM BIOS configuration byte A
 ;			||||||`---------; 00 = 4.77 MHz / Turbo off
 ;			|||||`----------; 0 = F0000-F7FFF ROM scan enabled
 ;			||||`-----------; 0 = Memory test enabled
+;                       |||`------------; 0 = Fast wait states for FE2010A
 ;			`---------------; reserved
 nvram_trbo_mask equ	03h		; turbo mask
 nvram_ext_scan	equ	04h		; F0000-F7FFF BIOS extension scan bit
 					; (0 - enabled, 1 - disabled)
 nvram_mem_test	equ	08h		; Memory test bit
+					; (0 - enabled, 1 - disabled)
+nvram_fast_ws	equ	10h		; Less wait states for FE2010A 
 					; (0 - enabled, 1 - disabled)
 %endif ; AT_RTC_NVRAM or FLASH_NVRAM
 
@@ -80,6 +83,10 @@ nvram_setup:
 	cmp	al,'c'
 	je	.set_cpu_clk
 %endif ; TURBO_MODE
+%ifdef MACHINE_FE2010A
+	cmp	al,'s'
+	je	.set_ws
+%endif ; MACHINE_FE2010A
 %ifdef AT_RTC
 	%ifdef AT_RTC_AUTODETECT
 		call	rtc_detect
@@ -280,6 +287,20 @@ nvram_setup:
 	mov	si,msg_crlf
 	call	print
 %endif ; TURBO_MODE
+
+%ifdef MACHINE_FE2010A
+	mov	si,msg_ws
+	call	print
+	mov	si,msg_enabled		; assume fast wait states
+	test	ch,nvram_fast_ws
+	jz	.print_ws
+	mov	si,msg_disabled
+
+.print_ws:
+	call	print
+	mov	si,msg_crlf
+	call	print
+%endif ; MACHINE_FE2010A
 
 %ifdef AT_RTC
 	call	print_rtc		; print current RTC time
@@ -601,6 +622,59 @@ nvram_setup:
 	mov	si,msg_crlf
 	call	print
 	jmp	.menu_loop
+
+%ifdef MACHINE_FE2010A
+.set_ws:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_crlf
+	call	print
+.set_ws_loop:
+	mov	si,msg_set_ws
+	call	print
+
+.set_ws_input:
+	mov	ah,00h
+	int	16h
+	cmp	al,0Dh
+	je	.set_ws_exit
+	or	al,20h			; convert to lower case
+	cmp	al,'n'
+	je	.set_ws_disable
+	cmp	al,'y'
+	je	.set_ws_enable
+	cmp	al,'h'
+	je	.set_ws_help
+	jmp	.set_ws_input
+
+.set_ws_disable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	or	ch,nvram_fast_ws	; bit set = fast waitstates
+	jmp	.set_ws_exit
+
+.set_ws_enable:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	and	ch,~nvram_fast_ws	; bit clear = normal waitstates
+	jmp	.set_ws_exit
+
+.set_ws_help:
+	mov	ah,0Eh			; echo
+	mov	bx,0007h
+	int	10h
+	mov	si,msg_ws_help
+	call	print
+	jmp	.set_ws_loop
+
+.set_ws_exit:
+	mov	si,msg_crlf
+	call	print
+	jmp	.menu_loop
+%endif ; MACHINE_FE2010A
 
 .save:
 	mov	ah,0Eh			; echo
