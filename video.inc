@@ -200,13 +200,16 @@ int_10_fn00:
 					; assume CGA mode
 	mov	cx,0B800h		; CGA video memory segment
 	mov	dx,3D4h			; port for MC6845 CRTC address register
+	mov	al,byte [equipment_list] ; get equipment - low byte
+	and	al,equip_video		; get video adapter type
+	cmp	al,equip_mono		; monochrome?
 	mov	al,0
-	cmp	bl,07h
-	jb	.color			; jump if CGA/color mode
+	jne	.color			; jump if CGA/color mode
 					; set MDA mode
+	mov	bl,07h			; MDA can only be 7
 	mov	ch,0B0h			; MDA video memory segment
 	mov	dl,0B4h 		; port for MC6845 CRTC address register
-	inc	al
+	inc	ax
 
 .color:
 	mov	es,cx			; ES = video memory segment
