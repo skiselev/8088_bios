@@ -1001,7 +1001,7 @@ low_ram_ok:
 	and	al,0FDh		; clear switch select bit - select SW5-SW8
 %endif ; MACHINE_FE2010A
 %ifdef MACHINE_XT
-	and	al,0F7h		; clear switch select bit - select SW5-SW8
+	or	al,08h		; set switch select bit - select SW5-SW8
 %endif ; MACHINE_XT
 	out	ppi_pb_reg,al
 	in	al,ppi_pc_reg	; read switches SW5-SW8
@@ -1281,7 +1281,8 @@ config_table:
 detect_rom_ext:
 	mov	al,e_ext_start		; ROM extension scan start
 	out	post_reg,al
-
+	in	al,pic1_reg1		; get IMR (option ROMs may trash it)
+	push	ax			; save it
 	mov	dx,0C800h
 	mov	bx,0F800h
 %ifdef AT_RTC_NVRAM or FLASH_NVRAM
@@ -1315,6 +1316,8 @@ detect_rom_ext:
 	jmp	.ext_scan_loop
 
 .ext_scan_done:
+	pop	ax			; get previous IMR
+	out	pic1_reg1,al		; restore it
 	mov	al,e_ext_complete	; ROM extension scan complete
 	out	post_reg,al
 
