@@ -49,6 +49,10 @@ fdc_stat_busy	equ	10h		; 1 = FDC is busy
 ;-------------------------------------------------------------------------
 ; DMAC registers
 
+dmac_ch0_addr_reg	equ	00h	; DMAC channel 0 base addres (W)
+dmac_ch0_count_reg	equ	01h	; DMAC channel 0 word count (W)
+dmac_ch1_addr_reg	equ	02h	; DMAC channel 1 base addres (W)
+dmac_ch1_count_reg	equ	03h	; DMAC channel 1 word count (W)
 dmac_ch2_addr_reg	equ	04h	; DMAC channel 2 base addres (W)
 dmac_ch2_count_reg	equ	05h	; DMAC channel 2 word count (W)
 dmac_mask_reg		equ	0Ah	; DMAC single mask bit register (W)

@@ -760,7 +760,18 @@ cpu_ok:
 	mov	al,e_init_dmac
 	out	post_reg,al
  	out	0Dh,al			; DMA Master Clear register - reset DMA
+%ifdef MACHINE_XT
+					; set up DRAM refresh on DMA channel 0
+	mov	al,0ffh			; 16-bit memory refresh counter = 0FFFFh
+	out	dmac_ch0_count_reg,al	; write low byte
+	nop
+	out	dmac_ch0_count_reg,al	; write high byte
+	inc	ax			; al = 0
+	out	dmac_mask_reg,al	; enable DMA channel 0
+	mov	al,58h			; single mode, auto-init, read, channel 0
+%else
  	mov	al,40h			; single mode, verify, channel 0
+%endif ; MACHINE_XT
  	out	dmac_mode_reg,al	; DMA Mode register
  	mov	al,41h			; single mode, verify, channel 1
  	out	dmac_mode_reg,al	; DMA Mode register
