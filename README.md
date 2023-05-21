@@ -1,6 +1,12 @@
 # 8088 BIOS
 
-Open source BIOS for Micro 8088, NuXT, and Xi 8088 systems
+Open source BIOS for [Micro 8088], [NuXT][] ([Git repo][NuXT-git]),
+and [Xi 8088] systems
+
+[Micro 8088]: https://github.com/skiselev/micro_8088
+[NuXT]: https://www.vogonswiki.com/index.php/NuXT
+[NuXT-git]: https://github.com/monotech/NuXT
+[Xi 8088]: http://www.malinov.com/Home/sergeys-projects/xi-8088
 
 ## BIOS Images
 
