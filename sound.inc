@@ -24,9 +24,9 @@
 
 notes	dw	pic_freq/554		; D flat
 	dw	-1			; silent
-	dw	pic_freq/227		; D flat
+	dw	pic_freq/277		; D flat
 	dw	pic_freq/370		; G flat
-	dw	pic_freq/227		; D flat
+	dw	pic_freq/277		; D flat
 	dw	pic_freq/415		; A flat
 	dw	0
 
