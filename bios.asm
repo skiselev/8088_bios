@@ -349,9 +349,11 @@ boot_os:
 .no_setup:
 
 %ifdef TURBO_MODE
+%ifdef BIOS_SETUP
 	call	get_config_a		; read BIOS configuration byte A
 	and	al,nvram_trbo_mask
 	call	set_cpu_clk		; set CPU clock
+%endif ; BIOS_SETUP
 %endif ; TURBO_MODE
 
 	mov	al,e_boot		; boot the OS POST code
@@ -613,9 +615,9 @@ interrupt_table2:
 	dw	int_ignore2		; INT 73 - IRQ11
 %ifndef PS2_MOUSE
 	dw	int_ignore2		; INT 74 - IRQ12 - PS/2 mouse
-%else
+%else ; PS2_MOUSE
 	dw	int_74			; INT 74 - IRQ12 - PS/2 mouse
-%endif
+%endif ; PS2_MOUSE
 	dw	int_75			; INT 75 - IRQ13 - FPU
 	dw	int_ignore2		; INT 76 - IRQ14
 	dw	int_ignore2		; INT 77 - IRQ15
@@ -695,9 +697,16 @@ cpu_fail:
 	out	pit_ch2_reg,al
 	mov	al,ah
 	out	pit_ch2_reg,al
+%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg
 	or	al,3			; turn speaker on and enable
-	out	ppi_pb_reg,al		; PIT channel 2 to speaker
+					; PIT channel 2 to speaker
+%else ; MACHINE_BOOK8088
+; It appears that Book 8088 implements PPI Port B as read-only port
+	mov	al,3			; turn speaker on and enable
+					; PIT channel 2 to speaker
+%endif ; MACHINE_BOOK8088
+	out	ppi_pb_reg,al
 
 .1:
 	hlt
@@ -719,7 +728,7 @@ cpu_ok:
 	out	rtc_addr_reg,al		; disable NMI
 	jmp	$+2
 	in	al,rtc_data_reg		; dummy read to keep RTC happy
-%else
+%else ; AT_NMI
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al		; disable NMI
 %endif ; AT_NMI
@@ -738,6 +747,11 @@ cpu_ok:
 					; disable IOCHCK NMI, disable MB DRAM NMI
 	out	ppi_pb_reg,al		; Disable parity and IOCHK
 %endif ; MACHINE_FE2010A
+
+%ifdef MACHINE_BOOK8088
+	mov	al,00h			; clear turbo bit
+	out	ppi_pb_reg,al		; and also turn off the speaker
+%endif ; MACHINE_BOOK8088
 
 %ifdef MACHINE_XT
 	mov	al,ppi_cwd_value	; PPI port A and port C inputs
@@ -769,7 +783,7 @@ cpu_ok:
 	inc	ax			; al = 0
 	out	dmac_mask_reg,al	; enable DMA channel 0
 	mov	al,58h			; single mode, auto-init, read, channel 0
-%else
+%else ; MACHINE_XT
  	mov	al,40h			; single mode, verify, channel 0
 %endif ; MACHINE_XT
  	out	dmac_mode_reg,al	; DMA Mode register
@@ -839,15 +853,27 @@ low_ram_fail:
 	out	pit_ch2_reg,al
 	mov	al,ah
 	out	pit_ch2_reg,al
+%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg
+%endif ; MACHINE_BOOK8088
 .1:
+%ifndef MACHINE_BOOK8088
 	or	al,3			; turn speaker on and enable
-	out	ppi_pb_reg,al		; PIT channel 2 to speaker
+					; PIT channel 2 to speaker
+%else ; MACHINE_BOOK8088
+	mov	al,3			; turn speaker on and enable
+					; PIT channel 2 to speaker
+%endif ; MACHINE_BOOK8088
+	out	ppi_pb_reg,al
 	mov	cx,0
 .2:
 	nop
 	loop	.2
+%ifndef MACHINE_BOOK8088
 	and	al,0FCh			; turn of speaker
+%else ; MACHINE_BOOK8088
+	mov	al,0			; turn of speaker
+%endif ; MACHINE_BOOK8088
 	out	ppi_pb_reg,al
 	mov	cx,0
 .3:
@@ -957,6 +983,7 @@ low_ram_ok:
 %ifdef AT_KEYBOARD
 	call	kbc_init
 %else ; AT_KEYBOARD
+%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg
 	and	al,00111111b		; set keyboard clock low
 	out	ppi_pb_reg,al
@@ -967,6 +994,7 @@ low_ram_ok:
 	out	ppi_pb_reg,al
 	and	al,01111111b		; unset keyboard clear bit
 	out	ppi_pb_reg,al
+%endif ; MACHINE_BOOK8088
 	mov	cx,1000
 .kbd_flush:
 	mov 	ah,01h
@@ -1021,6 +1049,9 @@ low_ram_ok:
 	shl	al,cl		; move video mode to bits 5-4
 	or	[equipment_list],al
 %endif ; MACHINE_FE2010A or MACHINE_XT
+%ifdef MACHINE_BOOK8088
+	or	byte [equipment_list],equip_color_80 ; built-in CGA
+%endif ; MACHINE_BOOK8088
 ; 
 ;-------------------------------------------------------------------------
 ; look for video BIOS, initialize it if present
@@ -1153,6 +1184,7 @@ int_02:
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
 %endif ; AT_NMI
+%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg		; read Port B
 	mov	ah,al
 	or	al,iochk_disable	; clear and disable ~IOCHK
@@ -1187,6 +1219,15 @@ int_02:
 	mov	al,nmi_enable
 	out	nmi_mask_reg,al
 %endif ; AT_NMI
+%else ; MACHINE_BOOK8088
+; It is not clear if BOOK8088 implements any I/O Channel Check logic all all
+; but since ppi_pb_reg is read-only, lets attempt to pulse the iochk_disable
+; to clear the I/O Channel Check flip-flop
+	mov	al,iochk_disable	; clear and disable ~IOCHK
+	out	ppi_pb_reg,al
+	mov	al,0			; clear all bits
+	out	ppi_pb_reg,al
+%endif ; MACHINE_BOOK8088
 .exit:
 	pop	ax
 	iret
@@ -1296,12 +1337,12 @@ detect_rom_ext:
 	push	ax			; save it
 	mov	dx,0C800h
 	mov	bx,0F800h
-%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+%ifdef BIOS_SETUP
 	call	get_config_a
 	test	al,nvram_ext_scan
 	jz	.ext_scan_loop		; ext_scan clear - scan till F8000
 	mov	bx,0F000h		; ext_scan set - scan till F0000
-%endif ; AT_RTC_NVRAM or FLASH_NVRAM
+%endif ; BIOS_SETUP
 
 .ext_scan_loop:
 	call	extension_scan
@@ -1542,13 +1583,13 @@ test_ram:
 	cmp	word [warm_boot],1234h	; warm boot - don't test RAM
 	je	.test_done
 
-%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+%ifdef BIOS_SETUP
 	push	ax
 	call	get_config_a
 	test	al,nvram_mem_test
 	pop	ax
 	jnz	.test_done		; mem_test set - skip memory test
-%endif ; AT_RTC_NVRAM or FLASH_NVRAM
+%endif ; BIOS_SETUP
 
 	mov	si,msg_ram_testing
 	call	print

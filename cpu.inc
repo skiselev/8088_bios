@@ -110,6 +110,7 @@ detect_cpu:
 .cpu_freq:
 
 %ifdef TURBO_MODE
+%ifdef BIOS_SETUP
 ; print CPU clock frequency
 
 	mov	si,msg_at
@@ -120,6 +121,7 @@ detect_cpu:
 	call	print_cpu_clk
 	pop	ax
 
+%endif ; BIOS_SETUP
 %endif ; TURBO_MODE
 
 	mov	si,msg_crlf
@@ -236,6 +238,7 @@ detect_chipset:
 %endif ; MACHINE_FE2010A
 
 %ifdef TURBO_MODE
+%ifdef BIOS_SETUP
 ;=========================================================================
 ; print_cpu_clk - Print CPU clock frequency
 ; Input:
@@ -270,6 +273,7 @@ print_cpu_clk:
 	pop	si
 	pop	ax
 	ret
+%endif ; BIOS_SETUP
 
 ;=========================================================================
 ; set_cpu_clk - Set CPU clock frequency
@@ -289,11 +293,11 @@ set_cpu_clk:
 	je	set_cpu_clk_9_55mhz
 	jmp	set_cpu_clk_4_77mhz   
 %endif ; MACHINE_FE2010A
-%ifdef MACHINE_XI8088
+%ifdef MACHINE_XI8088 or MACHINE_BOOK8088
 	cmp	al,1
 	je	set_cpu_clk_turbo
 	jmp	set_cpu_clk_4_77mhz   
-%endif ; MACHINE_XI8088
+%endif ; MACHINE_XI8088 or MACHINE_BOOK8088
 	ret
 
 ;=========================================================================
@@ -367,5 +371,20 @@ set_cpu_clk_turbo:
 	pop	ax
 	ret
 %endif ; MACHINE_XI8088
+%ifdef MACHINE_BOOK8088
+set_cpu_clk_4_77mhz:
+	push	ax
+	mov	al,0			; clear bit 2 (turbo enable bit)
+	out	ppi_pb_reg,al
+	pop	ax
+	ret
+
+set_cpu_clk_turbo:
+	push	ax
+	mov	al,04h			; set bit 2 (turbo enable bit)
+	out	ppi_pb_reg,al
+	pop	ax
+	ret
+%endif ; MACHINE_BOOK8088
 
 %endif ; TURBO_MODE

@@ -25,7 +25,7 @@
 
 default_floppy	db	type_1440 << 4	; one 1.44 MB floppy drive
 default_equip	db	21h		; CGA 80x25, one floppy drive
-%ifdef AT_RTC_NVRAM or FLASH_NVRAM
+%ifdef BIOS_SETUP
 default_config_a db	00000000b	; NVRAM BIOS configuration byte A
 ;			||||||`---------; 00 = 4.77 MHz / Turbo off
 ;			|||||`----------; 0 = F0000-F7FFF ROM scan enabled
@@ -39,7 +39,7 @@ nvram_mem_test	equ	08h		; Memory test bit
 					; (0 - enabled, 1 - disabled)
 nvram_fast_ws	equ	10h		; Less wait states for FE2010A 
 					; (0 - enabled, 1 - disabled)
-%endif ; AT_RTC_NVRAM or FLASH_NVRAM
+%endif ; BIOS_SETUP
 
 ;=========================================================================
 ; nvram_setup - NVRAM configuration utility
