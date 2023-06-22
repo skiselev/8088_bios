@@ -10,15 +10,18 @@ and [Xi 8088] systems
 
 ## BIOS Images
 
-|File name                | Description                                        |
-|-------------------------|----------------------------------------------------|
-|bios.bin                 | BIOS image for use with xiflash utility            |
-|bios-micro8088.bin       | BIOS image for Micro 8088 Version 1.1              |
-|bios-micro8088-xtide.bin | BIOS image for Micro 8088 Version 1.1 with XT-IDE  |
-|bios-xi8088.bin          | BIOS image for Xi 8088 Version 2.0                 |
-|bios-xi8088-xtide.bin	  | BIOS image for Xi 8088 Version 2.0 with XT-IDE     |
-|bios-sergey-xt.bin	  | BIOS image for Sergey's XT Version 1.0             |
-|bios-sergey-xt-xtide.bin | BIOS image for Sergey's XT Version 1.0 with XT-IDE |
+|File name                | Description                                                       |
+|-------------------------|-------------------------------------------------------------------|
+|bios-micro8088.bin       | BIOS image for Micro 8088 Version 1.1 to use with xiflash utility |
+|bios-micro8088-noide.rom | BIOS image for Micro 8088 Version 1.1                             |
+|bios-micro8088-xtide.rom | BIOS image for Micro 8088 Version 1.1 with XT-IDE                 |
+|bios-xi8088.bin          | BIOS image for Xi 8088 Version 2.0 to use with xiflash utility    |
+|bios-xi8088-noide.rom    | BIOS image for Xi 8088 Version 2.0                                |
+|bios-xi8088-xtide.rom    | BIOS image for Xi 8088 Version 2.0 with XT-IDE                    |
+|bios-sergey-xt-noide.rom | BIOS image for Sergey's XT Version 1.0                            |
+|bios-sergey-xt-xtide.rom | BIOS image for Sergey's XT Version 1.0 with XT-IDE                |
+|bios-book8088-xtide.rom  | BIOS image for Book8088 with XT-IDE                               |
+|bios-xt.bin              | BIOS image for IBM XT (not tested, 16 KiB ROM)                    |
 
 ## Build Instructions
 
@@ -28,6 +31,11 @@ and [Xi 8088] systems
 ## Release Notes
 
 ### Changes
+
+* Version 1.0.0
+  * Add support for Book8088
+  * Implement several fixes for IBM XT
+  * Makefile: Build ROM images for all supported machines and configurations
 
 * Version 0.9.9
   * Port floppy BIOS from [Multi-Floppy BIOS extension](https://github.com/skiselev/floppy_bios)

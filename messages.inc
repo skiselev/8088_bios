@@ -29,6 +29,9 @@ msg_copyright	db	0Dh, 0Ah
 %ifdef MACHINE_FE2010A
 		db	"Micro 8088"
 %endif ; MACHINE_FE2010A
+%ifdef MACHINE_BOOK8088
+		db	"Book8088"
+%endif ; MACHINE_BOOK8088
 %ifdef MACHINE_XT
 		db	"XT 8088"
 %endif ; MACHINE_XT
