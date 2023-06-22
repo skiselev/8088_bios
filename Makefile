@@ -78,7 +78,7 @@ bios-xi8088-xtide.rom: bios-xi8088.bin $(XTIDE)
 
 bios-book8088-xtide.rom: bios-book8088.bin $(XTIDE)
 	cat $(XTIDE) > bios-book8088-xtide.rom
-	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" >> bios-book8088-xtide.rom
+	dd if=/dev/zero ibs=1k count=40 | LANG=C tr "\000" "\377" >> bios-book8088-xtide.rom
 	cat bios-book8088.bin >> bios-book8088-xtide.rom
 
 clean:
