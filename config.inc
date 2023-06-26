@@ -22,7 +22,7 @@
 ;
 ;=========================================================================
 
-%define DATE		'06/21/23'	; BIOS release date MM/DD/YY
+%define DATE		'06/26/23'	; BIOS release date MM/DD/YY
 %define VERSION		'1.0.0'		; BIOS version
 
 ; Machine type is defined in the Makefile
@@ -87,7 +87,8 @@
 %define BIOS_SETUP			; Include BIOS setup utility
 %endif ; AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
 
-%ifdef MACHINE_XI8088 or MACHINE_FE2010A or MACHINE_BOOK8088
+; Note: while Book8088 does have a turbo mode, it is not software controlled
+%ifdef MACHINE_XI8088 or MACHINE_FE2010A
 %define TURBO_MODE			; Has turbo mode
-%endif ; MACHINE_XI8088 or MACHINE_FE2010A or MACHINE_BOOK8088
+%endif ; MACHINE_XI8088 or MACHINE_FE2010A
 

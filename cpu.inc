@@ -293,11 +293,11 @@ set_cpu_clk:
 	je	set_cpu_clk_9_55mhz
 	jmp	set_cpu_clk_4_77mhz   
 %endif ; MACHINE_FE2010A
-%ifdef MACHINE_XI8088 or MACHINE_BOOK8088
+%ifdef MACHINE_XI8088
 	cmp	al,1
 	je	set_cpu_clk_turbo
 	jmp	set_cpu_clk_4_77mhz   
-%endif ; MACHINE_XI8088 or MACHINE_BOOK8088
+%endif ; MACHINE_XI8088
 	ret
 
 ;=========================================================================
@@ -371,20 +371,4 @@ set_cpu_clk_turbo:
 	pop	ax
 	ret
 %endif ; MACHINE_XI8088
-%ifdef MACHINE_BOOK8088
-set_cpu_clk_4_77mhz:
-	push	ax
-	mov	al,0			; clear bit 2 (turbo enable bit)
-	out	ppi_pb_reg,al
-	pop	ax
-	ret
-
-set_cpu_clk_turbo:
-	push	ax
-	mov	al,04h			; set bit 2 (turbo enable bit)
-	out	ppi_pb_reg,al
-	pop	ax
-	ret
-%endif ; MACHINE_BOOK8088
-
 %endif ; TURBO_MODE

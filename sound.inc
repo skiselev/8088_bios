@@ -53,24 +53,16 @@ sound:
 	mov	al,ah
 	out	pit_ch2_reg,al		; load divisor's high byte to PIC
 
-%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg		; read current value of PORT B
         or      al,03h			; turn on the speaker
-%else ; MACHINE_BOOK8088
-        mov      al,03h			; turn on the speaker
-%endif ; MACHINE_BOOK8088
         out     ppi_pb_reg,al		; write the new value
 
 .silent:
 	mov	cx,3000h
 	call	delay_15us		; delay while note is playing
 
-%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg		; read current value of PORT B
 	and	al,0FCh			; turn off the speaker
-%else ; MACHINE_BOOK8088
-	mov	al,0			; turn off the speaker
-%endif ; MACHINE_BOOK8088
         out     ppi_pb_reg,al		; write the new value
 
         mov     cx,0100h
@@ -95,23 +87,15 @@ beep:
 	out	pit_ch2_reg,al		; load divisor's low byte to PIC
 	mov	al,ah
 	out	pit_ch2_reg,al		; load divisor's high byte to PIC
-%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg		; read current value of PORT B
 	or	al,03h			; turn on the speaker
-%else ; MACHINE_BOOK8088
-	mov	al,03h			; turn on the speaker
-%endif ; MACHINE_BOOK8088
 	out	ppi_pb_reg,al		; write the new value
 .loop:
 	mov	cx,6666			; 0.1 second delay
 	call	delay_15us
 	dec	bl
 	jnz	.loop
-%ifndef MACHINE_BOOK8088
 	xor	al,03h			; turn off the speaker
-%else ; MACHINE_BOOK8088
-	mov	al,0			; turn off the speaker
-%endif ; MACHINE_BOOK8088
 	out	ppi_pb_reg,al		; write the new value
 	pop	ax
 	ret

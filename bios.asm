@@ -697,16 +697,9 @@ cpu_fail:
 	out	pit_ch2_reg,al
 	mov	al,ah
 	out	pit_ch2_reg,al
-%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg
 	or	al,3			; turn speaker on and enable
-					; PIT channel 2 to speaker
-%else ; MACHINE_BOOK8088
-; It appears that Book 8088 implements PPI Port B as read-only port
-	mov	al,3			; turn speaker on and enable
-					; PIT channel 2 to speaker
-%endif ; MACHINE_BOOK8088
-	out	ppi_pb_reg,al
+	out	ppi_pb_reg,al		; PIT channel 2 to speaker
 
 .1:
 	hlt
@@ -853,27 +846,15 @@ low_ram_fail:
 	out	pit_ch2_reg,al
 	mov	al,ah
 	out	pit_ch2_reg,al
-%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg
-%endif ; MACHINE_BOOK8088
 .1:
-%ifndef MACHINE_BOOK8088
 	or	al,3			; turn speaker on and enable
-					; PIT channel 2 to speaker
-%else ; MACHINE_BOOK8088
-	mov	al,3			; turn speaker on and enable
-					; PIT channel 2 to speaker
-%endif ; MACHINE_BOOK8088
-	out	ppi_pb_reg,al
+	out	ppi_pb_reg,al		; PIT channel 2 to speaker
 	mov	cx,0
 .2:
 	nop
 	loop	.2
-%ifndef MACHINE_BOOK8088
 	and	al,0FCh			; turn of speaker
-%else ; MACHINE_BOOK8088
-	mov	al,0			; turn of speaker
-%endif ; MACHINE_BOOK8088
 	out	ppi_pb_reg,al
 	mov	cx,0
 .3:
@@ -1184,7 +1165,6 @@ int_02:
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
 %endif ; AT_NMI
-%ifndef MACHINE_BOOK8088
 	in	al,ppi_pb_reg		; read Port B
 	mov	ah,al
 	or	al,iochk_disable	; clear and disable ~IOCHK
@@ -1219,15 +1199,6 @@ int_02:
 	mov	al,nmi_enable
 	out	nmi_mask_reg,al
 %endif ; AT_NMI
-%else ; MACHINE_BOOK8088
-; It is not clear if BOOK8088 implements any I/O Channel Check logic all all
-; but since ppi_pb_reg is read-only, lets attempt to pulse the iochk_disable
-; to clear the I/O Channel Check flip-flop
-	mov	al,iochk_disable	; clear and disable ~IOCHK
-	out	ppi_pb_reg,al
-	mov	al,0			; clear all bits
-	out	ppi_pb_reg,al
-%endif ; MACHINE_BOOK8088
 .exit:
 	pop	ax
 	iret
