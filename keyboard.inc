@@ -267,6 +267,7 @@ int_09:
 %endif
 %endif ; AT_KEYBOARD
 	in	al,ppi_pa_reg		; get keyboard data / scancode
+%ifndef MACHINE_BOOK8088
 	mov	ah,al			; save it in AH
 	in	al,ppi_pb_reg		; read PPI port B, control
 	or	al,10000000b		; set keyboard clear bit
@@ -274,6 +275,7 @@ int_09:
 	and	al,01111111b		; unset keyboard clear bit
 	out	ppi_pb_reg,al		; write it back to PPI port B
 	mov	al,ah			; restore AL / scancode
+%endif ; MACHINE_BOOK8088
 	sti
 %ifdef AT_KEYBOARD
 	mov	ah,4Fh

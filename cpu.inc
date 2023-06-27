@@ -110,6 +110,7 @@ detect_cpu:
 .cpu_freq:
 
 %ifdef TURBO_MODE
+%ifdef BIOS_SETUP
 ; print CPU clock frequency
 
 	mov	si,msg_at
@@ -120,6 +121,7 @@ detect_cpu:
 	call	print_cpu_clk
 	pop	ax
 
+%endif ; BIOS_SETUP
 %endif ; TURBO_MODE
 
 	mov	si,msg_crlf
@@ -236,6 +238,7 @@ detect_chipset:
 %endif ; MACHINE_FE2010A
 
 %ifdef TURBO_MODE
+%ifdef BIOS_SETUP
 ;=========================================================================
 ; print_cpu_clk - Print CPU clock frequency
 ; Input:
@@ -270,6 +273,7 @@ print_cpu_clk:
 	pop	si
 	pop	ax
 	ret
+%endif ; BIOS_SETUP
 
 ;=========================================================================
 ; set_cpu_clk - Set CPU clock frequency
@@ -367,5 +371,4 @@ set_cpu_clk_turbo:
 	pop	ax
 	ret
 %endif ; MACHINE_XI8088
-
 %endif ; TURBO_MODE

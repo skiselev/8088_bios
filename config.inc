@@ -22,12 +22,13 @@
 ;
 ;=========================================================================
 
-%define DATE		'01/31/23'	; BIOS release date MM/DD/YY
-%define VERSION		'0.9.9'		; BIOS version
+%define DATE		'06/26/23'	; BIOS release date MM/DD/YY
+%define VERSION		'1.0.0'		; BIOS version
 
 ; Machine type is defined in the Makefile
 ;%define MACHINE_XI8088			; Xi 8088
 ;%define MACHINE_FE2010A 		; Faraday FE2010A
+;%define MACHINE_BOOK8088		; Book8088
 ;%define MACHINE_XT			; IBM PC/XT or highly compatible board
 					; FIXME: not implemented yet
 
@@ -62,6 +63,15 @@
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %endif ; MACHINE_FE2010A
 
+; Settings for Book8088
+%ifdef MACHINE_BOOK8088
+%define	START		0C000h		; BIOS starts at 0C000h - 16 KiB total
+%define MODEL_BYTE	0FEh		; IBM PC/XT
+%define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
+%define MAX_RAM_SIZE	640		; Scan this much memory during POST
+%define RAM_TEST_BLOCK	16384		; block size for RAM test
+%endif ; MACHINE_BOOK8088
+
 ; Settings for IBM PC/XT
 %ifdef MACHINE_XT
 ;%define	START		0E000h		; BIOS starts at offset 0E000h
@@ -77,6 +87,8 @@
 %define BIOS_SETUP			; Include BIOS setup utility
 %endif ; AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
 
+; Note: while Book8088 does have a turbo mode, it is not software controlled
 %ifdef MACHINE_XI8088 or MACHINE_FE2010A
 %define TURBO_MODE			; Has turbo mode
 %endif ; MACHINE_XI8088 or MACHINE_FE2010A
+
