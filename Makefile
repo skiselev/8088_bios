@@ -23,7 +23,8 @@ FLASH_ROM=SST39SF010A
 #FLASH_ROM=W29EE011
 #FLASH_ROM="AM29F010 @DIP32"
 
-XTIDE=ide_xt_r624.bin
+XTIDE_300=xtide_r625/ide_xt-cf-lite_300h.bin
+XTIDE_320=xtide_r625/ide_xt-cf-lite_320h.bin
 
 SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
@@ -49,8 +50,8 @@ bios-micro8088-noide.rom: bios-micro8088.bin
 	cat bios-micro8088.bin >> bios-micro8088-noide.rom
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088-noide.rom
 
-bios-micro8088-xtide.rom: bios-micro8088.bin $(XTIDE)
-	cat $(XTIDE) > bios-micro8088-xtide.rom
+bios-micro8088-xtide.rom: bios-micro8088.bin $(XTIDE_320)
+	cat $(XTIDE_320) > bios-micro8088-xtide.rom
 	dd if=/dev/zero ibs=1k count=32 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.rom
 	cat bios-micro8088.bin >> bios-micro8088-xtide.rom
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-micro8088-xtide.rom
@@ -59,9 +60,9 @@ bios-sergey-xt-noide.rom: bios-xi8088.bin
 	dd if=/dev/zero ibs=1k count=96 | LANG=C tr "\000" "\377" > bios-sergey-xt-noide.rom
 	cat bios-xi8088.bin >> bios-sergey-xt-noide.rom
 
-bios-sergey-xt-xtide.rom: bios-xi8088.bin $(XTIDE)
+bios-sergey-xt-xtide.rom: bios-xi8088.bin $(XTIDE_320)
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" > bios-sergey-xt-xtide.rom
-	cat $(XTIDE) >> bios-sergey-xt-xtide.rom
+	cat $(XTIDE_320) >> bios-sergey-xt-xtide.rom
 	dd if=/dev/zero ibs=1k count=24 | LANG=C tr "\000" "\377" >> bios-sergey-xt-xtide.rom
 	cat bios-xi8088.bin >> bios-sergey-xt-xtide.rom
 
@@ -70,14 +71,14 @@ bios-xi8088-noide.rom: bios-xi8088.bin
 	cat bios-xi8088.bin >> bios-xi8088-noide.rom
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088-noide.rom
 
-bios-xi8088-xtide.rom: bios-xi8088.bin $(XTIDE)
-	cat $(XTIDE) > bios-xi8088-xtide.rom
+bios-xi8088-xtide.rom: bios-xi8088.bin $(XTIDE_320)
+	cat $(XTIDE_320) > bios-xi8088-xtide.rom
 	dd if=/dev/zero ibs=1k count=24 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.rom
 	cat bios-xi8088.bin >> bios-xi8088-xtide.rom
 	dd if=/dev/zero ibs=1k count=64 | LANG=C tr "\000" "\377" >> bios-xi8088-xtide.rom
 
-bios-book8088-xtide.rom: bios-book8088.bin $(XTIDE)
-	cat $(XTIDE) > bios-book8088-xtide.rom
+bios-book8088-xtide.rom: bios-book8088.bin $(XTIDE_300)
+	cat $(XTIDE_300) > bios-book8088-xtide.rom
 	dd if=/dev/zero ibs=1k count=40 | LANG=C tr "\000" "\377" >> bios-book8088-xtide.rom
 	cat bios-book8088.bin >> bios-book8088-xtide.rom
 
