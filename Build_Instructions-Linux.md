@@ -30,7 +30,7 @@ If using Git, this can be done using **git clone https://github.com/skiselev/808
 
 * Open a terminal
 * Change current directory to the folder where 8088 BIOS was previously unpacked using **cd <path>** command
-* Create a build directory, for example using **mkdir -p build** command
+* Create a build directory and change the current directory to it, for example using **mkdir -p build && cd build** command
 * Run **cmake ..** command to create Makefiles
 * Run **make** to build the project. The resulting **.rom** and **.bin** files will be located in the current (build) directory
 
