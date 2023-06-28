@@ -18,11 +18,11 @@ Use your distribution package management system to install CMake. For example, o
 
 Git is the preferred method of acquiring the 8088 BIOS source. The alternate method, is to download the ZIP archive from GitHub using the **wget** utiltiy or a web browser. On Ubuntu git can be installed using **sudo apt install git** command
 
-4. minipro software (optional)
+5. minipro software (optional)
 
 If you have a MiniPro TL866xx series programmer, you can install Linux software for it from [minipro](https://gitlab.com/DavidGriffith/minipro) Git repo, or find corresponding packages for your Linux distribution
 
-5. Clone or download and unpack 8088 BIOS source from [this](https://github.com/skiselev/8088_bios) repository
+6. Clone or download and unpack 8088 BIOS source from [this](https://github.com/skiselev/8088_bios) repository
 
 If using Git, this can be done using **git clone https://github.com/skiselev/8088_bios.git** command
 
