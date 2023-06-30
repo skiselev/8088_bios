@@ -36,7 +36,8 @@ and [Xi 8088] systems
 * Version 1.0.0
   * Add support for Book8088
   * Implement several fixes for IBM XT
-  * Makefile: Build ROM images for all supported machines and configurations
+  * Update XT-IDE Extension BIOS to r625
+  * Use CMake and build ROM images for all supported machines and configurations
 
 * Version 0.9.9
   * Port floppy BIOS from [Multi-Floppy BIOS extension](https://github.com/skiselev/floppy_bios)

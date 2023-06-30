@@ -24,16 +24,15 @@ Alternatively you can temporarily add NASM and GNUWin32 to the PATH environment 
 ## Update Makefile
 
 Modify the Makefile and replace all ibs=1k options to bs=1k. The installed version of dd doesn't support ibs= option, but bs= seems to work just as well
-Make sure that the MACHINE matches your hardware (Micro 8088, Xi 8088)
 
 ## Building the BIOS
 
 * Open a CMD console
-* Change current directory to the folder where 8088 BIOS was previously unpacked using **cd <path>** command
+* Change current directory to the folder where 8088 BIOS was previously unpacked using **cd <8088_bios_path>\src** command
 * If needed, add NASM and GNUWin32 to the PATH environment variable:
   * **set PATH=%PATH%;C:\Program Files (x86)\GnuWin32\bin;C:\Program Files\NASM**
-* Run **make** 
+* Run **make -f Makefile.win** 
 
 ## Programming the BIOS to the Flash ROM
   
-Use MiniPro GUI to program the resulting *.bin image to the Flash ROM
+Use MiniPro GUI to program the resulting *.rom images to the Flash ROM

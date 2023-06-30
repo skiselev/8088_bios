@@ -10,8 +10,10 @@ include_directories(src)
 set(SOURCES src/bios.asm src/at_kbc.inc src/delay.inc src/floppy1.inc src/fnt80-FF.inc src/macro.inc src/printer1.inc src/rtc.inc src/serial2.inc src/time1.inc src/config.inc src/errno.inc src/floppy2.inc src/inttrace.inc src/messages.inc src/printer2.inc src/scancode.inc src/setup.inc src/time2.inc src/cpu.inc src/flash.inc src/fnt00-7F.inc src/keyboard.inc src/misc.inc src/ps2aux.inc src/serial1.inc src/sound.inc src/video.inc)
 
 set(XTIDE_300 xtide_r625/ide_xt-cf-lite_300h.bin)
+set(XTIDE_V20_300 xtide_r625/ide_xtp-cf-lite_300h.bin)
 set(XTIDE_320 xtide_r625/ide_xt-cf-lite_320h.bin)
 cmake_path(ABSOLUTE_PATH XTIDE_300)
+cmake_path(ABSOLUTE_PATH XTIDE_V20_300)
 cmake_path(ABSOLUTE_PATH XTIDE_320)
 
 set(CMAKE_ASM_NASM_OBJECT_FORMAT bin)
@@ -60,6 +62,9 @@ add_custom_command(
 	COMMAND cat ${XTIDE_300} > bios-book8088-xtide.rom
 	COMMAND dd if=/dev/zero ibs=1k count=40 | LANG=C tr \\\\000 \\\\377 >> bios-book8088-xtide.rom
 	COMMAND cat bios-book8088.bin >> bios-book8088-xtide.rom
+	COMMAND cat ${XTIDE_V20_300} > bios-book8088-xtide-v20.rom
+	COMMAND dd if=/dev/zero ibs=1k count=40 | LANG=C tr \\\\000 \\\\377 >> bios-book8088-xtide-v20.rom
+	COMMAND cat bios-book8088.bin >> bios-book8088-xtide-v20.rom
 	COMMENT "Creating ROM image for Book8088"
 )
 
