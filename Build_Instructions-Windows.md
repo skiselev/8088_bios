@@ -21,10 +21,6 @@ Add NASM and GNUWin32 to the Windows PATH under Settings->Advanced settings->Env
 
 Alternatively you can temporarily add NASM and GNUWin32 to the PATH environment variable before running make. See [Building the BIOS](#building-the-bios) section below
 
-## Update Makefile
-
-Modify the Makefile and replace all ibs=1k options to bs=1k. The installed version of dd doesn't support ibs= option, but bs= seems to work just as well
-
 ## Building the BIOS
 
 * Open a CMD console
