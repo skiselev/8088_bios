@@ -21,6 +21,7 @@ and [Xi 8088] systems
 |[bios-sergey-xt-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-sergey-xt-noide.rom) | BIOS image for Sergey's XT Version 1.0                            |
 |[bios-sergey-xt-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-sergey-xt-xtide.rom) | BIOS image for Sergey's XT Version 1.0 with XT-IDE                |
 |[bios-book8088-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-book8088-xtide.rom)   | BIOS image for Book8088 with XT-IDE                               |
+|[bios-book8088-xtide-v20.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-book8088-xtide-v20.rom)   | BIOS image for Book8088 with XT-IDE optimized for NEC V20 |
 |[bios-xt.bin](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xt.bin)                           | BIOS image for IBM XT (not tested, 16 KiB ROM)                    |
 
 ## Build Instructions
