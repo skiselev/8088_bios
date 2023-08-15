@@ -280,6 +280,8 @@ int_10_fn00:
 
     cs	mov	al,byte [bx+columns]	; Get display width
 	mov	word [video_columns],ax	;  ...save it
+	mov	al,24			; All supported modes have 25 rows
+	mov	byte [video_rows],al	;  ... the value saved uses one less
 	and	bl,0FEh			; Clear the LSB to get an index
 					; to 16-bit word page_size table
 					; FIXME: It returns graphics mode page
