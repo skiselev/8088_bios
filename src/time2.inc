@@ -68,6 +68,7 @@ int_1A_exitf:
 	setloc	0FEA5h			; INT 08 Entry Point
 int_08:
 	push	ax
+	push	dx
 	push	ds
 	mov	ax,biosdseg
 	mov	ds,ax
@@ -77,10 +78,8 @@ int_08:
 	jnz	.1
 	and	byte [fdc_motor_state],0F0h ; update fdc_motor_state byte
 	mov	al,0Ch			; turn off motors, enable DMA + IRQ
-	push	dx
 	mov	dx,fdc_dor_reg		; write it to Digital Output register
 	out	dx,al
-	pop	dx
 .1:
 	inc	word [ticks_lo]
 	jnz	.2
@@ -98,5 +97,6 @@ int_08:
 	mov	al,20h
 	out	pic1_reg0,al
 	pop	ds
+	pop	dx
 	pop	ax
 	iret
