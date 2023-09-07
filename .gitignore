@@ -2,4 +2,3 @@ binaries/CMakeCache.txt
 binaries/CMakeFiles
 binaries/cmake_install.cmake
 binaries/Makefile
-binaries/bios-book8088.bin
