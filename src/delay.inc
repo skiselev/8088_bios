@@ -79,9 +79,8 @@ delay_15us:
 	push	bx
 	push	cx
 	push	dx
-	mov	bx,2*15*pic_freq/1000/1000+1	; ~ 36 ticks/us
-	xchg	ax,cx		; ax = wait in 15 microsecond increments
-	mul	bx		; dx:ax = countdown of pit ticks to wait
+	mov	ax,2*15*pic_freq/1000/1000+1	; ~ 36 ticks/us	
+	mul	cx		; dx:ax = countdown of pit ticks to wait
 	xchg	ax,bx		; dx:bx = countdown ticks
 	call	io_wait_latch	; ax = start read
 	mov	cx,ax		; cx = last read
