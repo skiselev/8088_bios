@@ -70,6 +70,7 @@
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
+%define PIT_DELAY			; Use PIT polling for delays
 %endif ; MACHINE_BOOK8088
 
 ; Settings for IBM PC/XT
@@ -80,6 +81,7 @@
 %define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
+%define PIT_DELAY			; Use PIT polling for delays
 %endif ; MACHINE_XT
 
 ; Automatic settings based on the machine settings above
