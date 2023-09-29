@@ -22,7 +22,7 @@
 ;
 ;=========================================================================
 
-%define DATE		'06/26/23'	; BIOS release date MM/DD/YY
+%define DATE		'09/29/23'	; BIOS release date MM/DD/YY
 %define VERSION		'1.0.0'		; BIOS version
 
 ; Machine type is defined in the Makefile
