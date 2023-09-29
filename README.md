@@ -8,6 +8,25 @@ and [Xi 8088] systems
 [NuXT-git]: https://github.com/monotech/NuXT
 [Xi 8088]: http://www.malinov.com/Home/sergeys-projects/xi-8088
 
+## Acknowledgements
+
+Following folks contributed to this project. Thank you!
+
+* [640-KB](https://github.com/640-KB)
+  * XT-related fixes
+  * Delay implementation using the 8253 PIT
+* [Aitor Gómez](https://github.com/spark2k06)
+  * RTC add-on board support
+  * CPU clock frequency configuration setting
+* [horkthane](https://github.com/horkthane)
+  * Keyboard code fixes
+  * VGA/EGA initialization fixes
+* [Curt J. Sampson](https://github.com/0cjs)
+  * Documentation enhancements
+* [Rink](https://github.com/zhmu)
+  * Video code update that improves compatibility with FreeDOS utilties
+* Multiple other individuals that helped this project by testing the code, submitting bug reports, and contributing their ideas for improvements
+
 ## BIOS Images
 
 |File name                                                                                                       | Description                                                       |
@@ -35,6 +54,7 @@ and [Xi 8088] systems
 
 * Version 1.0.0
   * Add support for Book8088
+  * Use PIT for delays on XT-compatible systems
   * Implement several fixes for IBM XT
   * Update XT-IDE Extension BIOS to r625
   * Use CMake and build ROM images for all supported machines and configurations
