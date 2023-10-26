@@ -46,6 +46,9 @@ bios-book8088.bin: $(SOURCES)
 bios-xt.bin: $(SOURCES)
 	nasm -DMACHINE_XT -O9 -f bin -o bios-xt.bin -l bios-xt.lst bios.asm
 
+bios-homebrew8088.bin: $(SOURCES)
+	nasm -DMACHINE_HOMEBREW8088 -O9 -f bin -o bios-homebrew8088.bin -l bios-homebrew8088.lst bios.asm
+
 bios-micro8088-noide.rom: bios-micro8088.bin
 	dd if=/dev/zero ibs=1k count=40 | LANG=C tr "\000" "\377" > bios-micro8088-noide.rom
 	cat bios-micro8088.bin >> bios-micro8088-noide.rom
@@ -89,7 +92,7 @@ bios-book8088-xtide-v20.rom: bios-book8088.bin $(XTIDE_300_V20)
 	cat bios-book8088.bin >> bios-book8088-xtide-v20.rom
 
 clean:
-	rm -f bios-micro8088.lst bios-xi8088.lst bios-book8088.lst bios-xt.lst bios-micro8088.bin bios-xi8088.bin bios-book8088.bin bios-xt.bin $(IMAGES)
+	rm -f bios-micro8088.lst bios-xi8088.lst bios-book8088.lst bios-xt.lst bios-homebrew8088.lst bios-micro8088.bin bios-xi8088.bin bios-book8088.bin bios-xt.bin  bios-homebrew8088.bin $(IMAGES)
 
 flash-micro8088:
 	minipro -p $(FLASH_ROM) -w bios-micro8088-xtide.rom
