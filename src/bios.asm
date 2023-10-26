@@ -623,6 +623,86 @@ interrupt_table2:
 	dw	int_ignore2		; INT 77 - IRQ15
 %endif ; SECOND_PIC
 
+%ifdef MACHINE_HOMEBREW8088
+init_v40:
+	MOV DX, 0XFFFE	;OPCN - INT SELECT
+	XOR AL, AL
+	OUT DX, AL
+
+	DEC DX			;0XFFFD		OPSEL - ENABLE PERIPHERAL
+	MOV AL, 0X06	;ONLY ENABLE THE INTERRUPT CONTROLLER AND TIMER
+	OUT DX, AL		;
+
+	DEC DX			;0XFFFC		OPHA - ON CHIP PERIPHERAL HIGH ADDRESS REGISTER 
+	MOV AL, 0X00	;ANY 256K BLOCK EXCEPT OVERLAP WITH RESGISTERS 
+	OUT DX, AL
+
+	DEC DX			; 0XFFFB  DULA - DMA LOWER ADDRESS REGISTER
+	XOR AL, AL		; Not initialized as not used
+	OUT DX, AL		; to save space
+
+	DEC DX			;0XFFFA		IULA  - 8259 LOWER ADDRESS REGISTER
+	MOV AL, 0X20									
+	OUT DX, AL
+
+	DEC DX			;0XFFF9		TULA - 8254 LOWER ADDRESS REGISTER
+	MOV AL, 0X40
+	OUT DX, AL
+
+	DEC DX			;0XFFF8		SULA - SERIAL PORT LOWER ADDRESS REGISTER
+	MOV AL, 0XD0	; Not initialized since not used
+	OUT DX, AL
+
+	DEC DX			;0XFFF7 RES
+
+	DEC DX;			;0XFFF6		WCY2 - WAIT 
+	MOV AL, 0X01	;Sets the number of wait cycles for DMA and refresh cycles
+	OUT DX, AL
+
+	DEC DX			;0XFFF5		WCY1 - WAIT
+	MOV AL, 0xFF	;BITS 7-6 = IO, 5-4 = UPPER MEM, 3-2 = MIDDLE MEM, 1-0 LOWER MEM
+					;00 NO WAIT, 11 LONGEST WAIT
+	OUT DX, AL
+
+	DEC DX			;0XFFF4		WMB - MEMORY BOUNDARIES
+	MOV AL, 0X06	;BITS 6-4 LOWEST MEMORY, BITS 2-0 HIGHEST MEMORY, MIDDLE IS EVERYTHING ELSE 0 
+	OUT DX, AL		;
+
+	DEC DX 			;0XFFF3 RES
+
+	DEC DX			;0XFFF2		RFC - REFRESH CONTROL
+	XOR AL, AL		;NO 82
+	OUT DX, AL
+
+	DEC DX			;0XFFF1 RES
+
+	DEC DX			;0XFFF0		TCKS - TIMER PIN SELECTION 
+	MOV AL, 0X14	;1=PIN, 0=INTERNAL, BITS 1-0 PRESCALE DIV FOR INTERNAL
+	OUT DX, AL
+
+	; We formerly set up the interrupt controller and timer here, but the
+	; mainline BIOS does this itself.  Removing this and the beep as soon as power on occurs
+	; frees critical ROM space if we want to do something else clever here but keep IBM BIOS alignment.
+	; Silence the static on the beeper ASAP (with 8088 card)
+	XOR AL, AL
+	OUT 0x61, AL
+
+	mov al, 0xAA
+	out 0x64, al
+	mov cx, 0FFFFh
+	; Rather than delay loops followed by trying to reset the state, let's try just spamming the controller with state-set commands after a reset
+	; hopefully it's less timing sensitive
+	repeatedly_reset_kbc:
+		IN Al, 0x60
+		MOV AL, 0X60		;WRITE COMMAND BYTE TO KEYBOARD CONTROLLER
+		OUT 0X64, AL		;OUT COMMAND PORT
+		MOV AL, 0X41		;PC MODE, ENABLE INTERRUPT
+		OUT 0X60, AL		;OUT DATA PORT
+		LOOP repeatedly_reset_kbc
+	jmp post_init_v40
+
+%endif
+
 ;=========================================================================
 ; cold_start, warm_start - BIOS POST (Power on Self Test) starts here
 ;-------------------------------------------------------------------------	
@@ -631,8 +711,13 @@ cold_start:
 	mov	ax,biosdseg
 	mov	ds,ax
 	mov	word [warm_boot],0	; indicate cold boot
+	
 
 warm_start:
+	%ifdef MACHINE_HOMEBREW8088
+	jmp init_v40
+	post_init_v40:
+	%endif; MACHINE_HOMEBREW8088
 	cli				; disable interrupts
 	cld				; clear direction flag
 	mov	al,e_cpu_test

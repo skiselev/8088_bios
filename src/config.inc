@@ -29,7 +29,8 @@
 ;%define MACHINE_XI8088			; Xi 8088
 ;%define MACHINE_FE2010A 		; Faraday FE2010A
 ;%define MACHINE_BOOK8088		; Book8088
-;%define MACHINE_XT			; IBM PC/XT or highly compatible board
+;%define MACHINE_XT			    ; IBM PC/XT or highly compatible board
+;%define MACHINE_HOMEBREW8088	; EMM Computers "Homebrew8088" board
 					; FIXME: not implemented yet
 
 ; Settings for Xi 8088
@@ -84,6 +85,16 @@
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %define PIT_DELAY			; Use PIT polling for delays
 %endif ; MACHINE_XT
+
+
+%ifdef MACHINE_HOMEBREW8088
+%define	START		0C000h		; FIXME: more ROM for development
+%define MODEL_BYTE	0FEh		; IBM PC/XT
+%define MIN_RAM_SIZE	32		; At least 32 KiB to boot the system
+%define MAX_RAM_SIZE	640		; Scan this much memory during POST
+%define RAM_TEST_BLOCK	16384		; block size for RAM test
+%define PIT_DELAY			; Use PIT polling for delays
+%endif ;MACHINE_HOMEBREW8088
 
 ; Automatic settings based on the machine settings above
 %ifdef AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
