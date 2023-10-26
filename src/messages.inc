@@ -35,6 +35,9 @@ msg_copyright	db	0Dh, 0Ah
 %ifdef MACHINE_XT
 		db	"XT 8088"
 %endif ; MACHINE_XT
+%ifdef MACHINE_HOMEBREW8088
+		db	"Homebrew8088"
+%endif ; MACHINE_HOMEBREW8088
 		db	" BIOS, Version "
 		db	VERSION
 		db	". "
