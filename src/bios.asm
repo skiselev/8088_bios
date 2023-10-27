@@ -686,6 +686,7 @@ init_v40:
 	; Silence the static on the beeper ASAP (with 8088 card)
 	XOR AL, AL
 	OUT 0x61, AL
+
 	jmp post_init_v40
 
 %endif
@@ -790,9 +791,13 @@ cpu_ok:
 
 %ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
-	out	rtc_addr_reg,al		; disable NMI
+	push dx
+	mov dx, rtc_addr_reg
+	out	dx,al		; disable NMI
 	jmp	$+2
-	in	al,rtc_data_reg		; dummy read to keep RTC happy
+	mov dx, rtc_data_reg
+	in	al,dx		; dummy read to keep RTC happy
+	pop dx
 %else ; AT_NMI
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al		; disable NMI

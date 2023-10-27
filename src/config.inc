@@ -96,12 +96,17 @@
 %define PIT_DELAY			; Use PIT polling for delays
 %define AT_KEYBOARD			; The HB8088 KBC is AT-style and can be used with this behaviour without manual initialization
 %define DISABLE_KBD_DURING_INTERRUPTS
+%define AT_RTC						; Optional: If you're using a RTC card that closely matches the standard here
+%define AT_RTC_AUTODETECT
+%define AT_RTC_CUSTOMPORT	2A0h	
 %endif ;MACHINE_HOMEBREW8088
 
 ; Automatic settings based on the machine settings above
+%ifndef MACHINE_HOMEBREW8088	; The HB8088 may have a RTC, but it will not have configuration RAM.
 %ifdef AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
 %define BIOS_SETUP			; Include BIOS setup utility
 %endif ; AT_RTC or AT_RTC_NVRAM or FLASH_NVRAM
+%endif ; MACHINE_HOMEBREW8088
 
 ; Note: while Book8088 does have a turbo mode, it is not software controlled
 %ifdef MACHINE_XI8088 or MACHINE_FE2010A
