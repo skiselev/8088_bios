@@ -94,6 +94,8 @@
 %define MAX_RAM_SIZE	640		; Scan this much memory during POST
 %define RAM_TEST_BLOCK	16384		; block size for RAM test
 %define PIT_DELAY			; Use PIT polling for delays
+%define AT_KEYBOARD			; The HB8088 KBC is AT-style and can be used with this behaviour without manual initialization
+%define DISABLE_KBD_DURING_INTERRUPTS
 %endif ;MACHINE_HOMEBREW8088
 
 ; Automatic settings based on the machine settings above
@@ -106,3 +108,5 @@
 %define TURBO_MODE			; Has turbo mode
 %endif ; MACHINE_XI8088 or MACHINE_FE2010A
 
+; See floppy1.inc for what value to use for each type of drive.  First digit = drive A, second = drive B
+%define DEFAULT_FLOPPIES 42h

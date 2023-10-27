@@ -686,19 +686,6 @@ init_v40:
 	; Silence the static on the beeper ASAP (with 8088 card)
 	XOR AL, AL
 	OUT 0x61, AL
-
-	mov al, 0xAA
-	out 0x64, al
-	mov cx, 0FFFFh
-	; Rather than delay loops followed by trying to reset the state, let's try just spamming the controller with state-set commands after a reset
-	; hopefully it's less timing sensitive
-	repeatedly_reset_kbc:
-		IN Al, 0x60
-		MOV AL, 0X60		;WRITE COMMAND BYTE TO KEYBOARD CONTROLLER
-		OUT 0X64, AL		;OUT COMMAND PORT
-		MOV AL, 0X41		;PC MODE, ENABLE INTERRUPT
-		OUT 0X60, AL		;OUT DATA PORT
-		LOOP repeatedly_reset_kbc
 	jmp post_init_v40
 
 %endif
