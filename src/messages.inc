@@ -68,6 +68,7 @@ msg_cpu_8088_81	db      "Intel 8088 '81 or later, "
 		db      'or OKI-designed 80C88', 00h
 msg_cpu_harris  db      'Harris-designed 80C88', 00h
 msg_cpu_nec_v20 db      'NEC V20', 00h
+msg_cpu_nec_v40 db		'NEC V40', 00h
 msg_fpu_present db      'Intel 8087', 0Dh, 0Ah, 00h
 %ifdef MACHINE_FE2010A
 msg_chipset	db	'Chipset:                    ', 00h

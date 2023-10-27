@@ -104,6 +104,33 @@ detect_cpu:
 	jmp	.cpu_freq
 
 .nec_v20:
+	push dx
+	push bx
+	mov dx, 0FFFBh ; Testing premise:  A V40 has on-chip config registers at high-numbered ports, and we can modify them.  On a CPU without these registers, we'd get floating noise.
+				; an on-chip peripheral register we don't use (DMA controller address)
+	in al, dx	; read it, invert all the bits, and write it back
+	xor al, 0FFh
+	mov bl, al
+	out dx, al
+	in al, dx	; read it back and it should store the change
+	cmp al, bl
+	jne .not_v40
+	xor al, 0FFh	; invert again, write it back
+	mov bl, al
+	out dx, al
+
+	in al, dx		;read it back, and it should be back to original.
+	cmp al, bl
+	jne .not_v40
+	pop bx
+	pop dx
+	mov si, msg_cpu_nec_v40
+	call print
+	jmp .cpu_freq
+
+.not_v40:
+	pop bx
+	pop dx
 	mov	si,msg_cpu_nec_v20
 	call	print
 
