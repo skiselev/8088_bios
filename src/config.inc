@@ -96,10 +96,12 @@
 %define PIT_DELAY			; Use PIT polling for delays
 %define AT_KEYBOARD			; The HB8088 KBC is AT-style and can be used with this behaviour without manual initialization
 %define DISABLE_KBD_DURING_INTERRUPTS
-%define AT_RTC						; Optional: If you're using a RTC card that closely matches the standard here
-%define AT_RTC_AUTODETECT
-%define AT_RTC_CUSTOMPORT	2A0h	
 %endif ;MACHINE_HOMEBREW8088
+
+;%define AT_RTC						; Optional: If you're using a standalone RTC card that uses the same chip as the Xi8088 or FE2010 designs
+;%define AT_RTC_AUTODETECT			;
+;%define AT_RTC_CUSTOMPORT	2A0h	; but you might need to specify a custom port as these cards may not use the default 0x70.
+
 
 ; Automatic settings based on the machine settings above
 %ifndef MACHINE_HOMEBREW8088	; The HB8088 may have a RTC, but it will not have configuration RAM.
@@ -114,4 +116,5 @@
 %endif ; MACHINE_XI8088 or MACHINE_FE2010A
 
 ; See floppy1.inc for what value to use for each type of drive.  First digit = drive A, second = drive B
-%define DEFAULT_FLOPPIES 42h
+; Default "44" is two 1.44M drives.
+%define DEFAULT_FLOPPIES 44h
