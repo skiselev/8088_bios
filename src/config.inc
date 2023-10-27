@@ -96,11 +96,10 @@
 %define PIT_DELAY			; Use PIT polling for delays
 %define AT_KEYBOARD			; The HB8088 KBC is AT-style and can be used with this behaviour without manual initialization
 %define DISABLE_KBD_DURING_INTERRUPTS
-%endif ;MACHINE_HOMEBREW8088
-
 ;%define AT_RTC						; Optional: If you're using a standalone RTC card that uses the same chip as the Xi8088 or FE2010 designs
 ;%define AT_RTC_AUTODETECT			;
 ;%define AT_RTC_CUSTOMPORT	2A0h	; but you might need to specify a custom port as these cards may not use the default 0x70.
+%endif ;MACHINE_HOMEBREW8088
 
 
 ; Automatic settings based on the machine settings above
