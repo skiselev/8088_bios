@@ -59,6 +59,8 @@ msg_clk_9_55mhz	db	'9.55 MHz ', 00h
 msg_clk_turbo	db	'Turbo ', 00h
 %endif ; MACHINE_FE2010A
 %endif ; TURBO_MODE
+msg_est		db      'Estimated Clock:            ',00h
+msg_mhz     db 		"MHz", 00h
 msg_cpu		db      'Main Processor:             ', 00h
 msg_fpu		db      'Mathematics Co-processor:   ', 00h
 msg_cpu_8088_78	db      "Intel 8088 '78", 00h

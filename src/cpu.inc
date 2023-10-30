@@ -159,9 +159,70 @@ detect_cpu:
 	mov	si,msg_cpu_bug
 	call	print
 
+
+
 .exit:
+	call .estimate_clock
 	pop	si
 	pop	ax
+	ret
+
+.estimate_clock:
+	push dx
+	push ax
+	push cx
+	push bx
+	push si
+	mov	si,msg_est
+	call	print
+	call io_wait_latch;
+	push ax
+	mov cx, 1000
+.internal_loop:
+	dec cx
+	cmp cx, 0
+	jnz .internal_loop
+		call io_wait_latch;
+
+	pop bx
+	cmp ax, bx
+	jae .second_scan_is_bigger
+	sub bx, ax
+	
+	jmp .sub_done
+	.second_scan_is_bigger:
+	mov cx, 0ffffh
+	sub cx, ax
+	add bx, cx
+	.sub_done:
+;	mov ax, bx			; Keep to see cycles ran if we want to recalculate 7196800
+;	call print_hex
+;	mov ax, 0e20h
+;	int 010h
+	mov dx, 006Dh		; Clunky estimating logic based on four data points from emulation: 
+	mov ax, 0D080h		; 100x clock is roughly 7196800 / number of ticks that occurred during the run.
+	div bx
+	
+	mov bx, 100			; Split to integer and fractional parts
+	div bl
+
+	mov bx, ax
+	xor ah, ah
+	call print_dec
+	mov ax, 0e2eh		; decimal
+	int 010h
+	mov al, bh
+	xor ah, ah
+	call print_dec
+	mov si, msg_mhz
+	call print
+	mov	si,msg_crlf
+	call	print
+	pop dx
+	pop si
+	pop bx
+	pop cx
+	pop ax
 	ret
 
 ; stack frame after "push bp"
