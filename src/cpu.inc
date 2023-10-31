@@ -208,11 +208,18 @@ detect_cpu:
 
 	mov bx, ax
 	xor ah, ah
-	call print_dec
+	call print_dec		; Integer part
 	mov ax, 0e2eh		; decimal
 	int 010h
-	mov al, bh
 	xor ah, ah
+	mov al, bh
+	cmp al, 10
+	jae .two_digits
+	push ax
+	mov ax, 0e30h		; leading zero
+	int 010h
+	pop ax
+	.two_digits:
 	call print_dec
 	mov si, msg_mhz
 	call print
