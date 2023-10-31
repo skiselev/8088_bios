@@ -104,33 +104,6 @@ detect_cpu:
 	jmp	.cpu_freq
 
 .nec_v20:
-	push dx
-	push bx
-	mov dx, 0FFFBh ; Testing premise:  A V40 has on-chip config registers at high-numbered ports, and we can modify them.  On a CPU without these registers, we'd get floating noise.
-				; an on-chip peripheral register we don't use (DMA controller address)
-	in al, dx	; read it, invert all the bits, and write it back
-	xor al, 0FFh
-	mov bl, al
-	out dx, al
-	in al, dx	; read it back and it should store the change
-	cmp al, bl
-	jne .not_v40
-	xor al, 0FFh	; invert again, write it back
-	mov bl, al
-	out dx, al
-
-	in al, dx		;read it back, and it should be back to original.
-	cmp al, bl
-	jne .not_v40
-	pop bx
-	pop dx
-	mov si, msg_cpu_nec_v40
-	call print
-	jmp .cpu_freq
-
-.not_v40:
-	pop bx
-	pop dx
 	mov	si,msg_cpu_nec_v20
 	call	print
 
@@ -162,11 +135,14 @@ detect_cpu:
 
 
 .exit:
+%ifdef MACHINE_HOMEBREW8088
 	call .estimate_clock
+%endif
 	pop	si
 	pop	ax
 	ret
 
+%ifdef MACHINE_HOMEBREW8088
 .estimate_clock:
 	push dx
 	push ax
@@ -195,10 +171,11 @@ detect_cpu:
 	sub cx, ax
 	add bx, cx
 	.sub_done:
-;	mov ax, bx			; Keep to see cycles ran if we want to recalculate 7196800
-;	call print_hex
-;	mov ax, 0e20h
-;	int 010h
+	mov ax, bx			; Debugging:  Display the number of clock ticks the loop generated.
+	call print_dec		; Find a constant which when divided by this value produces the expected value (MHz x 100)
+	mov ax, 0e20h		; With emulated hardware, the constant was 006DD080 / 7196800
+	int 010h			; May be easily offset by wait states or inconsistent clock cycles for the loop
+	
 	mov dx, 006Dh		; Clunky estimating logic based on four data points from emulation: 
 	mov ax, 0D080h		; 100x clock is roughly 7196800 / number of ticks that occurred during the run.
 	div bx
@@ -231,6 +208,7 @@ detect_cpu:
 	pop cx
 	pop ax
 	ret
+%endif
 
 ; stack frame after "push bp"
 ; BP - word [BP]
