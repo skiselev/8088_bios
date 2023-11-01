@@ -104,6 +104,34 @@ detect_cpu:
 	jmp	.cpu_freq
 
 .nec_v20:
+	push dx
+	push bx
+	mov dx, 0FFE0h ; Testing premise:  A V40 has on-chip config registers at high-numbered ports, and we can modify them.  The V20 has *some* but not as many.
+				; the V40's seem to be writable as low as 0xFFE0, while the V20's seem scattered and not below FFF0.  FFF0 is the lowest specified register
+				; but the V53 goes down to FFE2 as "reserved".
+	in al, dx	; read it, invert all the bits, and write it back
+	xor al, 0FFh
+	mov bl, al
+	out dx, al
+	in al, dx	; read it back and it should store the change
+	cmp al, bl
+	jne .not_v40
+	xor al, 0FFh	; invert again, write it back
+	mov bl, al
+	out dx, al
+
+	in al, dx		;read it back, and it should be back to original.
+	cmp al, bl
+	jne .not_v40
+	pop bx
+	pop dx
+	mov si, msg_cpu_nec_v40
+	call print
+	jmp .cpu_freq
+
+.not_v40:
+	pop bx
+	pop dx
 	mov	si,msg_cpu_nec_v20
 	call	print
 
@@ -135,14 +163,14 @@ detect_cpu:
 
 
 .exit:
-%ifdef MACHINE_HOMEBREW8088
+%ifdef MACHINE_HOMEBREW8088 or MACHINE_XI8088
 	call .estimate_clock
 %endif
 	pop	si
 	pop	ax
 	ret
 
-%ifdef MACHINE_HOMEBREW8088
+%ifdef MACHINE_HOMEBREW8088 or MACHINE_XI8088
 .estimate_clock:
 	push dx
 	push ax
@@ -155,8 +183,8 @@ detect_cpu:
 	push ax
 	mov cx, 1000
 .internal_loop:
+	add ax, cx
 	dec cx
-	cmp cx, 0
 	jnz .internal_loop
 		call io_wait_latch;
 
@@ -173,11 +201,11 @@ detect_cpu:
 	.sub_done:
 	mov ax, bx			; Debugging:  Display the number of clock ticks the loop generated.
 	call print_dec		; Find a constant which when divided by this value produces the expected value (MHz x 100)
-	mov ax, 0e20h		; With emulated hardware, the constant was 006DD080 / 7196800
+	mov ax, 0e20h		; With emulated hardware, the constant was 005F4380 / 6243200
 	int 010h			; May be easily offset by wait states or inconsistent clock cycles for the loop
-	
-	mov dx, 006Dh		; Clunky estimating logic based on four data points from emulation: 
-	mov ax, 0D080h		; 100x clock is roughly 7196800 / number of ticks that occurred during the run.
+
+	mov dx, 005Fh		; Clunky estimating logic based on four data points from emulation: 
+	mov ax, 05480h		; 100x clock is roughly 6243200 / number of ticks that occurred during the run.
 	div bx
 	
 	mov bx, 100			; Split to integer and fractional parts
