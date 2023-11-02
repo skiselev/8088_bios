@@ -163,31 +163,59 @@ detect_cpu:
 
 
 .exit:
-%ifdef MACHINE_HOMEBREW8088 or MACHINE_XI8088
+%ifdef MACHINE_HOMEBREW8088
 	call .estimate_clock
 %endif
 	pop	si
 	pop	ax
 	ret
 
-%ifdef MACHINE_HOMEBREW8088 or MACHINE_XI8088
+%ifdef MACHINE_HOMEBREW8088
 .estimate_clock:
+	; Premise:  Run a cycle that's setup + a loop of 300 "INC AX".  That takes N ticks of the timer, and it includes N1 of actual operations + N2 wait-states from loading the instructions.
+	;           Then run similar setup + a loop of 300 "AAA".  That takes M ticks, which is M1 actual operations + N2 wait states.
+	;			So M - N will remove the "wait state" factor and be how many ticks it took to do "the difference in work between 300 decs and 300 divs"
+	;			Since that's a fixed number of CPU cycles, the M-N value is an inverse of the CPU clock and we can divide by a constant (determined experimentally) to get a reasonable MHz figure
+	;           independent of wait-states.  Note this does not compensate for external variations (i. e. DRAM refresh or a device that seizes the bus)
 	push dx
 	push ax
 	push cx
 	push bx
 	push si
 	mov	si,msg_est
+	cli				; Disable interrupts for better accuracy
 	call	print
 	call io_wait_latch;
 	push ax
-	mov cx, 1000
+	mov cx, 5000
+	XOR AX, AX
+.internal_loop_simple:
+	INC AX; 3 clocks on 8088, 2 clocks on V20 / 1 byte
+	loop .internal_loop_simple
+	call io_wait_latch;
+	sti
+	pop bx
+	cmp ax, bx
+	jae .second_scan_is_bigger_simple
+	sub bx, ax
+	
+	jmp .sub_done_simple
+	.second_scan_is_bigger_simple:
+	mov cx, 0ffffh
+	sub cx, ax
+	add bx, cx
+	.sub_done_simple:
+	push bx	; Save the runtime for the faster instruction
+	cli
+	call io_wait_latch;
+	push ax
+	mov cx, 5000
+	XOR AX, AX
 .internal_loop:
-	add ax, cx
-	dec cx
-	jnz .internal_loop
+	AAA		; 8 clocks on 8088 and 7 clocks on V40 / 1 byte.  V20 databook claims 3 clocks?!
+	loop .internal_loop
 		call io_wait_latch;
-
+	sti
 	pop bx
 	cmp ax, bx
 	jae .second_scan_is_bigger
@@ -199,13 +227,30 @@ detect_cpu:
 	sub cx, ax
 	add bx, cx
 	.sub_done:
-	mov ax, bx			; Debugging:  Display the number of clock ticks the loop generated.
-	call print_dec		; Find a constant which when divided by this value produces the expected value (MHz x 100)
-	mov ax, 0e20h		; With emulated hardware, the constant was 005F4380 / 6243200
-	int 010h			; May be easily offset by wait states or inconsistent clock cycles for the loop
+	pop ax	; pull the count from the simple run
+	sub bx, ax
+	; We'd expect BX to be the amount of clock ticks corresponding to (some large number) more cycles
 
-	mov dx, 005Fh		; Clunky estimating logic based on four data points from emulation: 
-	mov ax, 05480h		; 100x clock is roughly 6243200 / number of ticks that occurred during the run.
+	
+;mov ax, bx			; Refinement tool:  Display the number of clock ticks the loop generated.
+;call print_dec		; Uncomment this code and run it on your machine and it will say things like "244 ticks ~ 8.00MHz"
+;mov si, msg_ticks   ; Calculate (number of ticks) * 100 * (CPU actual MHz)
+;call print			; and place it in DX:AX as the "clock divider" for the CPU type you're using in the code below
+;mov ax, 0e20h	
+;int 010h			
+
+
+	mov	ax,0101h	; Repeat the NEC CPU test
+	aad	10h			; NEC V20 ignores the argument
+	cmp	al,0Bh			; and always does AL = AL * 0Ah + AH
+	jne .clock_divider_8088
+	mov dx, 012h		;  "Clock Divider" for NEC CPUs.  Value was based on an 8MHz V40: ~ 1488 ticks, so the expected value is 8*100*1488 = 1190400 = 122A00h
+	mov ax, 02A00h		;
+	jmp .clock_divider_set
+	.clock_divider_8088:
+	mov dx, 048h		; "Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: ~9998 ticks, so 4.77*100*9998 = 4769046 = 48C516h
+	mov ax, 0C516h		;
+	.clock_divider_set:
 	div bx
 	
 	mov bx, 100			; Split to integer and fractional parts
