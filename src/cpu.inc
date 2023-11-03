@@ -172,11 +172,13 @@ detect_cpu:
 
 %ifdef MACHINE_HOMEBREW8088
 .estimate_clock:
-	; Premise:  Run a cycle that's setup + a loop of 300 "INC AX".  That takes N ticks of the timer, and it includes N1 of actual operations + N2 wait-states from loading the instructions.
-	;           Then run similar setup + a loop of 300 "AAA".  That takes M ticks, which is M1 actual operations + N2 wait states.
-	;			So M - N will remove the "wait state" factor and be how many ticks it took to do "the difference in work between 300 decs and 300 divs"
+	; Premise:  Run a cycle that's setup + a loop of 100 "AAA".  That takes N ticks of the timer, and it includes N1 of actual operations + N2 wait-states from loading the instructions.
+	;           Then run similar setup + a loop of 100 "AAM".  That takes M ticks, which is M1 actual operations + N2 wait states.
+	;			So M - N will remove the "wait state" factor and be how many ticks it took to do "the difference in work between 100 AAAs and 100 AAMs"
 	;			Since that's a fixed number of CPU cycles, the M-N value is an inverse of the CPU clock and we can divide by a constant (determined experimentally) to get a reasonable MHz figure
 	;           independent of wait-states.  Note this does not compensate for external variations (i. e. DRAM refresh or a device that seizes the bus)
+	; It's not hyper-accurate-- it's often off by a few hundred KHz, and it can vary from run to run due to timer noise, but it should be enough to differentiate the major speed grades
+	; A further possible cleanup would be to "bin" the results-- anything below 5MHz as 4.77, anything 7.5-8.5 as 8, etc.
 	push dx
 	push ax
 	push cx
@@ -187,11 +189,9 @@ detect_cpu:
 	call	print
 	call io_wait_latch;
 	push ax
-	mov cx, 5000
-	XOR AX, AX
-.internal_loop_simple:
-	INC AX; 3 clocks on 8088, 2 clocks on V20 / 1 byte
-	loop .internal_loop_simple
+	%rep 100		; Must be unrolled or it behaves inconsistently on different waitstates IME
+	 AAA
+	 %endrep
 	call io_wait_latch;
 	sti
 	pop bx
@@ -209,11 +209,9 @@ detect_cpu:
 	cli
 	call io_wait_latch;
 	push ax
-	mov cx, 5000
-	XOR AX, AX
-.internal_loop:
-	AAA		; 8 clocks on 8088 and 7 clocks on V40 / 1 byte.  V20 databook claims 3 clocks?!
-	loop .internal_loop
+	%rep 100
+	 AAM
+	 %endrep
 		call io_wait_latch;
 	sti
 	pop bx
@@ -244,12 +242,12 @@ detect_cpu:
 	aad	10h			; NEC V20 ignores the argument
 	cmp	al,0Bh			; and always does AL = AL * 0Ah + AH
 	jne .clock_divider_8088
-	mov dx, 012h		;  "Clock Divider" for NEC CPUs.  Value was based on an 8MHz V40: ~ 1488 ticks, so the expected value is 8*100*1488 = 1190400 = 122A00h
-	mov ax, 02A00h		;
+	mov dx, 002h		;  "Clock Divider" for NEC CPUs.  Value was based on an 8MHz V40: 236 ticks, so the expected value is 8*100*236 = 188800 = 2E180H
+	mov ax, 0E180h		;
 	jmp .clock_divider_set
 	.clock_divider_8088:
-	mov dx, 048h		; "Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: ~9998 ticks, so 4.77*100*9998 = 4769046 = 48C516h
-	mov ax, 0C516h		;
+	mov dx, 018h		; "Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: ~3398 ticks, so 4.77*100*3398 = 1620846 = 18BB6EH
+	mov ax, 0BB6Eh		;
 	.clock_divider_set:
 	div bx
 	
