@@ -29,7 +29,7 @@ XTIDE_320=../xtide_r625/ide_xt-cf-lite_320h.bin
 
 SOURCES=bios.asm macro.inc at_kbc.inc config.inc errno.inc flash.inc floppy1.inc floppy2.inc keyboard.inc misc.inc printer1.inc printer2.inc ps2aux.inc scancode.inc serial1.inc serial2.inc setup.inc sound.inc time1.inc time2.inc video.inc cpu.inc messages.inc inttrace.inc rtc.inc fnt00-7F.inc fnt80-FF.inc
 
-IMAGES=bios-micro8088-noide.rom bios-micro8088-xtide.rom bios-sergey-xt-noide.rom bios-sergey-xt-xtide.rom bios-xi8088-noide.rom bios-xi8088-xtide.rom bios-book8088-xtide.rom bios-book8088-xtide-v20.rom bios-xt.bin
+IMAGES=bios-micro8088-noide.rom bios-micro8088-xtide.rom bios-sergey-xt-noide.rom bios-sergey-xt-xtide.rom bios-xi8088-noide.rom bios-xi8088-xtide.rom bios-book8088-xtide.rom bios-book8088-xtide-v20.rom bios-xt.bin bios-homebrew8088.bin
 FLASH_IMAGE=bios-micro8088-xtide.rom
 
 all: Makefile $(SOURCES) $(IMAGES)

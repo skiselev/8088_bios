@@ -1653,7 +1653,7 @@ detect_floppy:
 %ifdef BIOS_SETUP
 	call	get_floppy
 %else ; BIOS_SETUP
-	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+	mov	al,DEFAULT_FLOPPIES	
 %endif ; BIOS_SETUP
 	cmp	al,00h			; No floppy drives?
 	je	.exit
@@ -1678,7 +1678,7 @@ get_drive_type:
 %ifdef BIOS_SETUP
 	call	get_floppy
 %else ; BIOS_SETUP
-	mov	al,44h			; FIXME: fake two 1.44MB floppy drives
+	mov	al,DEFAULT_FLOPPIES
 %endif ; BIOS_SETUP
 	or	dl,dl			; drive 0?
 	jnz	.drive_1		; jump if drive 1 - type in bits 3-0
