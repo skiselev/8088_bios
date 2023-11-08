@@ -187,10 +187,12 @@ detect_cpu:
 	mov	si,msg_est
 	cli				; Disable interrupts for better accuracy
 	call	print
+	
 	call io_wait_latch;
 	push ax
+	xor ax, ax
 	%rep 100		; Must be unrolled or it behaves inconsistently on different waitstates IME
-	 AAA
+	 AAM
 	 %endrep
 	call io_wait_latch;
 	sti
@@ -209,8 +211,9 @@ detect_cpu:
 	cli
 	call io_wait_latch;
 	push ax
+	xor ax, ax
 	%rep 100
-	 AAM
+	 MUL CL
 	 %endrep
 		call io_wait_latch;
 	sti
@@ -242,12 +245,13 @@ detect_cpu:
 	aad	10h			; NEC V20 ignores the argument
 	cmp	al,0Bh			; and always does AL = AL * 0Ah + AH
 	jne .clock_divider_8088
-	mov dx, 002h		;  "Clock Divider" for NEC CPUs.  Value was based on an 8MHz V40: 236 ticks, so the expected value is 8*100*236 = 188800 = 2E180H
-	mov ax, 0E180h		;
+	mov dx, 003h		;  "Clock Divider" for NEC CPUs.  Value was based on an 10MHz V40: ~214 ticks, so the expected value is 1000*214 = 214000 = 343F0H
+	mov ax, 043F0h		;  On the V-series, AAM is faster than MUL (by quite a bit), so a large difference for the clock speed is expected.
 	jmp .clock_divider_set
 	.clock_divider_8088:
-	mov dx, 018h		; "Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: ~3398 ticks, so 4.77*100*3398 = 1620846 = 18BB6EH
-	mov ax, 0BB6Eh		;
+	neg bx				;"Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: It shows as 65186 ticks, but on an 8088, MUL is faster than AAM
+	mov dx, 0002h		; This means that BX is negative here, so flip the sign and we get 349 ticks... 349 ticks * 477  = 166473 = 28A49H.
+	mov ax, 08A49h		;
 	.clock_divider_set:
 	div bx
 	
