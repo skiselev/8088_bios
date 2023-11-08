@@ -97,6 +97,22 @@ delay_15us:
 	pop	ax
 	ret
 
+;=========================================================================
+; Latch PIT 0 and read counter
+; Output:
+;	AX = current counter
+;-------------------------------------------------------------------------
+io_wait_latch:
+	mov	al,0		; counter 0, latch (00b)
+	pushf			; save current IF
+	cli			; disable interrupts
+	out	pit_ctl_reg,al	; write command to ctc
+	in	al,pit_ch0_reg	; read low byte of counter 0 latch
+	mov	ah,al		; save it
+	in	al,pit_ch0_reg	; read high byte of counter 0 latch
+	popf			; restore IF state
+	xchg	al,ah		; convert endian
+	ret
 
 %else ; LOOP_DELAY
 
@@ -123,24 +139,6 @@ delay_15us:
 
 %endif ; PIT_DELAY
 %endif ; AT_DELAY
-
-;=========================================================================
-; Latch PIT 0 and read counter
-; Output:
-;	AX = current counter
-;-------------------------------------------------------------------------
-io_wait_latch:
-	mov	al,0		; counter 0, latch (00b)
-	pushf			; save current IF
-	cli			; disable interrupts
-	out	pit_ctl_reg,al	; write command to ctc
-	in	al,pit_ch0_reg	; read low byte of counter 0 latch
-	mov	ah,al		; save it
-	in	al,pit_ch0_reg	; read high byte of counter 0 latch
-	popf			; restore IF state
-	xchg	al,ah		; convert endian
-	ret
-
 
 %if 0
 ;=========================================================================

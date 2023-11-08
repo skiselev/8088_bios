@@ -92,7 +92,7 @@ bios-book8088-xtide-v20.rom: bios-book8088.bin $(XTIDE_300_V20)
 	cat bios-book8088.bin >> bios-book8088-xtide-v20.rom
 
 clean:
-	rm -f bios-micro8088.lst bios-xi8088.lst bios-book8088.lst bios-xt.lst bios-homebrew8088.lst bios-micro8088.bin bios-xi8088.bin bios-book8088.bin bios-xt.bin  bios-homebrew8088.bin $(IMAGES)
+	rm -f bios-micro8088.lst bios-xi8088.lst bios-book8088.lst bios-xt.lst bios-homebrew8088.lst bios-micro8088.bin bios-xi8088.bin bios-book8088.bin bios-xt.bin bios-homebrew8088.bin $(IMAGES)
 
 flash-micro8088:
 	minipro -p $(FLASH_ROM) -w bios-micro8088-xtide.rom

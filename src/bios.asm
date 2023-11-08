@@ -144,7 +144,11 @@ ppi_cwd_value	equ	99h	; 8255 PPI control word value for IBM XT:
 %endif ; MACHINE_XT
 
 post_reg	equ	80h	; POST status output port
+%ifdef AT_NMI
+nmi_mask_reg	equ	70h
+%else ; AT_NMI
 nmi_mask_reg	equ	0A0h
+%endif ; AT_NMI
 %ifdef SECOND_PIC
 pic2_reg0	equ	0A0h
 pic2_reg1	equ	0A1h
@@ -623,72 +627,74 @@ interrupt_table2:
 	dw	int_ignore2		; INT 77 - IRQ15
 %endif ; SECOND_PIC
 
+;=========================================================================
+; init_v40 - Initialize NEC V40 built-in peripheral registers
+;-------------------------------------------------------------------------	
 %ifdef MACHINE_HOMEBREW8088
 init_v40:
-	MOV DX, 0XFFFE	;OPCN - INT SELECT
-	XOR AL, AL
-	OUT DX, AL
+	mov	dx,0FFFEh		; 0FFFEh: OPCN - INT Select
+	xor	al,al
+	out	dx,al
 
-	DEC DX			;0XFFFD		OPSEL - ENABLE PERIPHERAL
-	MOV AL, 0X06	;ONLY ENABLE THE INTERRUPT CONTROLLER AND TIMER
-	OUT DX, AL		;
+	dec	dx			; 0FFFDh: OPSEL - Enable Peripheral
+	mov	al,06h			; Only enable the interrupt controller and timer
+	out	dx,al
 
-	DEC DX			;0XFFFC		OPHA - ON CHIP PERIPHERAL HIGH ADDRESS REGISTER 
-	MOV AL, 0X00	;ANY 256K BLOCK EXCEPT OVERLAP WITH RESGISTERS 
-	OUT DX, AL
+	dec	dx			; 0FFFCh: OPHA - On chip peripheral high address register 
+	mov	al,00h			; Any 256K block except overlap with resgisters 
+	out	dx,al
 
-	DEC DX			; 0XFFFB  DULA - DMA LOWER ADDRESS REGISTER
-	XOR AL, AL		; Not initialized as not used
-	OUT DX, AL		; to save space
+	dec	dx			; 0FFFBh: DULA - DMA lower address register
+	xor	al,al			; Not initialized as not used
+	out	dx,al			; to save space
 
-	DEC DX			;0XFFFA		IULA  - 8259 LOWER ADDRESS REGISTER
-	MOV AL, 0X20									
-	OUT DX, AL
+	dec	dx			; 0FFFAh: IULA  - 8259 lower address register
+	mov	al,20h									
+	out	dx,al
 
-	DEC DX			;0XFFF9		TULA - 8254 LOWER ADDRESS REGISTER
-	MOV AL, 0X40
-	OUT DX, AL
+	dec	dx			; 0FFF9h: TULA - 8254 lower address register
+	mov	al,40h
+	out	dx,al
 
-	DEC DX			;0XFFF8		SULA - SERIAL PORT LOWER ADDRESS REGISTER
-	MOV AL, 0XD0	; Not initialized since not used
-	OUT DX, AL
+	dec	dx			; 0FFF8h: SULA - Serial port lower address register
+	mov	al,0D0h			; Not initialized since not used
+	out	dx,al
 
-	DEC DX			;0XFFF7 RES
+	dec	dx			; 0FFF7h: RES
 
-	DEC DX;			;0XFFF6		WCY2 - WAIT 
-	MOV AL, 0X01	;Sets the number of wait cycles for DMA and refresh cycles
-	OUT DX, AL
+	dec	dx			; 0FFF6h: WCY2 - WAIT 
+	mov	al,01h			; Sets the number of wait cycles for DMA and refresh cycles
+	out	dx,al
 
-	DEC DX			;0XFFF5		WCY1 - WAIT
-	MOV AL, 0xFF	;BITS 7-6 = IO, 5-4 = UPPER MEM, 3-2 = MIDDLE MEM, 1-0 LOWER MEM
-					;00 NO WAIT, 11 LONGEST WAIT
-	OUT DX, AL
+	dec	dx			; 0FFF5h: WCY1 - WAIT
+	mov	al,0FFh			; Bits 7-6: I/O, 5-4: upper mem, 3-2: middle mem, 1-0: lower mem
+					; 00 = no wait, 11 = longest wait
+	out	dx,al
 
-	DEC DX			;0XFFF4		WMB - MEMORY BOUNDARIES
-	MOV AL, 0X06	;BITS 6-4 LOWEST MEMORY, BITS 2-0 HIGHEST MEMORY, MIDDLE IS EVERYTHING ELSE 0 
-	OUT DX, AL		;
+	dec	dx			; 0FFF4h: WMB - Memory boundaries
+	mov	al,06h			; Bits 6-4: lowest memory, BITS 2-0 highest memory, middle is everything else 0 
+	out	dx,al
 
-	DEC DX 			;0XFFF3 RES
+	dec	dx 			; 0FFF3h: RES
 
-	DEC DX			;0XFFF2		RFC - REFRESH CONTROL
-	XOR AL, AL		;NO 82
-	OUT DX, AL
+	dec	dx			; 0FFF2h: RFC - Refresh control
+	xor	al,al			; NO 82
+	out	dx,al
 
-	DEC DX			;0XFFF1 RES
+	dec	dx			; 0FFF1h: RES
 
-	DEC DX			;0XFFF0		TCKS - TIMER PIN SELECTION 
-	MOV AL, 0X14	;1=PIN, 0=INTERNAL, BITS 1-0 PRESCALE DIV FOR INTERNAL
-	OUT DX, AL
+	dec	dx			; 0FFF0h: TCKS - Timer pin selection 
+	mov	al,14h			; 1 = pin, 0 = internal, bits 1-0: prescale div for internal
+	out	dx,al
 
 	; We formerly set up the interrupt controller and timer here, but the
 	; mainline BIOS does this itself.  Removing this and the beep as soon as power on occurs
 	; frees critical ROM space if we want to do something else clever here but keep IBM BIOS alignment.
 	; Silence the static on the beeper ASAP (with 8088 card)
-	XOR AL, AL
-	OUT 0x61, AL
+	xor	al,al
+	out	ppi_pb_reg,al
 
-	jmp post_init_v40
-
+	jmp	post_init_v40
 %endif
 
 ;=========================================================================
@@ -699,7 +705,6 @@ cold_start:
 	mov	ax,biosdseg
 	mov	ds,ax
 	mov	word [warm_boot],0	; indicate cold boot
-	
 
 warm_start:
 	%ifdef MACHINE_HOMEBREW8088
@@ -791,13 +796,9 @@ cpu_ok:
 
 %ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
-	push dx
-	mov dx, rtc_addr_reg
-	out	dx,al		; disable NMI
+	out	nmi_mask_reg,al		; disable NMI
 	jmp	$+2
-	mov dx, rtc_data_reg
-	in	al,dx		; dummy read to keep RTC happy
-	pop dx
+	in	al,(nmi_mask_reg+1)	; dummy read to keep RTC happy
 %else ; AT_NMI
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al		; disable NMI
@@ -1237,7 +1238,9 @@ int_02:
 	push	ax
 %ifdef AT_NMI
 	mov	al,0Dh & nmi_disa_mask
-	call	rtc_read		; disable NMI
+	out	nmi_mask_reg,al		; disable NMI
+	jmp	$+2
+	in	al,nmi_mask_reg		; read the RTC to keep it happy
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al

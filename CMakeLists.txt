@@ -68,5 +68,9 @@ add_custom_command(
 	COMMENT "Creating ROM image for Book8088"
 )
 
+
+add_executable(bios-homebrew8088.bin ${SOURCES})
+target_compile_definitions(bios-homebrew8088.bin PRIVATE MACHINE_HOMEBREW8088)
+
 add_executable(bios-xt.bin ${SOURCES})
 target_compile_definitions(bios-xt.bin PRIVATE MACHINE_XT)

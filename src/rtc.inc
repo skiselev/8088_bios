@@ -24,13 +24,8 @@
 
 ;-------------------------------------------------------------------------
 ; RTC ports
-%ifdef AT_RTC_CUSTOMPORT
-	rtc_addr_reg	equ	AT_RTC_CUSTOMPORT	; RTC address port
-	rtc_data_reg	equ	AT_RTC_CUSTOMPORT+1	; RTC data port
-%else
-	rtc_addr_reg	equ	70h	; RTC address port
-	rtc_data_reg	equ	71h	; RTC data port
-%endif	; No custom port for an AT-like RTC card.
+rtc_addr_reg	equ	70h	; RTC address port
+rtc_data_reg	equ	71h	; RTC data port
 
 ;-------------------------------------------------------------------------
 ; locations in RTC and NVRAM
@@ -80,16 +75,25 @@ cmos_vrt	equ	80h	; RTC vrt bit (1 = battery is OK)
 ;-------------------------------------------------------------------------
 rtc_read:
 	cli
-	push dx
-	mov dx, rtc_addr_reg
+%ifndef AT_RTC_PORT
+	out	rtc_addr_reg,al
+	jmp	$+2
+	jmp	$+2
+	jmp	$+2
+	jmp	$+2
+	in	al,rtc_data_reg
+%else ; AT_RTC_PORT
+	push	dx
+	mov	dx,AT_RTC_PORT
 	out	dx,al
 	jmp	$+2
 	jmp	$+2
 	jmp	$+2
 	jmp	$+2
-	mov dx, rtc_data_reg
+	inc	dx			; DX = RTC data register
 	in	al,dx
-	pop dx
+	pop	dx
+%endif ; AT_RTC_PORT
 	sti
 	ret
 
@@ -103,17 +107,27 @@ rtc_read:
 ;-------------------------------------------------------------------------
 rtc_write:
 	cli
-	push dx
-	mov dx, rtc_addr_reg
+%ifndef AT_RTC_PORT
+	out	rtc_addr_reg,al
+	jmp	$+2
+	jmp	$+2
+	jmp	$+2
+	jmp	$+2
+	xchg	ah,al
+	out	rtc_data_reg,al
+%else ; AT_RTC_PORT
+	push	dx
+	mov	dx,AT_RTC_PORT
 	out	dx,al
 	jmp	$+2
 	jmp	$+2
 	jmp	$+2
 	jmp	$+2
 	xchg	ah,al
-	mov dx, rtc_data_reg
+	inc	dx			; DX = RTC data register
 	out	dx,al
-	pop dx
+	pop	dx
+%endif ; AT_RTC_PORT
 	xchg	ah,al
 	sti
 	ret

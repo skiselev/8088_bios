@@ -1,0 +1,2 @@
+*.bin	binary diff=hex
+*.rom	binary diff=hex

@@ -104,34 +104,33 @@ detect_cpu:
 	jmp	.cpu_freq
 
 .nec_v20:
-	push dx
-	push bx
-	mov dx, 0FFE0h ; Testing premise:  A V40 has on-chip config registers at high-numbered ports, and we can modify them.  The V20 has *some* but not as many.
-				; the V40's seem to be writable as low as 0xFFE0, while the V20's seem scattered and not below FFF0.  FFF0 is the lowest specified register
-				; but the V53 goes down to FFE2 as "reserved".
-	in al, dx	; read it, invert all the bits, and write it back
-	xor al, 0FFh
-	mov bl, al
-	out dx, al
-	in al, dx	; read it back and it should store the change
-	cmp al, bl
-	jne .not_v40
-	xor al, 0FFh	; invert again, write it back
-	mov bl, al
-	out dx, al
-
-	in al, dx		;read it back, and it should be back to original.
-	cmp al, bl
-	jne .not_v40
-	pop bx
-	pop dx
-	mov si, msg_cpu_nec_v40
-	call print
-	jmp .cpu_freq
+%ifdef MACHINE_HOMEBREW8088
+; Test for NEC V40
+; NEC V40 has on-chip configuration registers at 0FFE0h-0FFFFh I/0 addresses.
+; The code below tries to modify the value of 0FFFE0 register and read it back.
+; If the value is stored, it is assumed to be a NEC V40 CPU
+	push	dx
+	mov	dx,0FFE0h	; Use 0FFFE0h register for V40 tests
+	in	al,dx		; read the original value
+	mov	ah,al		; store the orginal value in AH
+	xor	al,0FFh		; invert all the bits
+	out	dx,al		; write the inverted value
+	in	al,dx		; read it back
+	xor	al,0FFh		; invert all the bits again
+	cmp	al,ah		; compare with the original value
+	jne	.not_v40
+	out	dx,al		; write the original value
+	in	al,dx		; read it back again
+	cmp	al,ah		; compare with the original value
+	jne	.not_v40
+	pop	dx
+	mov	si,msg_cpu_nec_v40
+	call	print
+	jmp	.cpu_freq
 
 .not_v40:
-	pop bx
-	pop dx
+	pop	dx
+%endif ; MACHINE_HOMEBREW8088
 	mov	si,msg_cpu_nec_v20
 	call	print
 
@@ -164,124 +163,131 @@ detect_cpu:
 
 .exit:
 %ifdef MACHINE_HOMEBREW8088
-	call .estimate_clock
-%endif
+	call	.estimate_clock
+%endif ; MACHINE_HOMEBREW8088
 	pop	si
 	pop	ax
 	ret
 
 %ifdef MACHINE_HOMEBREW8088
+; Estimate CPU clock frequency
+; Algorithm:
+; Run a cycle that's setup + a loop of 100 "AAA".
+; That takes N ticks of the timer, and it includes N1 of actual operations + N2 wait-states from loading the instructions.
+; Then run similar setup + a loop of 100 "AAM".  That takes M ticks, which is M1 actual operations + N2 wait states.
+; So M - N will remove the "wait state" factor and be how many ticks it took to do "the difference in work between 100 AAAs and 100 AAMs"
+; Since that's a fixed number of CPU cycles, the M-N value is an inverse of the CPU clock and we can divide by a constant (determined experimentally) to get a reasonable MHz figure
+; independent of wait-states.  Note this does not compensate for external variations (i. e. DRAM refresh or a device that seizes the bus)
+; It's not hyper-accurate-- it's often off by a few hundred KHz, and it can vary from run to run due to timer noise, but it should be enough to differentiate the major speed grades
+; A further possible cleanup would be to "bin" the results-- anything below 5MHz as 4.77, anything 7.5-8.5 as 8, etc.
 .estimate_clock:
-	; Premise:  Run a cycle that's setup + a loop of 100 "AAA".  That takes N ticks of the timer, and it includes N1 of actual operations + N2 wait-states from loading the instructions.
-	;           Then run similar setup + a loop of 100 "AAM".  That takes M ticks, which is M1 actual operations + N2 wait states.
-	;			So M - N will remove the "wait state" factor and be how many ticks it took to do "the difference in work between 100 AAAs and 100 AAMs"
-	;			Since that's a fixed number of CPU cycles, the M-N value is an inverse of the CPU clock and we can divide by a constant (determined experimentally) to get a reasonable MHz figure
-	;           independent of wait-states.  Note this does not compensate for external variations (i. e. DRAM refresh or a device that seizes the bus)
-	; It's not hyper-accurate-- it's often off by a few hundred KHz, and it can vary from run to run due to timer noise, but it should be enough to differentiate the major speed grades
-	; A further possible cleanup would be to "bin" the results-- anything below 5MHz as 4.77, anything 7.5-8.5 as 8, etc.
-	push dx
-	push ax
-	push cx
-	push bx
-	push si
+	push	dx
+	push	ax
+	push	cx
+	push	bx
+	push	si
 	mov	si,msg_est
 	cli				; Disable interrupts for better accuracy
 	call	print
-	
-	call io_wait_latch;
-	push ax
-	xor ax, ax
-	%rep 100		; Must be unrolled or it behaves inconsistently on different waitstates IME
-	 AAM
-	 %endrep
-	call io_wait_latch;
-	sti
-	pop bx
-	cmp ax, bx
-	jae .second_scan_is_bigger_simple
-	sub bx, ax
-	
-	jmp .sub_done_simple
-	.second_scan_is_bigger_simple:
-	mov cx, 0ffffh
-	sub cx, ax
-	add bx, cx
-	.sub_done_simple:
-	push bx	; Save the runtime for the faster instruction
-	cli
-	call io_wait_latch;
-	push ax
-	xor ax, ax
+
+	call	io_wait_latch
+	push	ax
+	xor	ax,ax
+; Must be unrolled or it behaves inconsistently on different waitstates IME
 	%rep 100
-	 MUL CL
-	 %endrep
-		call io_wait_latch;
+	aam
+	%endrep
+	call	io_wait_latch
 	sti
-	pop bx
-	cmp ax, bx
-	jae .second_scan_is_bigger
-	sub bx, ax
-	
-	jmp .sub_done
-	.second_scan_is_bigger:
-	mov cx, 0ffffh
-	sub cx, ax
-	add bx, cx
-	.sub_done:
-	pop ax	; pull the count from the simple run
-	sub bx, ax
+	pop	bx
+	cmp	ax,bx
+	jae	.second_scan_is_bigger_simple
+	sub	bx,ax
+	jmp	.sub_done_simple
+
+.second_scan_is_bigger_simple:
+	mov	cx,0FFFFh
+	sub	cx,ax
+	add	bx,cx
+
+.sub_done_simple:
+	push	bx	; Save the runtime for the faster instruction
+	cli
+	call	io_wait_latch
+	push	ax
+	xor	ax,ax
+	%rep 100
+	mul	cl
+	%endrep
+	call	io_wait_latch
+	sti
+	pop	bx
+	cmp	ax,bx
+	jae	.second_scan_is_bigger
+	sub	bx,ax
+	jmp	.sub_done
+
+.second_scan_is_bigger:
+	mov	cx,0FFFFh
+	sub	cx,ax
+	add	bx,cx
+
+.sub_done:
+	pop	ax	; pull the count from the simple run
+	sub	bx,ax
 	; We'd expect BX to be the amount of clock ticks corresponding to (some large number) more cycles
 
-	
-;mov ax, bx			; Refinement tool:  Display the number of clock ticks the loop generated.
-;call print_dec		; Uncomment this code and run it on your machine and it will say things like "244 ticks ~ 8.00MHz"
-;mov si, msg_ticks   ; Calculate (number of ticks) * 100 * (CPU actual MHz)
-;call print			; and place it in DX:AX as the "clock divider" for the CPU type you're using in the code below
-;mov ax, 0e20h	
-;int 010h			
 
+;	mov ax,bx			; Refinement tool:  Display the number of clock ticks the loop generated.
+;	call	print_dec		; Uncomment this code and run it on your machine and it will say things like "244 ticks ~ 8.00MHz"
+;	mov	si,msg_ticks   ; Calculate (number of ticks) * 100 * (CPU actual MHz)
+;	call	print			; and place it in DX:AX as the "clock divider" for the CPU type you're using in the code below
+;	mov	ax,0E20h
+;	int	10h
 
-	mov	ax,0101h	; Repeat the NEC CPU test
+	mov	ax,0101h		; Repeat the NEC CPU test
 	aad	10h			; NEC V20 ignores the argument
 	cmp	al,0Bh			; and always does AL = AL * 0Ah + AH
-	jne .clock_divider_8088
-	mov dx, 003h		;  "Clock Divider" for NEC CPUs.  Value was based on an 10MHz V40: ~214 ticks, so the expected value is 1000*214 = 214000 = 343F0H
-	mov ax, 043F0h		;  On the V-series, AAM is faster than MUL (by quite a bit), so a large difference for the clock speed is expected.
-	jmp .clock_divider_set
-	.clock_divider_8088:
-	neg bx				;"Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: It shows as 65186 ticks, but on an 8088, MUL is faster than AAM
-	mov dx, 0002h		; This means that BX is negative here, so flip the sign and we get 349 ticks... 349 ticks * 477  = 166473 = 28A49H.
-	mov ax, 08A49h		;
-	.clock_divider_set:
-	div bx
-	
-	mov bx, 100			; Split to integer and fractional parts
-	div bl
+	jne	.clock_divider_8088
+	mov	dx,03h			; "Clock Divider" for NEC CPUs.  Value was based on an 10MHz V40: ~214 ticks, so the expected value is 1000*214 = 214000 = 343F0H
+	mov	ax,43F0h		; On the V-series, AAM is faster than MUL (by quite a bit), so a large difference for the clock speed is expected.
+	jmp	.clock_divider_set
 
-	mov bx, ax
-	xor ah, ah
-	call print_dec		; Integer part
-	mov ax, 0e2eh		; decimal
-	int 010h
-	xor ah, ah
-	mov al, bh
-	cmp al, 10
-	jae .two_digits
-	push ax
-	mov ax, 0e30h		; leading zero
-	int 010h
-	pop ax
-	.two_digits:
-	call print_dec
-	mov si, msg_mhz
-	call print
+.clock_divider_8088:
+	neg	bx			; "Clock Divider" for 8088 CPUs.  Value was based on a 4.77MHz 8088: It shows as 65186 ticks, but on an 8088, MUL is faster than AAM
+	mov	dx,0002h		; This means that BX is negative here, so flip the sign and we get 349 ticks... 349 ticks * 477  = 166473 = 28A49H.
+	mov	ax,8A49h
+
+.clock_divider_set:
+	div	bx
+	mov	bx,100			; Split to integer and fractional parts
+	div	bl
+
+	mov	bx,ax
+	xor	ah,ah
+	call	print_dec		; Integer part
+	mov 	ax,0E2Eh		; decimal point
+	int	10h
+	xor	ah,ah
+	mov	al,bh
+	cmp	al,10
+	jae	.two_digits
+	push	ax
+	mov	ax,0E30h		; leading zero
+	int	10h
+	pop	ax
+
+.two_digits:
+	call	print_dec
+	mov	si,msg_mhz
+	call	print
 	mov	si,msg_crlf
 	call	print
-	pop dx
-	pop si
-	pop bx
-	pop cx
-	pop ax
+	pop	dx
+	pop	si
+	pop	bx
+	pop	cx
+	pop	ax
 	ret
 %endif
 
