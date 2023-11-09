@@ -1088,8 +1088,15 @@ low_ram_ok:
 %endif ; SECOND_PIC
 	sti
 
+%ifdef AT_NMI
+	mov	al,0Dh | nmi_enable
+	out	nmi_mask_reg,al		; enable NMI
+	jmp	$+2
+	in	al,(nmi_mask_reg+1)	; dummy read to keep RTC happy
+%else ; AT_NMI
 	mov	al,nmi_enable
-	out	nmi_mask_reg,al	; enable NMIs
+	out	nmi_mask_reg,al		; enable NMI
+%endif ; AT_NMI
 
 %ifdef MACHINE_FE2010A or MACHINE_XT
 ;-------------------------------------------------------------------------
