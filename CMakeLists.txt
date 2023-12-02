@@ -23,13 +23,13 @@ target_compile_definitions(bios-micro8088.bin PRIVATE MACHINE_FE2010A)
 add_custom_command(
 	TARGET bios-micro8088.bin
 	POST_BUILD
-	COMMAND dd if=/dev/zero ibs=1k count=40 | LANG=C tr \\\\000 \\\\377 > bios-micro8088-noide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=40 | LC_ALL=C tr \\\\000 \\\\377 > bios-micro8088-noide.rom
 	COMMAND cat bios-micro8088.bin >> bios-micro8088-noide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=64 | LANG=C tr \\\\000 \\\\377 >> bios-micro8088-noide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=64 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-noide.rom
 	COMMAND cat ${XTIDE_320} > bios-micro8088-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=32 | LANG=C tr \\\\000 \\\\377 >> bios-micro8088-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=32 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide.rom
 	COMMAND cat bios-micro8088.bin >> bios-micro8088-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=64 | LANG=C tr \\\\000 \\\\377 >> bios-micro8088-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=64 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide.rom
 	COMMENT "Creating ROM images for Micro 8088"
 )
 
@@ -38,19 +38,19 @@ target_compile_definitions(bios-xi8088.bin PRIVATE MACHINE_XI8088)
 add_custom_command(
 	TARGET bios-xi8088.bin
 	POST_BUILD
-	COMMAND dd if=/dev/zero ibs=1k count=96 | LANG=C tr \\\\000 \\\\377 > bios-sergey-xt-noide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=96 | LC_ALL=C tr \\\\000 \\\\377 > bios-sergey-xt-noide.rom
 	COMMAND cat bios-xi8088.bin >> bios-sergey-xt-noide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=64 | LANG=C tr \\\\000 \\\\377 > bios-sergey-xt-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=64 | LC_ALL=C tr \\\\000 \\\\377 > bios-sergey-xt-xtide.rom
 	COMMAND cat ${XTIDE_320} >> bios-sergey-xt-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=24 | LANG=C tr \\\\000 \\\\377 >> bios-sergey-xt-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=24 | LC_ALL=C tr \\\\000 \\\\377 >> bios-sergey-xt-xtide.rom
 	COMMAND cat bios-xi8088.bin >> bios-sergey-xt-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=32 | LANG=C tr \\\\000 \\\\377 > bios-xi8088-noide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=32 | LC_ALL=C tr \\\\000 \\\\377 > bios-xi8088-noide.rom
 	COMMAND cat bios-xi8088.bin >> bios-xi8088-noide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=64 | LANG=C tr \\\\000 \\\\377 >> bios-xi8088-noide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=64 | LC_ALL=C tr \\\\000 \\\\377 >> bios-xi8088-noide.rom
 	COMMAND cat ${XTIDE_320} > bios-xi8088-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=24 | LANG=C tr \\\\000 \\\\377 >> bios-xi8088-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=24 | LC_ALL=C tr \\\\000 \\\\377 >> bios-xi8088-xtide.rom
 	COMMAND cat bios-xi8088.bin >> bios-xi8088-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=64 | LANG=C tr \\\\000 \\\\377 >> bios-xi8088-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=64 | LC_ALL=C tr \\\\000 \\\\377 >> bios-xi8088-xtide.rom
 	COMMENT "Creating ROM images for Xi 8088 and Sergey's XT"
 )
 
@@ -60,10 +60,10 @@ add_custom_command(
 	TARGET bios-book8088.bin
 	POST_BUILD
 	COMMAND cat ${XTIDE_300} > bios-book8088-xtide.rom
-	COMMAND dd if=/dev/zero ibs=1k count=40 | LANG=C tr \\\\000 \\\\377 >> bios-book8088-xtide.rom
+	COMMAND dd if=/dev/zero ibs=1k count=40 | LC_ALL=C tr \\\\000 \\\\377 >> bios-book8088-xtide.rom
 	COMMAND cat bios-book8088.bin >> bios-book8088-xtide.rom
 	COMMAND cat ${XTIDE_V20_300} > bios-book8088-xtide-v20.rom
-	COMMAND dd if=/dev/zero ibs=1k count=40 | LANG=C tr \\\\000 \\\\377 >> bios-book8088-xtide-v20.rom
+	COMMAND dd if=/dev/zero ibs=1k count=40 | LC_ALL=C tr \\\\000 \\\\377 >> bios-book8088-xtide-v20.rom
 	COMMAND cat bios-book8088.bin >> bios-book8088-xtide-v20.rom
 	COMMENT "Creating ROM image for Book8088"
 )
