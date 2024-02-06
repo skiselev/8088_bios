@@ -272,22 +272,15 @@ kbc_aux_send:
 	mov	al,kbc_cmd_aux_snd	; write byte to auxiliary device
 	call	kbc_send_cmd
 	jc	.timeout		; kbc_send_cmd timed out
-
-					; wait for acknowledge
-	mov	cx,10			; retry 10 times
-.retry:
-	call	kbc_aux_read
-	jnc	.check_reply		; CF==0 - data is available
-	loop	.retry
-	jmp	.timeout		; no reply - timeout
-.check_reply:
+	call	kbc_aux_read		; read acknowledge from device
+	jc	.timeout		; no reply - timeout
 	cmp	al,dev_rsp_ack
 	je	.ok
 	cmp	al,dev_rsp_resend
 	je	.resend
-	cmp	al,dev_rsp_error
-	je	.timeout		; treat as timeout/interface error
-	loop	.retry
+; Optimization: any other responses result in timeout/interface error
+;	cmp	al,dev_rsp_error
+;	je	.timeout		; treat as timeout/interface error
 	jmp	.timeout
 
 .ok:
@@ -506,7 +499,7 @@ kbc_init:
 	je	.keyboard_bat_ok	; all good, do not reset the keyboard
 
 .keyboard_reset:
-	mov	dh,e_kbd_bat_fail	; major error numbre
+	mov	dh,e_kbd_bat_fail	; major error number
 	mov	dl,e_kbd_tout_fail	; minor error number
 	mov	al,dev_cmd_reset
 	call	kbc_write_data		; send reset command to the keyboard
