@@ -118,3 +118,7 @@
 ; 3 - 720 KB,	4 - 1.44 MB,	6 - 2.88 MB
 ; Use two 1.44 MB drives by default
 %define DEFAULT_FLOPPIES 44h
+
+; Check for the boot sector signature
+; Note: Most BIOSes do not check for it
+; %define BOOT_SIGNATURE

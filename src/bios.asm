@@ -1618,8 +1618,10 @@ ipl:
 	jc	.boot_failed
 
 .check_signature:
+%ifdef BOOT_SIGNATURE
     es	cmp	word [7DFEh],0AA55h
 	jnz	.boot_failed		; boot sector signature not found
+%endif ; BOOT_SIGNATURE
 	jmp	0000h:7C00h		; jump to the boot sector
 
 .boot_failed:
