@@ -67,7 +67,7 @@ delay_15us:
 ; - Latch the PIT and draw down the countdown total on each read.
 ; - Exit when countdown underflows.
 ;
-; Note: Mode 3 (Square Wave) decements the readable counter by 2, so the
+; Note: Mode 3 (Square Wave) decrements the readable counter by 2, so the
 ; effective frequency of the counter is actually 2,386,360 Hz.
 ;
 ; Contributed by @640-KB (under GPL-3.0 license)
