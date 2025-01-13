@@ -91,7 +91,7 @@ iochk_status	equ	40h	; ~IOCHK status - 1 = ~IOCHK NMI signalled
 
 %ifdef MACHINE_XT or MACHINE_FE2010A
 ; Port 62h - 8255 PPI Port C - Read only
-ppi_pc_reg	equ	62h	; 8255 PPI port C I/O registerA
+ppi_pc_reg	equ	62h	; 8255 PPI port C I/O register
 ; XT DIP switches 1-4 (read when bit 3 of PPI Port B is 1)
 sw_post_loop	equ	01h	; XT DIP switch 1 - 1 = Loop on POST
 sw_fpu_present	equ	02h	; XT DIP switch 2 - 1 = FPU present
@@ -140,7 +140,7 @@ ppi_cwd_reg	equ	63h	; 8255 PPI control word register
 ppi_cwd_value	equ	99h	; 8255 PPI control word value for IBM XT:
 				; Port A - mode 0 (simple I/O), input
 				; Port B - mode 0 (simple I/O), output
-				; Port C - output
+				; Port C - input
 %endif ; MACHINE_XT
 
 post_reg	equ	80h	; POST status output port
