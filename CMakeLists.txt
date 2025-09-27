@@ -12,9 +12,13 @@ set(SOURCES src/bios.asm src/at_kbc.inc src/delay.inc src/floppy1.inc src/fnt80-
 set(XTIDE_300 xtide_r625/ide_xt-cf-lite_300h.bin)
 set(XTIDE_V20_300 xtide_r625/ide_xtp-cf-lite_300h.bin)
 set(XTIDE_320 xtide_r625/ide_xt-cf-lite_320h.bin)
+set(XUB_8080_XTIDEV2_300 xtide_r625/ide_xt-xt-ide-v2-300h.bin)
+set(XUB_V20_XTIDEV2_300 xtide_r625/ide_xtp-xt-ide-v2-300h.bin)
 cmake_path(ABSOLUTE_PATH XTIDE_300)
 cmake_path(ABSOLUTE_PATH XTIDE_V20_300)
 cmake_path(ABSOLUTE_PATH XTIDE_320)
+cmake_path(ABSOLUTE_PATH XUB_8080_XTIDEV2_300)
+cmake_path(ABSOLUTE_PATH XUB_V20_XTIDEV2_300)
 
 set(CMAKE_ASM_NASM_OBJECT_FORMAT bin)
 
@@ -30,6 +34,16 @@ add_custom_command(
 	COMMAND dd if=/dev/zero ibs=1k count=32 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide.rom
 	COMMAND cat bios-micro8088.bin >> bios-micro8088-xtide.rom
 	COMMAND dd if=/dev/zero ibs=1k count=64 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide.rom
+	COMMAND cat ${XUB_8080_XTIDEV2_300} > bios-micro8088-xtide-8088-300.rom
+	COMMAND dd if=/dev/zero ibs=1k count=32 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide-8088-300.rom
+	COMMAND cat bios-micro8088.bin >> bios-micro8088-xtide-8088-300.rom
+	COMMAND dd if=/dev/zero ibs=1k count=40 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide-8088-300.rom
+	COMMAND cat bios-micro8088.bin >> bios-micro8088-xtide-8088-300.rom
+	COMMAND cat ${XUB_V20_XTIDEV2_300} > bios-micro8088-xtide-v20-300.rom
+	COMMAND dd if=/dev/zero ibs=1k count=32 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide-v20-300.rom
+	COMMAND cat bios-micro8088.bin >> bios-micro8088-xtide-v20-300.rom
+	COMMAND dd if=/dev/zero ibs=1k count=40 | LC_ALL=C tr \\\\000 \\\\377 >> bios-micro8088-xtide-v20-300.rom
+	COMMAND cat bios-micro8088.bin >> bios-micro8088-xtide-v20-300.rom
 	COMMENT "Creating ROM images for Micro 8088"
 )
 
