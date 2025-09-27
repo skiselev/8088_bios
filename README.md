@@ -25,6 +25,10 @@ Following folks contributed to this project. Thank you!
   * Documentation enhancements
 * [Rink](https://github.com/zhmu)
   * Video code update that improves compatibility with FreeDOS utilties
+* [Jack Zeal](https://github.com/hak-foo)
+  * Homebrew8088 V40 Processor Card support
+* [Matus Horvath](https://github.com/matushorvath)
+  * Documentation fixes
 * Multiple other individuals that helped this project by testing the code, submitting bug reports, and contributing their ideas for improvements
 
 ## BIOS Images
@@ -35,8 +39,8 @@ Following folks contributed to this project. Thank you!
 |[bios-micro8088-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-noide.rom) | BIOS image for Micro 8088 without XUB extension                   |
 |[bios-micro8088-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide.rom) | BIOS image for Micro 8088 with XUB configured for CF-Lite at port 300h |
 |[bios-micro8088-xtide-8088-300.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide-8088-300.rom) | BIOS image for Micro 8088 with XUB configured for XT-IDE at port 320h|
-|[bios-micro8088-xtide-v20-300.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide-v20-300.rom) | BIOS image for Micro 8088 with XUB configured for XT-IDE at port 320hoptimized for NEC V20 |
-|[bios-xi8088.bin](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088.bin)                   | BIOS image for Xi 8088 Version 2.0 to use with xiflash utility    |
+|[bios-micro8088-xtide-v20-300.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide-v20-300.rom) | BIOS image for Micro 8088 with XUB configured for XT-IDE at port 320h and optimized for NEC V20 |
+|[bios-xi8088.bin](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088.bin)                   | BIOS image for Xi 8088 Version 2.0 for use with xiflash utility   |
 |[bios-xi8088-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088-noide.rom)       | BIOS image for Xi 8088 Version 2.0                                |
 |[bios-xi8088-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088-xtide.rom)       | BIOS image for Xi 8088 Version 2.0 with XT-IDE                    |
 |[bios-sergey-xt-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-sergey-xt-noide.rom) | BIOS image for Sergey's XT Version 1.0                            |
