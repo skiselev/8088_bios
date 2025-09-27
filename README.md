@@ -31,9 +31,11 @@ Following folks contributed to this project. Thank you!
 
 |File name                                                                                                       | Description                                                       |
 |----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
-|[bios-micro8088.bin](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088.bin)             | BIOS image for Micro 8088 Version 1.1 to use with xiflash utility |
-|[bios-micro8088-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-noide.rom) | BIOS image for Micro 8088 Version 1.1                             |
-|[bios-micro8088-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide.rom) | BIOS image for Micro 8088 Version 1.1 with XT-IDE                 |
+|[bios-micro8088.bin](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088.bin)             | BIOS image for Micro 8088 for use with xiflash utility            |
+|[bios-micro8088-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-noide.rom) | BIOS image for Micro 8088 without XUB extension                   |
+|[bios-micro8088-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide.rom) | BIOS image for Micro 8088 with XUB configured for CF-Lite at port 300h |
+|[bios-micro8088-xtide-8088-300.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide-8088-300.rom) | BIOS image for Micro 8088 with XUB configured for XT-IDE at port 320h|
+|[bios-micro8088-xtide-v20-300.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-micro8088-xtide-v20-300.rom) | BIOS image for Micro 8088 with XUB configured for XT-IDE at port 320hoptimized for NEC V20 |
 |[bios-xi8088.bin](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088.bin)                   | BIOS image for Xi 8088 Version 2.0 to use with xiflash utility    |
 |[bios-xi8088-noide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088-noide.rom)       | BIOS image for Xi 8088 Version 2.0                                |
 |[bios-xi8088-xtide.rom](https://github.com/skiselev/8088_bios/blob/master/binaries/bios-xi8088-xtide.rom)       | BIOS image for Xi 8088 Version 2.0 with XT-IDE                    |
@@ -51,6 +53,13 @@ Following folks contributed to this project. Thank you!
 ## Release Notes
 
 ### Changes
+
+* Version 1.0.1
+  * Add support for [Homebrew8088 V40 Processor Card](https://www.homebrew8088.com/)
+  * Add chipset detection for Faraday FE2010 chipset
+  * Diable check for boot sector signature. This allows booting older Minix versions
+  * Reduce delays for AT keyboard controller
+  * Comments typos fixes
 
 * Version 1.0.0
   * Add support for Book8088
