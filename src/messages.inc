@@ -79,6 +79,7 @@ msg_cpu_nec_v40	db	'NEC V40', 00h
 msg_fpu_present db      'Intel 8087', 0Dh, 0Ah, 00h
 %ifdef MACHINE_FE2010A
 msg_chipset	db	'Chipset:                    ', 00h
+msg_fe2010	db	'Faraday FE2010', 0Dh, 0Ah, 00h
 msg_fe2010a	db	'Faraday FE2010A', 0Dh, 0Ah, 00h
 msg_pt8010af	db	'Proton PT8010AF', 0Dh, 0Ah, 00h
 %endif ; MACHINE_FE2010A

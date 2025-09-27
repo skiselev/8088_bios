@@ -369,6 +369,12 @@ detect_chipset:
 	push	si
 	mov	si,msg_chipset
 	call	print
+	mov	si,msg_fe2010		; FE2010 chipset does not fully decode
+	in	al,ppi_pc_reg		; I/O addresses, and PPI ports 60h-63h
+	mov	ah,al			; are aliased to 70h-73h.
+	in	al,72h			; Therefore port 62h (ppi_pc_reg) reads
+	cmp	al,ah			; reads the same as port 72h.
+	je	.print_chipset
 	mov	si,msg_fe2010a
 	mov	al,54h			; channel 1, LSB only, mode 2, binary
 	out	pit_ctl_reg,al		; used for DRAM refresh on IBM PC/XT/AT

@@ -232,6 +232,18 @@ rtc_init:
 	push	si
 	mov	al,e_rtc_init
 	out	post_reg,al
+%ifdef MACHINE_FE2010A
+%ifndef AT_RTC_PORT
+	; FE2010 chipset does not fully decode I/O addresses and PPI ports
+	; 60h-63h are aliased to 70h-73h, so RTC cannot use addresses 70h-71h.
+        ; Therefore port 62h (ppi_pc_reg) reads the same as port 72h.
+	in	al,ppi_pc_reg
+	mov	ah,al
+	in	al,72h
+	cmp	al,ah
+	je	.exit			; FE2010, will not try to init RTC
+%endif ; AT_RTC_PORT
+%endif ; MACHINE_FE2010A
 	mov	al,cmos_control_a	; select control A register
 	mov	ah,26h			; turn on oscillator and time keeping
 					; set SQW frequency to 1.024 KHz
@@ -562,6 +574,21 @@ print_rtc:
 ;-------------------------------------------------------------------------
 rtc_detect:
 	push ax
+%ifdef MACHINE_FE2010A
+%ifndef AT_RTC_PORT
+	; FE2010 chipset does not fully decode I/O addresses and PPI ports
+	; 60h-63h are aliased to 70h-73h, so RTC cannot use addresses 70h-71h.
+        ; Therefore port 62h (ppi_pc_reg) reads the same as port 72h.
+	in	al,ppi_pc_reg
+	mov	ah,al
+	in	al,72h
+	cmp	al,ah
+	jne	.not_fe2010
+	stc				; FE2010, will not try to detect RTC
+	jmp	.exit
+.not_fe2010:
+%endif ; AT_RTC_PORT
+%endif ; MACHINE_FE2010A
 	mov	al,cmos_control_a	; select control A register
 	call    rtc_read		; check if RTC is present
 	cmp     al,26h
