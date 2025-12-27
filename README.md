@@ -61,9 +61,9 @@ Following folks contributed to this project. Thank you!
 * Version 1.0.1
   * Add support for [Homebrew8088 V40 Processor Card](https://www.homebrew8088.com/)
   * Add chipset detection for Faraday FE2010 chipset
-  * Diable check for boot sector signature. This allows booting older Minix versions
+  * Disable check for boot sector signature. This allows booting older [Minix](https://en.wikipedia.org/wiki/Minix) versions
   * Reduce delays for AT keyboard controller
-  * Comments typos fixes
+  * Fix typos in code comments
 
 * Version 1.0.0
   * Add support for Book8088
