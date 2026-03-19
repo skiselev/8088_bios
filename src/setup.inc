@@ -713,7 +713,7 @@ nvram_setup:
 ; Output:
 ;	AX - string length
 ; Notes:
-;	Buffer must have size of max string length + 1 to accomodate 00h
+;	Buffer must have size of max string length + 1 to accommodate 00h
 ;-------------------------------------------------------------------------
 get_line:
 	push	bx
