@@ -98,7 +98,7 @@ int_17_fn00:
 
 	mov	bh,prn_stat_busy
 	call	wait_for_port		; wait for printer to be ready
-	jnz	.timeout		; timeout had occured
+	jnz	.timeout		; timeout had occurred
 
 .not_busy:
 	inc	dx			; DX = prn_ctrl_reg

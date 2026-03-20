@@ -169,7 +169,7 @@ fdc_init:
 	test	al,80h
 	jz	.try_again		; try again if FDC not ready
 	test	al,40h
-	jz	.fdc_ready		; FDC ready to recieve data
+	jz	.fdc_ready		; FDC ready to receive data
 .try_again:
 	call	fdc_reset
 	mov	dx,fdc_status_reg	; get status register address
