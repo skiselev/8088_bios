@@ -1537,6 +1537,8 @@ extension_scan:
     es	cmp	word [0],0AA55h		; check for signature
 	jnz	.next			; no signature, check next 2 KiB
     es	mov	al,byte [2]		; AL = rom size in 512 byte blocks
+	or al,al                   ; a zero-sized ROM header is invalid
+	jz .next                   ; skip it so the scan pointer advances
 	mov	ah,0
 	mov	cl,5
 	shl	ax,cl			; convert size to paragraphs
