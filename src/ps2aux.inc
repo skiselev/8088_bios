@@ -352,7 +352,7 @@ int_15_fnC206:
 	mov	al,aux_cmd_scale21	; set 2:1 scaling factor command
 	jmp	.send_it
 .scale_1x1:
-	mov	ah,aux_cmd_scale11	; set 1:1 scaling factor command
+	mov	al,aux_cmd_scale11	; set 1:1 scaling factor command
 .send_it:
 	call	kbc_aux_send
 	jc	int_15_fnC2_err		; error
