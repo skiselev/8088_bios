@@ -1868,10 +1868,10 @@ int_05:
 	push	dx			; save original position / DX in stack
 
 	
-	mov	ah,0Dh			; move to the next line
+	mov	al,0Dh			; move to the next line
 	call	.print_char
 	jnz	.error
-	mov	ah,0Ah
+	mov	al,0Ah
 	call	.print_char
 	jnz	.error
 
@@ -1898,10 +1898,10 @@ int_05:
 	cmp	dl,cl			; on the last column?
 	jb	.column_loop		; print next column
 
-	mov	ah,0Dh			; move to the next line
+	mov	al,0Dh			; move to the next line
 	call	.print_char
 	jnz	.error
-	mov	ah,0Ah
+	mov	al,0Ah
 	call	.print_char
 	jnz	.error
 
