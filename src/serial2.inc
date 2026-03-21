@@ -294,21 +294,21 @@ int_14_fn05:
 ;-------------------------------------------------------------------------
 ; sub-function 00h - read modem control register
 ; int_14_fn05_00:
-	add	dx,uart_lcr_reg		; DX = UART MCR address
+	add	dx,uart_mcr_reg		; DX = UART MCR address
 	in	al,dx
 	pop	bx			; get BX from the stack
 	mov	bl,al			; BL = MCR content
 	push	bx			; put BX back to the stack
-	sub	dx,uart_lcr_reg		; DX = UART base address
+	sub	dx,uart_mcr_reg		; DX = UART base address
 	jmp	int_14_fn03		; exit returning modem and line status
 
 ;-------------------------------------------------------------------------
 ; sub-function 01h - write modem control register
 int_14_fn05_01:
-	add	dx,uart_lcr_reg		; DX = UART MCR address
+	add	dx,uart_mcr_reg		; DX = UART MCR address
 	pop	bx			; get BX from the stack
 	push	bx			; put BX back to the stack
 	mov	al,bl			; BL = new MCR content
 	out	dx,al
-	sub	dx,uart_lcr_reg		; DX = UART base address
+	sub	dx,uart_mcr_reg		; DX = UART base address
 	jmp	int_14_fn03		; exit returning modem and line status
