@@ -1553,12 +1553,13 @@ extension_scan:
 	inc	si
 	loop	.checksum
 	or	al,al			; AL == 0?
-	jnz	.next			; AL not zero - bad checksum
+	jnz	.chk_end		; AL not zero - bad checksum
 	mov	word [67h],3		; extension initialization offset
 	mov	word [69h],es		; extension segment
 	jmp	.exit
 .next:
 	add	dx,80h			; add 2 KiB
+.chk_end:
 	cmp	dx,bx
 	jb	.scan
 .exit:
