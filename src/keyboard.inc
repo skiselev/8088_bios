@@ -173,6 +173,7 @@ int_16_fn03:
 	mov	al,dev_cmd_rate
 	call	kbc_kb_send
 	mov	al,bh
+	or al,bl
 	call	kbc_kb_send
 	mov	al,kbc_cmd_kbd_ena	; enable keyboard interface
 	call	kbc_write_command
