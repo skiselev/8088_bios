@@ -268,7 +268,8 @@ int_13_fn04:
 .establish_media:
 	call	fdc_detect_media	; detect media type
 	jc	.error_end_io
-	
+	call	get_media_state		; BL = newly detected media state
+
 .fdc_send_specify:
 	mov	ax,0BF03h		; FDC Specify command +
 					; 0BFh - specify byte 0 for 1.44M
