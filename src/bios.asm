@@ -1588,6 +1588,7 @@ ipl:
 	int	13h
 	jc	.fd_failed
 	cmp	dl,00h
+	pop cx
 	jz	.try_hdd		; jump if zero drives
 	mov	ax,0201h		; read one sector
 	xor	dx,dx			; head 0, drive 0
