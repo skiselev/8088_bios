@@ -283,11 +283,11 @@ detect_cpu:
 	call	print
 	mov	si,msg_crlf
 	call	print
-	pop	dx
 	pop	si
 	pop	bx
 	pop	cx
 	pop	ax
+	pop	dx
 	ret
 %endif
 
