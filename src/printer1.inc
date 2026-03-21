@@ -86,6 +86,7 @@ detect_parallel:
 	push	bx
 	push	dx
 	push	si
+	push	di
 	mov	al,e_parallel_scan
 	out	post_reg,al
 
@@ -160,6 +161,7 @@ detect_parallel:
 	mov	si,msg_crlf
 	call	print
 
+	pop	di
 	pop	si
 	pop	dx
 	pop	bx
