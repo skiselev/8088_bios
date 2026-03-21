@@ -1247,7 +1247,7 @@ int_02:
 	mov	al,0Dh & nmi_disa_mask
 	out	nmi_mask_reg,al		; disable NMI
 	jmp	$+2
-	in	al,nmi_mask_reg		; read the RTC to keep it happy
+	in	al,rtc_data_reg		; read the RTC to keep it happy
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
@@ -1537,6 +1537,8 @@ extension_scan:
     es	cmp	word [0],0AA55h		; check for signature
 	jnz	.next			; no signature, check next 2 KiB
     es	mov	al,byte [2]		; AL = rom size in 512 byte blocks
+	or al,al                   ; a zero-sized ROM header is invalid
+	jz .next                   ; skip it so the scan pointer advances
 	mov	ah,0
 	mov	cl,5
 	shl	ax,cl			; convert size to paragraphs
@@ -1553,12 +1555,13 @@ extension_scan:
 	inc	si
 	loop	.checksum
 	or	al,al			; AL == 0?
-	jnz	.next			; AL not zero - bad checksum
+	jnz	.chk_end		; AL not zero - bad checksum
 	mov	word [67h],3		; extension initialization offset
 	mov	word [69h],es		; extension segment
 	jmp	.exit
 .next:
 	add	dx,80h			; add 2 KiB
+.chk_end:
 	cmp	dx,bx
 	jb	.scan
 .exit:
@@ -1588,6 +1591,7 @@ ipl:
 	int	13h
 	jc	.fd_failed
 	cmp	dl,00h
+	pop cx
 	jz	.try_hdd		; jump if zero drives
 	mov	ax,0201h		; read one sector
 	xor	dx,dx			; head 0, drive 0
@@ -1868,10 +1872,10 @@ int_05:
 	push	dx			; save original position / DX in stack
 
 	
-	mov	ah,0Dh			; move to the next line
+	mov	al,0Dh			; move to the next line
 	call	.print_char
 	jnz	.error
-	mov	ah,0Ah
+	mov	al,0Ah
 	call	.print_char
 	jnz	.error
 
@@ -1898,10 +1902,10 @@ int_05:
 	cmp	dl,cl			; on the last column?
 	jb	.column_loop		; print next column
 
-	mov	ah,0Dh			; move to the next line
+	mov	al,0Dh			; move to the next line
 	call	.print_char
 	jnz	.error
-	mov	ah,0Ah
+	mov	al,0Ah
 	call	.print_char
 	jnz	.error
 

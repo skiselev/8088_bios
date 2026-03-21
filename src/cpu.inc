@@ -283,11 +283,11 @@ detect_cpu:
 	call	print
 	mov	si,msg_crlf
 	call	print
-	pop	dx
 	pop	si
 	pop	bx
 	pop	cx
 	pop	ax
+	pop	dx
 	ret
 %endif
 
@@ -391,8 +391,8 @@ detect_chipset:
 	call	print
 	mov	al,54h			; channel 1, LSB only, mode 2, binary
 	out	pit_ctl_reg,al		; this disables memory refresh
-	pop	ax
 	pop	si
+	pop	ax
 	ret
 
 %endif ; MACHINE_FE2010A

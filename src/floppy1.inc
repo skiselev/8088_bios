@@ -486,7 +486,10 @@ int_13_fn17:
 	jne	.set_type		; floppy disk is installed
 	call	get_media_state		; BL = media state
 	cmp	bl,fdc_m_720		; 250 Kbps and not 5.25?
-	je	.exit_check_error
+	jne	.not_720
+	mov	al,bl			; preserve current media state
+	jmp	.exit_check_error
+.not_720:
 	mov	al,fdc_m_try_360in1200	; 300 Kpbs, try 360 in 1.2M
 	jmp	.exit_check_error
 

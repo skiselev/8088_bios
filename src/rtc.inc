@@ -58,9 +58,9 @@ cmos_aie	equ	20h	; RTC alarm interrupt enable bit
 cmos_pie	equ	40h	; RTC periodic interrupt enable bit
 cmos_set	equ	80h	; RTC set bit (0 = normal operation, 1 = set)
 cmos_control_c	equ	0Ch	; RTC control C register
-cmos_uf		equ	20h	; RTC update ended interrupt flag
-cmos_af		equ	40h	; RTC alarm interrupt flag
-cmos_pf		equ	80h	; RTC periodic interrupt flag
+cmos_uf		equ	10h	; RTC update ended interrupt flag
+cmos_af		equ	20h	; RTC alarm interrupt flag
+cmos_pf		equ	40h	; RTC periodic interrupt flag
 cmos_control_d	equ	0Dh	; RTC control D register
 cmos_vrt	equ	80h	; RTC vrt bit (1 = battery is OK)
 
