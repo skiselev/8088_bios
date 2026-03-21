@@ -1247,7 +1247,7 @@ int_02:
 	mov	al,0Dh & nmi_disa_mask
 	out	nmi_mask_reg,al		; disable NMI
 	jmp	$+2
-	in	al,nmi_mask_reg		; read the RTC to keep it happy
+	in	al,rtc_data_reg		; read the RTC to keep it happy
 %else
 	mov	al,nmi_disable
 	out	nmi_mask_reg,al
