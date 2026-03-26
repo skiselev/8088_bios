@@ -1232,6 +1232,7 @@ int_10_fn0E:
 	mov	bh,0
 	shl	bl,1			; word index
 	mov	dx,word [bx+video_cur_pos] ; DX = cursor position
+	mov	bh,byte [video_page]	; BH = active page for nested INT 10h
 
 	mov	al,byte [bp+int_10_al]	; AL = character to write
 	cmp	al,bs
@@ -1277,13 +1278,16 @@ int_10_fn0E:
 
 .scroll:
 	mov	ah,02h
-	int	10h			; set new cursor position
+	int	10h			; set cursor on active page
 	call	vid_check_mode
-	mov	bh,0
-	jc	.do_scroll		; jump if text mode - do scroll
+	jc	.gfx_fill		; jump if graphics mode
 	mov	ah,08h			; INT 10h, function 08h - read char
-	int	10h			; read attirbute at current position
-	mov	bh,ah
+	int	10h			; read attribute at current position
+	mov	bh,ah			; BH = fill attribute for scroll
+	jmp	.do_scroll
+
+.gfx_fill:
+	mov	bh,0			; graphics mode: fill with black
 
 .do_scroll:
 	mov	ah,06h			; INT 10h, function 06h - Scroll up
