@@ -1590,7 +1590,10 @@ ipl:
 	int	13h
 	jc	.fd_failed
 	cmp	dl,00h
-	jz	.try_hdd		; jump if zero drives
+	jnz	.try_fd			; at least one floppy drive
+	pop	cx
+	jmp	.try_hdd		; zero floppy drives, try HDD boot
+.try_fd:
 	mov	ax,0201h		; read one sector
 	xor	dx,dx			; head 0, drive 0
 	mov	es,dx			; to 0000:7C00
