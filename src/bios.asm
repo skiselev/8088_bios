@@ -1869,8 +1869,10 @@ int_05:
 	mov	ch,25			; assume 25 rows
 
 .get_cursor_pos:
+	push	cx			; INT 10h Fn 03h modifies CX - save it
 	mov	ah,03h			; get cursor position and size
 	int	10h			; returns cursor position in DX
+	pop	cx
 	push	dx			; save original position / DX in stack
 
 	
