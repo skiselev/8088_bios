@@ -58,10 +58,8 @@ int_17_fn01:
 					; prn_ctrl_reg = prn_data_reg + 2
 	mov	al,prn_ctrl_sel		; init bit = 0, initialize printer
 	out	dx,al
-	push	cx
 	mov	cx,prn_init_delay
 	call	delay_15us
-	pop	cx
 	mov	al,(prn_ctrl_sel | prn_ctrl_init)
 	out	dx,al			; deactivate init bit
 	dec	dx			; OPTIMIZATION:

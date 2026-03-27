@@ -32,6 +32,7 @@
 int_17:
 	sti
 	push	bx
+	push	cx
 	push	dx
 	push	si
 	push	ds
@@ -64,6 +65,7 @@ int_17_error:
 	pop	ds
 	pop	si
 	pop	dx
+	pop	cx
 	pop	bx
 	iret
 
