@@ -29,6 +29,10 @@ Following folks contributed to this project. Thank you!
   * Homebrew8088 V40 Processor Card support
 * [Matus Horvath](https://github.com/matushorvath)
   * Documentation fixes
+* [William Leara](http://basicinputoutput.com)
+  * Comments spelling fixes
+* [Kevin Day](https://github.com/kdkd)
+  * Multiple bug fixes
 * Multiple other individuals that helped this project by testing the code, submitting bug reports, and contributing their ideas for improvements
 
 ## BIOS Images
@@ -58,6 +62,22 @@ Following folks contributed to this project. Thank you!
 ## Release Notes
 
 ### Changes
+
+* Version 1.0.2
+  * Fix print screen functionality (INT 05h)
+  * Fix two issues with ROM BIOS extension scan:
+    1. Infinite loop when ROM BIOS extension has size of 0
+    2. Skipping extra 2 KiB when ROM BIOS extension has an incorrect checksum
+  * Fix INT 10h Fn 0Eh - teletype output to output to the current video page instead of page 0
+  * Fix INT 10h Fn 05h - read/write modem control register: Use the modem control register (MCR) instead of the line control register (LCR)
+  * Fix INT 16h Fn 03h - set typemaitc rate: Properly set the repeat rate
+  * Fix INT 15h Fn C206h - set scaling factor: The 1:1 scaling factor was not set correctly, it was always set to the 2:1 scaling factor
+  * Fix RTC control register flag bits. They were shifted by 1.
+  * Fix INT 13h Fn 02h,03h,04h - floppy read/write/verify: Set the correct step rate for 1.44 floppy disks
+  * Fix cpu MACHINE_FE2010A detect_chipset and 
+cpu MACHINE_HOMEBREW8088 estimate clock: The order of pops now matches the order of pushes.
+  * printer1 detect_parallel: Preserve DI register
+  * NMI/AT handler: Read RTC data register after modifying NMI/RTC index register
 
 * Version 1.0.1
   * Add support for [Homebrew8088 V40 Processor Card](https://www.homebrew8088.com/)
