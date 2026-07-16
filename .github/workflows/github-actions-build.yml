@@ -1,5 +1,5 @@
-name: GitHub Actions Demo
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+name: GitHub Actions: 8088 BIOS - Linux Build
+run-name: ${{ github.actor }} is building 8088 BIOS on a Linux host
 on: [push]
 jobs:
   Explore-GitHub-Actions:
@@ -12,12 +12,15 @@ jobs:
         uses: actions/checkout@v6
       - run: echo "The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+      - name: Install build tools - CMake and NASM
         run: |
           sudo apt update
           sudo apt -y install cmake nasm
+      - name: Build 8088 BIOS
+        run: |
           cd ${{ github.workspace }}/binaries
           cmake ..
           make
-          ls ${{ github.workspace }}/binaries
+      - name: List output files
+        run: ls -l ${{ github.workspace }}/binaries
       - run: echo "This job's status is ${{ job.status }}."
