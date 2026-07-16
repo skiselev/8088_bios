@@ -14,7 +14,8 @@ jobs:
       - run: echo "The workflow is now ready to test your code on the runner."
       - name: List files in the repository
         run: |
-          sudo apt install cmake nasm
+          sudo apt update
+          sudo apt -y install cmake nasm
           cd ${{ github.workspace }}/binaries
           cmake ..
           make
