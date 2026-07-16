@@ -1,4 +1,4 @@
-name: GitHub Actions: 8088 BIOS - Linux Build
+name: GitHub Actions - Linux Build
 run-name: ${{ github.actor }} is building 8088 BIOS on a Linux host
 on: [push]
 jobs:
